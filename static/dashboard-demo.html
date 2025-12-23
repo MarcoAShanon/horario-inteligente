@@ -700,6 +700,11 @@
                 localStorage.setItem('authToken', token);
             }
 
+            // Sincronizar medico para userData (compatibilidade com dashboard analítico)
+            if (!localStorage.getItem('userData') && medico) {
+                localStorage.setItem('userData', medico);
+            }
+
             if (medico) {
                 const medicoData = JSON.parse(medico);
                 document.getElementById('userName').textContent = medicoData.nome || 'Dr. Carlos Silva';
