@@ -112,6 +112,12 @@ class OpenAIAudioService:
         texto = re.sub(r'\bDra\.\s+', 'Doutora ', texto)  # Dra. → Doutora
         texto = re.sub(r'\bDr\.\s+', 'Doutor ', texto)    # Dr. → Doutor
 
+        # Converter horários para pronúncia correta
+        # "11h" → "11 horas", "9h30" → "9 horas e 30", "14h" → "14 horas"
+        texto = re.sub(r'\b(\d{1,2})h(\d{2})\b', r'\1 horas e \2', texto)  # 9h30 → 9 horas e 30
+        texto = re.sub(r'\b(\d{1,2})h\b', r'\1 horas', texto)  # 11h → 11 horas
+        texto = re.sub(r'\b(\d{1,2}):(\d{2})\b', r'\1 horas e \2', texto)  # 11:30 → 11 horas e 30
+
         # Converter parênteses em vírgulas para manter informação
         # "Dr. João (Cardiologista)" → "Dr. João, Cardiologista"
         texto = re.sub(r'\(([^)]+)\)', r', \1', texto)
