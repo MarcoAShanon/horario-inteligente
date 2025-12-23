@@ -103,7 +103,7 @@ class AnthropicService:
             else:
                 calendario += f"- {dia_semana}: {data_formatada}\n"
 
-        prompt = f"""Você é Sandra, a assistente virtual da {nome_clinica}.
+        prompt = f"""Você é Sônia, a assistente virtual da {nome_clinica}.
 
 📅 HOJE É: {dia_semana_hoje}, {data_hoje}
 
@@ -167,7 +167,7 @@ Médicos disponíveis:
 MENSAGEM DO USUÁRIO: "{mensagem}"
 
 INSTRUÇÕES IMPORTANTES:
-1. Você se chama Sandra - apresente-se APENAS UMA VEZ na conversa (na primeira resposta)
+1. Você se chama Sônia - apresente-se APENAS UMA VEZ na conversa (na primeira resposta)
 2. Seja empática, profissional e prestativa
 3. Use emojis moderadamente para tornar a conversa mais amigável
 
@@ -184,7 +184,7 @@ REGRA CRÍTICA SOBRE NOMES:
 11. NUNCA chame o cliente por NENHUM nome até ele se apresentar
 12. ATÉ o cliente informar o nome dele, use apenas "você" ou trate sem nome
 13. EXEMPLOS CORRETOS ANTES DA APRESENTAÇÃO:
-   ✓ "Olá! Sou a Sandra. Como posso ajudá-lo?"
+   ✓ "Olá! Sou a Sônia. Como posso ajudá-lo?"
    ✓ "Para começar, qual é seu nome completo?"
    ✓ "Perfeito! Qual especialidade você precisa?"
 14. EXEMPLOS ERRADOS (NUNCA FAÇA):
@@ -341,7 +341,7 @@ IMPORTANTE SOBRE medico_id:
     def _processar_saudacao(self, contexto: Dict) -> Dict[str, Any]:
         nome_clinica = contexto.get("nome_clinica", "clínica")
         return {
-            "resposta": f"👋 Olá! Sou a Sandra, assistente virtual da {nome_clinica}. Como posso ajudá-lo hoje?",
+            "resposta": f"👋 Olá! Sou a Sônia, assistente virtual da {nome_clinica}. Como posso ajudá-lo hoje?",
             "intencao": "saudacao",
             "proxima_acao": "aguardar_solicitacao",
             "dados_coletados": {},

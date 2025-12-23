@@ -139,6 +139,64 @@
             justify-content: flex-start;
             gap: 8px;
         }
+        /* Mic button styles */
+        .mic-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #128C7E;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .mic-btn:hover {
+            background: #075E54;
+        }
+        .mic-btn.recording {
+            background: #e74c3c;
+            animation: pulse-mic 1s infinite;
+        }
+        .mic-btn.processing {
+            background: #f39c12;
+        }
+        .mic-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        @keyframes pulse-mic {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); }
+        }
+        .recording-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #fee2e2;
+            border-radius: 20px;
+            color: #dc2626;
+            font-size: 14px;
+            animation: fadeIn 0.3s;
+        }
+        .recording-indicator .dot {
+            width: 8px;
+            height: 8px;
+            background: #dc2626;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         .typing-indicator {
             display: flex;
             gap: 4px;
@@ -587,11 +645,14 @@
 
                 <!-- Input Area -->
                 <div class="chat-input-container">
+                    <button class="mic-btn" id="btnMic" onclick="toggleGravacao()" title="Gravar áudio">
+                        <i class="fas fa-microphone"></i>
+                    </button>
                     <input
                         type="text"
                         id="chatInput"
                         class="chat-input"
-                        placeholder="Digite sua mensagem..."
+                        placeholder="Digite ou grave um áudio..."
                         onkeypress="if(event.key === 'Enter') enviarMensagem()"
                     >
                     <button class="chat-send-btn" onclick="enviarMensagem()" id="btnEnviar">
@@ -1005,6 +1066,205 @@
             const byteArray = new Uint8Array(byteNumbers);
             return new Blob([byteArray], { type: mimeType });
         }
+
+        // ==================== GRAVAÇÃO DE ÁUDIO ====================
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordingTimer = null;
+        let recordingSeconds = 0;
+
+        async function toggleGravacao() {
+            if (isRecording) {
+                pararGravacao();
+            } else {
+                await iniciarGravacao();
+            }
+        }
+
+        async function iniciarGravacao() {
+            try {
+                // Solicitar permissão do microfone
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 44100
+                    }
+                });
+
+                // Configurar MediaRecorder
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = async () => {
+                    // Parar todas as tracks do stream
+                    stream.getTracks().forEach(track => track.stop());
+
+                    // Processar áudio gravado
+                    await processarAudioGravado();
+                };
+
+                // Iniciar gravação
+                mediaRecorder.start(100); // Capturar a cada 100ms
+                isRecording = true;
+
+                // Atualizar UI
+                const btnMic = document.getElementById('btnMic');
+                btnMic.classList.add('recording');
+                btnMic.innerHTML = '<i class="fas fa-stop"></i>';
+                btnMic.title = 'Parar gravação';
+
+                // Mostrar indicador de gravação
+                const input = document.getElementById('chatInput');
+                input.placeholder = '🔴 Gravando...';
+                input.disabled = true;
+
+                // Timer de gravação (máximo 60 segundos)
+                recordingSeconds = 0;
+                recordingTimer = setInterval(() => {
+                    recordingSeconds++;
+                    input.placeholder = `🔴 Gravando... ${recordingSeconds}s`;
+                    if (recordingSeconds >= 60) {
+                        pararGravacao();
+                    }
+                }, 1000);
+
+                console.log('🎤 Gravação iniciada');
+
+            } catch (error) {
+                console.error('Erro ao acessar microfone:', error);
+
+                let mensagemErro = 'Não foi possível acessar o microfone.';
+                if (error.name === 'NotAllowedError') {
+                    mensagemErro = 'Permissão de microfone negada. Por favor, permita o acesso ao microfone nas configurações do navegador.';
+                } else if (error.name === 'NotFoundError') {
+                    mensagemErro = 'Nenhum microfone encontrado no dispositivo.';
+                }
+
+                alert(mensagemErro);
+            }
+        }
+
+        function pararGravacao() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+
+                // Parar timer
+                if (recordingTimer) {
+                    clearInterval(recordingTimer);
+                    recordingTimer = null;
+                }
+
+                // Atualizar UI para processando
+                const btnMic = document.getElementById('btnMic');
+                btnMic.classList.remove('recording');
+                btnMic.classList.add('processing');
+                btnMic.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                btnMic.title = 'Processando...';
+                btnMic.disabled = true;
+
+                const input = document.getElementById('chatInput');
+                input.placeholder = 'Transcrevendo áudio...';
+
+                console.log('🎤 Gravação parada, processando...');
+            }
+        }
+
+        async function processarAudioGravado() {
+            const btnMic = document.getElementById('btnMic');
+            const input = document.getElementById('chatInput');
+
+            try {
+                // Criar blob do áudio
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+
+                if (audioBlob.size < 1000) {
+                    throw new Error('Áudio muito curto');
+                }
+
+                console.log(`📊 Tamanho do áudio: ${audioBlob.size} bytes`);
+
+                // Converter para base64
+                const base64Audio = await blobToBase64(audioBlob);
+
+                // Enviar para transcrição
+                const response = await fetch('/api/chat/audio/transcrever', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        audio: base64Audio.split(',')[1] // Remover prefixo data:audio/webm;base64,
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Erro ao transcrever');
+                }
+
+                const data = await response.json();
+
+                if (data.status === 'success' && data.texto) {
+                    console.log(`✅ Transcrito: "${data.texto}"`);
+
+                    // Colocar texto no input e enviar
+                    input.value = data.texto;
+
+                    // Resetar UI
+                    resetarUIGravacao();
+
+                    // Enviar mensagem automaticamente
+                    enviarMensagem();
+
+                } else {
+                    throw new Error(data.message || 'Nenhuma fala detectada');
+                }
+
+            } catch (error) {
+                console.error('Erro ao processar áudio:', error);
+
+                // Mostrar erro
+                alert(`Não foi possível transcrever o áudio: ${error.message}`);
+
+                // Resetar UI
+                resetarUIGravacao();
+            }
+        }
+
+        function resetarUIGravacao() {
+            const btnMic = document.getElementById('btnMic');
+            const input = document.getElementById('chatInput');
+
+            btnMic.classList.remove('recording', 'processing');
+            btnMic.innerHTML = '<i class="fas fa-microphone"></i>';
+            btnMic.title = 'Gravar áudio';
+            btnMic.disabled = false;
+
+            input.placeholder = 'Digite ou grave um áudio...';
+            input.disabled = false;
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+        // ==================== FIM GRAVAÇÃO DE ÁUDIO ====================
 
         function formatarTexto(texto) {
             // Converter quebras de linha em <br>

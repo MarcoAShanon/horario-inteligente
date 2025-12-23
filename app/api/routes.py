@@ -171,9 +171,82 @@ def status_sistema(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro no sistema: {str(e)}")
 
 
-# ENDPOINTS - ÁUDIO TTS (Text-to-Speech)
+# ENDPOINTS - ÁUDIO TTS (Text-to-Speech) e STT (Speech-to-Text)
 class TTSRequest(BaseModel):
     texto: str
+
+class STTRequest(BaseModel):
+    audio: str  # Base64 encoded audio
+
+@router.post("/chat/audio/transcrever")
+async def transcrever_audio(request: STTRequest):
+    """
+    Transcreve áudio para texto usando OpenAI Whisper.
+    Recebe áudio em base64 e retorna o texto transcrito.
+    """
+    try:
+        from app.services.openai_audio_service import get_audio_service
+        import base64
+        import tempfile
+        import os
+
+        audio_service = get_audio_service()
+
+        if not audio_service:
+            raise HTTPException(
+                status_code=503,
+                detail="Serviço de áudio não disponível"
+            )
+
+        # Decodificar áudio base64
+        try:
+            audio_bytes = base64.b64decode(request.audio)
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Áudio base64 inválido: {str(e)}"
+            )
+
+        if len(audio_bytes) < 100:
+            raise HTTPException(
+                status_code=400,
+                detail="Áudio muito curto ou vazio"
+            )
+
+        # Salvar temporariamente (Whisper aceita webm, mp3, wav, etc)
+        with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_file:
+            temp_file.write(audio_bytes)
+            temp_path = temp_file.name
+
+        try:
+            # Transcrever com Whisper
+            texto = await audio_service.transcrever_audio(temp_path)
+
+            if not texto or texto.strip() == "":
+                return {
+                    "status": "success",
+                    "texto": "",
+                    "message": "Nenhuma fala detectada"
+                }
+
+            return {
+                "status": "success",
+                "texto": texto.strip()
+            }
+
+        finally:
+            # Limpar arquivo temporário
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao transcrever áudio: {str(e)}"
+        )
+
 
 @router.post("/chat/audio")
 async def gerar_audio_tts(request: TTSRequest):
