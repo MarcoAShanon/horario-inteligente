@@ -489,7 +489,15 @@
         </div>
 
         <!-- Funcionalidades Extras -->
-        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4" data-intro="Mais funcionalidades: explore o calendário completo, configurações e integrações." data-step="8">
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4" data-intro="Mais funcionalidades: explore o dashboard analítico, calendário completo e configurações." data-step="8">
+            <button onclick="abrirDashboardAnalitico()" class="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition text-left group">
+                <div class="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center mb-4 group-hover:bg-purple-200 transition">
+                    <i class="fas fa-chart-line text-purple-600 text-xl"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-1">Dashboard Analítico</h3>
+                <p class="text-sm text-gray-500">Métricas, gráficos e análise de desempenho da clínica</p>
+            </button>
+
             <button onclick="abrirCalendario()" class="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition text-left group">
                 <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-4 group-hover:bg-blue-200 transition">
                     <i class="fas fa-calendar text-blue-600 text-xl"></i>
@@ -1371,6 +1379,10 @@
 
         function abrirCalendario() {
             window.location.href = '/static/calendario-unificado.html';
+        }
+
+        function abrirDashboardAnalitico() {
+            window.location.href = '/static/dashboard.html';
         }
 
         function abrirConfiguracoes() {
