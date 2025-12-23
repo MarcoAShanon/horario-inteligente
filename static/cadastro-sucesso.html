@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro Realizado - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-md p-8">
+
+        <!-- Ícone de Email -->
+        <div class="text-center mb-6">
+            <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-envelope-open-text text-5xl text-blue-500"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">Verifique seu Email</h1>
+        </div>
+
+        <!-- Mensagem -->
+        <div class="text-center mb-6">
+            <p class="text-gray-600 mb-4">
+                Enviamos um email de confirmação para:
+            </p>
+            <p class="font-semibold text-lg text-blue-600 bg-blue-50 py-2 px-4 rounded-lg inline-block" id="emailEnviado">
+                seu@email.com
+            </p>
+        </div>
+
+        <!-- Instruções -->
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 class="font-semibold text-gray-800 mb-3">
+                <i class="fas fa-list-check mr-2 text-blue-500"></i>Próximos passos:
+            </h3>
+            <ol class="text-sm text-gray-600 space-y-2">
+                <li class="flex items-start">
+                    <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5 flex-shrink-0">1</span>
+                    <span>Abra sua caixa de entrada de email</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5 flex-shrink-0">2</span>
+                    <span>Procure o email de "Horário Inteligente"</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5 flex-shrink-0">3</span>
+                    <span>Clique no botão "Confirmar Meu Email"</span>
+                </li>
+                <li class="flex items-start">
+                    <span class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2 mt-0.5 flex-shrink-0">4</span>
+                    <span>Pronto! Você poderá fazer login</span>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Aviso Spam -->
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-6">
+            <p class="text-sm text-yellow-800">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                <strong>Não recebeu?</strong> Verifique também sua pasta de spam ou lixo eletrônico.
+            </p>
+        </div>
+
+        <!-- Botões -->
+        <div class="space-y-3">
+            <button onclick="reenviarEmail()" id="btnReenviar" class="w-full bg-white border-2 border-blue-500 text-blue-600 py-3 rounded-lg font-semibold hover:bg-blue-50 transition">
+                <i class="fas fa-redo mr-2"></i>Reenviar Email
+            </button>
+            <a href="/static/login.html" class="block w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition text-center">
+                <i class="fas fa-sign-in-alt mr-2"></i>Ir para Login
+            </a>
+        </div>
+
+        <!-- Timer reenvio -->
+        <p class="text-center text-xs text-gray-500 mt-4" id="timerMsg"></p>
+    </div>
+
+    <script>
+        // Pegar email da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+
+        if (email) {
+            document.getElementById('emailEnviado').textContent = email;
+        }
+
+        let podeReenviar = true;
+        let tempoRestante = 0;
+
+        async function reenviarEmail() {
+            if (!podeReenviar) {
+                return;
+            }
+
+            const btn = document.getElementById('btnReenviar');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
+
+            try {
+                const response = await fetch('/api/auth/resend-verification', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const result = await response.json();
+
+                if (result.sucesso) {
+                    btn.innerHTML = '<i class="fas fa-check mr-2"></i>Email Enviado!';
+                    btn.classList.remove('border-blue-500', 'text-blue-600', 'hover:bg-blue-50');
+                    btn.classList.add('border-green-500', 'text-green-600', 'bg-green-50');
+
+                    // Iniciar contador de 60 segundos
+                    podeReenviar = false;
+                    tempoRestante = 60;
+                    atualizarTimer();
+                } else {
+                    alert(result.detail || 'Erro ao reenviar email.');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-redo mr-2"></i>Reenviar Email';
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro de conexão. Tente novamente.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-redo mr-2"></i>Reenviar Email';
+            }
+        }
+
+        function atualizarTimer() {
+            const timerMsg = document.getElementById('timerMsg');
+            const btn = document.getElementById('btnReenviar');
+
+            if (tempoRestante > 0) {
+                timerMsg.textContent = `Aguarde ${tempoRestante}s para reenviar novamente`;
+                tempoRestante--;
+                setTimeout(atualizarTimer, 1000);
+            } else {
+                podeReenviar = true;
+                timerMsg.textContent = '';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-redo mr-2"></i>Reenviar Email';
+                btn.classList.remove('border-green-500', 'text-green-600', 'bg-green-50');
+                btn.classList.add('border-blue-500', 'text-blue-600', 'hover:bg-blue-50');
+            }
+        }
+    </script>
+</body>
+</html>

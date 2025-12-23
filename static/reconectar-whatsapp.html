@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconectar WhatsApp - Horário Inteligente</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .status {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            font-size: 1.05em;
+        }
+
+        .status strong {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .qr-container {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border: 3px solid #667eea;
+        }
+
+        .qr-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+        }
+
+        .instructions {
+            background: #f5f5f5;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: left;
+            margin-top: 30px;
+        }
+
+        .instructions h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .instructions ol {
+            padding-left: 25px;
+        }
+
+        .instructions li {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+
+        .note {
+            color: #999;
+            margin-top: 25px;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .qr-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 Reconectar WhatsApp</h1>
+        <p class="subtitle">Sistema Horário Inteligente</p>
+
+        <div class="status">
+            <strong>⚠️ Status Atual:</strong> WhatsApp desconectado (Erro 401)
+            <strong style="margin-top: 10px;">📱 Instância:</strong> ProSaude
+        </div>
+
+        <div class="qr-container">
+            <img src="/static/whatsapp_qr.png" alt="QR Code WhatsApp" id="qrcode">
+        </div>
+
+        <button class="refresh-btn" onclick="refreshQR()">🔄 Gerar Novo QR Code</button>
+
+        <div class="instructions">
+            <h3>📋 Como Reconectar:</h3>
+            <ol>
+                <li>Abra o <strong>WhatsApp</strong> no seu celular</li>
+                <li>Vá em <strong>⚙️ Configurações</strong> (ou toque nos 3 pontinhos)</li>
+                <li>Selecione <strong>"Aparelhos conectados"</strong></li>
+                <li>Toque em <strong>"Conectar um aparelho"</strong></li>
+                <li><strong>Escaneie o QR Code acima</strong></li>
+                <li>Aguarde a confirmação de conexão</li>
+            </ol>
+        </div>
+
+        <div class="note">
+            <strong>💡 Dica:</strong> O QR Code expira em alguns minutos. Se não funcionar, clique em "Gerar Novo QR Code" acima.
+        </div>
+    </div>
+
+    <script>
+        function refreshQR() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Gerando...';
+
+            // Chamar API para gerar novo QR
+            fetch('/webhook/whatsapp/refresh-qr')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Atualizar imagem com timestamp para forçar reload
+                        const img = document.getElementById('qrcode');
+                        img.src = '/static/whatsapp_qr.png?' + new Date().getTime();
+
+                        btn.disabled = false;
+                        btn.textContent = '✅ QR Code Atualizado!';
+
+                        // Voltar ao texto original após 3 segundos
+                        setTimeout(() => {
+                            btn.textContent = '🔄 Gerar Novo QR Code';
+                        }, 3000);
+                    } else {
+                        btn.disabled = false;
+                        btn.textContent = '❌ Erro - Tente Novamente';
+                        setTimeout(() => {
+                            btn.textContent = '🔄 Gerar Novo QR Code';
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao gerar QR:', error);
+                    btn.disabled = false;
+                    btn.textContent = '❌ Erro - Tente Novamente';
+                    setTimeout(() => {
+                        btn.textContent = '🔄 Gerar Novo QR Code';
+                    }, 3000);
+                });
+        }
+
+        // Auto-refresh a cada 60 segundos
+        setInterval(() => {
+            const img = document.getElementById('qrcode');
+            img.src = '/static/whatsapp_qr.png?' + new Date().getTime();
+        }, 60000);
+
+        // Verificar status da conexão a cada 10 segundos
+        async function checkConnectionStatus() {
+            try {
+                const response = await fetch('/webhook/whatsapp/status');
+                const data = await response.json();
+
+                if (data.success && data.conectadas > 0) {
+                    // WhatsApp conectado!
+                    document.querySelector('.status').innerHTML = `
+                        <strong>✅ Status Atual:</strong> WhatsApp CONECTADO
+                        <strong style="margin-top: 10px;">📱 Instância:</strong> ProSaude
+                    `;
+                    document.querySelector('.status').style.background = '#d4edda';
+                    document.querySelector('.status').style.borderColor = '#28a745';
+                    document.querySelector('.status').style.color = '#155724';
+                }
+            } catch (error) {
+                console.error('Erro ao verificar status:', error);
+            }
+        }
+
+        // Verificar status ao carregar e a cada 10 segundos
+        checkConnectionStatus();
+        setInterval(checkConnectionStatus, 10000);
+    </script>
+</body>
+</html>

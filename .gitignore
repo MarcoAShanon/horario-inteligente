@@ -1,0 +1,105 @@
+# ==================== ARQUIVOS SENSÍVEIS (NUNCA COMMITAR!) ====================
+.env
+.env.*
+*.env
+!.env.example
+
+# Chaves e credenciais
+*.pem
+*.key
+*.crt
+credentials.json
+service-account.json
+
+# ==================== PYTHON ====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+
+# ==================== IDE ====================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# ==================== LOGS ====================
+logs/
+*.log
+npm-debug.log*
+
+# ==================== CACHE ====================
+.cache/
+*.cache
+.pytest_cache/
+.mypy_cache/
+
+# ==================== DATABASE ====================
+*.db
+*.sqlite
+*.sqlite3
+
+# ==================== ARQUIVOS TEMPORÁRIOS ====================
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# ==================== SISTEMA ====================
+.DS_Store
+Thumbs.db
+*.pid
+
+# ==================== NODE (se houver frontend) ====================
+node_modules/
+package-lock.json
+
+# ==================== UPLOADS E MÍDIA ====================
+uploads/
+media/
+static/uploads/
+
+# ==================== BACKUPS DE CÓDIGO ====================
+*.bak
+*.bak2
+*.backup
+*_backup*
+*.old
+
+# ==================== JUPYTER ====================
+.ipynb_checkpoints/
+
+# ==================== COVERAGE ====================
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+credentials/

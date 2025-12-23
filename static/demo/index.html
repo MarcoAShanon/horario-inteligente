@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo - Horário Inteligente</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .pulse-border {
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(102, 126, 234, 0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg fade-in">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mb-4 pulse-border">
+                <i class="fas fa-calendar-check text-white text-4xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Horário Inteligente</h1>
+            <p class="text-gray-500">Ambiente de Demonstração</p>
+        </div>
+
+        <!-- Descrição -->
+        <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-3">
+                <i class="fas fa-rocket mr-2 text-purple-500"></i>
+                Explore todas as funcionalidades!
+            </h2>
+            <ul class="space-y-2 text-gray-600 text-sm">
+                <li class="flex items-center gap-2">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                    Dashboard completo com métricas em tempo real
+                </li>
+                <li class="flex items-center gap-2">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                    Agenda interativa com drag & drop
+                </li>
+                <li class="flex items-center gap-2">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                    Lembretes automáticos via WhatsApp
+                </li>
+                <li class="flex items-center gap-2">
+                    <i class="fas fa-check-circle text-green-500"></i>
+                    Assistente com Inteligência Artificial
+                </li>
+            </ul>
+        </div>
+
+        <!-- Perfis de Acesso -->
+        <div class="mb-6">
+            <p class="text-sm font-medium text-gray-700 mb-3">Escolha um perfil para explorar:</p>
+            <div class="grid grid-cols-1 gap-3">
+                <!-- Médico -->
+                <button onclick="acessarDemo('medico')" class="w-full flex items-center gap-4 p-4 bg-white border-2 border-purple-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition group">
+                    <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition">
+                        <i class="fas fa-user-md text-purple-600 text-xl"></i>
+                    </div>
+                    <div class="text-left flex-1">
+                        <p class="font-semibold text-gray-800">Dr. Carlos Silva</p>
+                        <p class="text-sm text-gray-500">Clínico Geral • Acesso completo</p>
+                    </div>
+                    <i class="fas fa-arrow-right text-purple-400 group-hover:translate-x-1 transition"></i>
+                </button>
+
+                <!-- Secretária -->
+                <button onclick="acessarDemo('secretaria')" class="w-full flex items-center gap-4 p-4 bg-white border-2 border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition group">
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition">
+                        <i class="fas fa-headset text-blue-600 text-xl"></i>
+                    </div>
+                    <div class="text-left flex-1">
+                        <p class="font-semibold text-gray-800">Recepção</p>
+                        <p class="text-sm text-gray-500">Agendamentos e atendimento</p>
+                    </div>
+                    <i class="fas fa-arrow-right text-blue-400 group-hover:translate-x-1 transition"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Aviso -->
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-info-circle text-yellow-500 mt-0.5"></i>
+                <div class="text-sm">
+                    <p class="font-medium text-yellow-800">Ambiente de demonstração</p>
+                    <p class="text-yellow-700">Os dados são fictícios e resetados diariamente. Explore à vontade!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="text-center">
+            <p class="text-sm text-gray-500 mb-3">Gostou do que viu?</p>
+            <a href="https://horariointeligente.com.br/#contato" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-full font-semibold hover:from-purple-700 hover:to-pink-700 transition shadow-lg">
+                <i class="fab fa-whatsapp"></i>
+                Falar com um consultor
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 pt-6 border-t border-gray-100 text-center">
+            <p class="text-xs text-gray-400">
+                <i class="fas fa-shield-alt mr-1"></i>
+                Sistema seguro e em conformidade com a LGPD
+            </p>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 text-center">
+            <i class="fas fa-spinner fa-spin text-4xl text-purple-500 mb-4"></i>
+            <p class="text-gray-700 font-medium">Preparando sua demonstração...</p>
+            <p class="text-sm text-gray-500">Aguarde um momento</p>
+        </div>
+    </div>
+
+    <script>
+        async function acessarDemo(perfil) {
+            // Mostrar loading
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            document.getElementById('loadingOverlay').classList.add('flex');
+
+            try {
+                // Credenciais de demo
+                const credenciais = {
+                    'medico': {
+                        email: 'dr.carlos@demo.horariointeligente.com.br',
+                        senha: 'demo123'
+                    },
+                    'secretaria': {
+                        email: 'dr.carlos@demo.horariointeligente.com.br',
+                        senha: 'demo123'
+                    }
+                };
+
+                const cred = credenciais[perfil];
+
+                // Fazer login
+                const formData = new URLSearchParams();
+                formData.append('username', cred.email);
+                formData.append('password', cred.senha);
+
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.access_token) {
+                    // Salvar dados de autenticação (ambos formatos para compatibilidade)
+                    localStorage.setItem('token', data.access_token);
+                    localStorage.setItem('authToken', data.access_token);
+                    localStorage.setItem('medico', JSON.stringify(data.user));
+                    localStorage.setItem('cliente_id', data.user.cliente_id || 3);
+
+                    // Marcar como demo para ativar tooltips
+                    localStorage.setItem('demo_mode', 'true');
+                    localStorage.setItem('demo_tour_done', 'false');
+
+                    // Redirecionar para dashboard
+                    window.location.href = '/static/dashboard-demo.html';
+                } else {
+                    throw new Error(data.detail || 'Erro no login');
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao acessar demo. Por favor, tente novamente.');
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                document.getElementById('loadingOverlay').classList.remove('flex');
+            }
+        }
+    </script>
+</body>
+</html>

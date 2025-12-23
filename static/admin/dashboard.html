@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: #0f172a;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                    <i class="fas fa-shield-alt text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Painel Administrativo</h1>
+                    <p class="text-sm text-gray-400">Horário Inteligente</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-gray-300 hidden sm:inline" id="adminName">
+                    <i class="fas fa-user-circle mr-2"></i>
+                    Carregando...
+                </span>
+                <button
+                    onclick="logout()"
+                    class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center gap-2"
+                >
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="hidden sm:inline">Sair</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Estatísticas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <!-- Total Clientes -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-building text-3xl text-blue-500"></i>
+                    <span class="text-2xl font-bold text-white" id="totalClientes">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Clínicas Ativas</p>
+            </div>
+
+            <!-- Total Profissionais -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-user-md text-3xl text-green-500"></i>
+                    <span class="text-2xl font-bold text-white" id="totalMedicos">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Profissionais Ativos</p>
+            </div>
+
+            <!-- Total Pacientes -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-users text-3xl text-purple-500"></i>
+                    <span class="text-2xl font-bold text-white" id="totalPacientes">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Pacientes Total</p>
+            </div>
+
+            <!-- Agendamentos Mês -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-calendar-check text-3xl text-yellow-500"></i>
+                    <span class="text-2xl font-bold text-white" id="agendamentosMes">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Agend. este Mês</p>
+            </div>
+
+            <!-- Novos Clientes -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-plus-circle text-3xl text-pink-500"></i>
+                    <span class="text-2xl font-bold text-white" id="novosClientes">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Novos (7 dias)</p>
+            </div>
+        </div>
+
+        <!-- Seção de Clientes -->
+        <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">
+                    <i class="fas fa-building mr-2 text-purple-500"></i>
+                    Clientes
+                </h2>
+                <button
+                    onclick="alert('Funcionalidade em desenvolvimento')"
+                    class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition flex items-center gap-2"
+                >
+                    <i class="fas fa-plus"></i>
+                    Novo Cliente
+                </button>
+            </div>
+
+            <!-- Tabela de Clientes -->
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-800">
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">ID</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Clínica</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Subdomínio</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Plano</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientesTable">
+                        <tr>
+                            <td colspan="6" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Carregando clientes...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = null;
+        let adminData = null;
+
+        // Verificar autenticação ao carregar
+        document.addEventListener('DOMContentLoaded', async function() {
+            adminToken = localStorage.getItem('adminToken');
+            const adminDataStr = localStorage.getItem('adminData');
+
+            if (!adminToken) {
+                window.location.href = '/static/admin/login.html';
+                return;
+            }
+
+            if (adminDataStr) {
+                adminData = JSON.parse(adminDataStr);
+                document.getElementById('adminName').innerHTML = `
+                    <i class="fas fa-user-circle mr-2"></i>
+                    ${adminData.nome}
+                `;
+            }
+
+            // Carregar dados
+            await carregarEstatisticas();
+            await carregarClientes();
+        });
+
+        async function carregarEstatisticas() {
+            try {
+                const response = await fetch('/api/admin/dashboard/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        logout();
+                        return;
+                    }
+                    throw new Error('Erro ao carregar estatísticas');
+                }
+
+                const data = await response.json();
+
+                document.getElementById('totalClientes').textContent = data.total_clientes;
+                document.getElementById('totalMedicos').textContent = data.total_medicos;
+                document.getElementById('totalPacientes').textContent = data.total_pacientes;
+                document.getElementById('agendamentosMes').textContent = data.agendamentos_mes;
+                document.getElementById('novosClientes').textContent = data.novos_clientes_semana;
+
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+
+        async function carregarClientes() {
+            try {
+                const response = await fetch('/api/admin/clientes', {
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        logout();
+                        return;
+                    }
+                    throw new Error('Erro ao carregar clientes');
+                }
+
+                const clientes = await response.json();
+                const tbody = document.getElementById('clientesTable');
+
+                if (clientes.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-inbox text-3xl mb-2"></i>
+                                <p>Nenhum cliente cadastrado</p>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = clientes.map(cliente => `
+                    <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition">
+                        <td class="py-3 px-4 text-gray-300">${cliente.id}</td>
+                        <td class="py-3 px-4 text-white font-medium">${cliente.nome}</td>
+                        <td class="py-3 px-4">
+                            <a href="${cliente.url}" target="_blank" class="text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                                ${cliente.subdomain}
+                                <i class="fas fa-external-link-alt text-xs"></i>
+                            </a>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-sm">
+                                ${cliente.plano || 'Básico'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            ${cliente.ativo
+                                ? '<span class="px-2 py-1 bg-green-900/50 text-green-300 rounded text-sm"><i class="fas fa-check-circle mr-1"></i>Ativo</span>'
+                                : '<span class="px-2 py-1 bg-red-900/50 text-red-300 rounded text-sm"><i class="fas fa-times-circle mr-1"></i>Inativo</span>'
+                            }
+                        </td>
+                        <td class="py-3 px-4">
+                            <button
+                                onclick="verDetalhes(${cliente.id})"
+                                class="text-gray-400 hover:text-white transition"
+                                title="Ver detalhes"
+                            >
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+                const tbody = document.getElementById('clientesTable');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-8 text-red-400">
+                            <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                            <p>Erro ao carregar clientes</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function verDetalhes(clienteId) {
+            alert(`Detalhes do cliente ${clienteId} - Em desenvolvimento`);
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminData');
+            window.location.href = '/static/admin/login.html';
+        }
+    </script>
+
+    <!-- Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
+            });
+        }
+    </script>
+</body>
+</html>

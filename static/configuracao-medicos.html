@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuração de Profissionais - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        .tab-active {
+            border-bottom: 3px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .horario-card {
+            transition: all 0.2s ease;
+        }
+
+        .horario-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #10b981;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // ==========================================
+        // VERIFICAÇÃO DE AUTENTICAÇÃO
+        // ==========================================
+        function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = '/static/login.html';
+                return null;
+            }
+
+            fetch('/api/auth/verify-token', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).then(response => {
+                if (!response.ok) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userData');
+                    window.location.href = '/static/login.html';
+                }
+            });
+
+            const userData = localStorage.getItem('userData');
+            if (userData) {
+                try {
+                    return JSON.parse(userData);
+                } catch (e) {
+                    console.error('Erro ao parsear dados do usuário:', e);
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem('authToken');
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            window.location.href = '/static/login.html';
+        }
+
+        // ==========================================
+        // COMPONENTE PRINCIPAL
+        // ==========================================
+        function ConfiguracaoMedicos() {
+            const [currentUser, setCurrentUser] = useState(null);
+            const [medicos, setMedicos] = useState([]);
+            const [medicoSelecionado, setMedicoSelecionado] = useState(null);
+            const [abaAtiva, setAbaAtiva] = useState('geral'); // 'geral' ou 'horarios'
+            const [loading, setLoading] = useState(true);
+            const [message, setMessage] = useState({ type: '', text: '' });
+
+            // Configurações Gerais
+            const [configGeral, setConfigGeral] = useState({
+                intervalo_consulta: 30,
+                horario_inicio: "08:00",
+                horario_fim: "18:00",
+                dias_atendimento: [1, 2, 3, 4, 5],
+                intervalo_almoco_inicio: "12:00",
+                intervalo_almoco_fim: "13:00",
+                tempo_antes_consulta: 5,
+                consultas_simultaneas: 1
+            });
+
+            // Horários Semanais
+            const [horariosSemanais, setHorariosSemanais] = useState([]);
+            const [novoHorario, setNovoHorario] = useState({
+                dia_semana: 1,
+                hora_inicio: "08:00",
+                hora_fim: "12:00",
+                ativo: true
+            });
+            const [mostrarFormNovoHorario, setMostrarFormNovoHorario] = useState(false);
+
+            // Opções
+            const [opcoesIntervalo, setOpcoesIntervalo] = useState([]);
+            const diasSemana = [
+                { valor: 1, texto: "Segunda-feira" },
+                { valor: 2, texto: "Terça-feira" },
+                { valor: 3, texto: "Quarta-feira" },
+                { valor: 4, texto: "Quinta-feira" },
+                { valor: 5, texto: "Sexta-feira" },
+                { valor: 6, texto: "Sábado" },
+                { valor: 7, texto: "Domingo" }
+            ];
+
+            useEffect(() => {
+                const user = checkAuth();
+                setCurrentUser(user);
+                carregarDados();
+            }, []);
+
+            useEffect(() => {
+                if (medicoSelecionado) {
+                    carregarConfiguracaoMedico(medicoSelecionado);
+                    carregarHorariosSemanais(medicoSelecionado);
+                }
+            }, [medicoSelecionado]);
+
+            async function carregarDados() {
+                try {
+                    // Carregar médicos
+                    const resMedicos = await fetch('/api/medicos?cliente_id=1', {
+                        headers: getAuthHeaders()
+                    });
+                    const dataMedicos = await resMedicos.json();
+                    setMedicos(dataMedicos);
+
+                    if (dataMedicos.length > 0) {
+                        setMedicoSelecionado(dataMedicos[0].id);
+                    }
+
+                    // Carregar opções
+                    const resOpcoes = await fetch('/api/configuracao/opcoes-intervalo');
+                    const dataOpcoes = await resOpcoes.json();
+                    setOpcoesIntervalo(dataOpcoes.opcoes_intervalo || []);
+
+                    setLoading(false);
+                } catch (error) {
+                    console.error('Erro ao carregar dados:', error);
+                    showMessage('error', 'Erro ao carregar dados');
+                    setLoading(false);
+                }
+            }
+
+            async function carregarConfiguracaoMedico(medicoId) {
+                try {
+                    const response = await fetch(`/api/configuracao/intervalos/${medicoId}`, {
+                        headers: getAuthHeaders()
+                    });
+                    const data = await response.json();
+
+                    setConfigGeral({
+                        intervalo_consulta: data.intervalo_consulta,
+                        horario_inicio: data.horario_inicio,
+                        horario_fim: data.horario_fim,
+                        dias_atendimento: data.dias_atendimento,
+                        intervalo_almoco_inicio: data.intervalo_almoco_inicio || "12:00",
+                        intervalo_almoco_fim: data.intervalo_almoco_fim || "13:00",
+                        tempo_antes_consulta: data.tempo_antes_consulta,
+                        consultas_simultaneas: data.consultas_simultaneas
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar configuração:', error);
+                }
+            }
+
+            async function carregarHorariosSemanais(medicoId) {
+                try {
+                    const response = await fetch(`/api/configuracao/horarios-semanais/${medicoId}`, {
+                        headers: getAuthHeaders()
+                    });
+                    const data = await response.json();
+                    setHorariosSemanais(data);
+                } catch (error) {
+                    console.error('Erro ao carregar horários semanais:', error);
+                }
+            }
+
+            async function salvarConfiguracaoGeral() {
+                if (!medicoSelecionado) {
+                    showMessage('error', 'Selecione um profissional');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/configuracao/intervalos', {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({
+                            medico_id: medicoSelecionado,
+                            ...configGeral
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        showMessage('success', 'Configurações salvas com sucesso!');
+                    } else {
+                        showMessage('error', data.detail || 'Erro ao salvar configurações');
+                    }
+                } catch (error) {
+                    console.error('Erro ao salvar:', error);
+                    showMessage('error', 'Erro ao salvar configurações');
+                }
+            }
+
+            async function adicionarHorarioSemanal() {
+                if (!medicoSelecionado) {
+                    showMessage('error', 'Selecione um profissional');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/configuracao/horarios-semanais', {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({
+                            medico_id: medicoSelecionado,
+                            ...novoHorario
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        showMessage('success', data.message);
+                        await carregarHorariosSemanais(medicoSelecionado);
+                        setMostrarFormNovoHorario(false);
+                        setNovoHorario({
+                            dia_semana: 1,
+                            hora_inicio: "08:00",
+                            hora_fim: "12:00",
+                            ativo: true
+                        });
+                    } else {
+                        showMessage('error', data.detail || 'Erro ao adicionar horário');
+                    }
+                } catch (error) {
+                    console.error('Erro ao adicionar horário:', error);
+                    showMessage('error', 'Erro ao adicionar horário');
+                }
+            }
+
+            async function deletarHorario(horarioId) {
+                if (!confirm('Deseja realmente deletar este horário?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/api/configuracao/horarios-semanais/${horarioId}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        showMessage('success', 'Horário deletado com sucesso');
+                        await carregarHorariosSemanais(medicoSelecionado);
+                    } else {
+                        showMessage('error', data.detail || 'Erro ao deletar horário');
+                    }
+                } catch (error) {
+                    console.error('Erro ao deletar horário:', error);
+                    showMessage('error', 'Erro ao deletar horário');
+                }
+            }
+
+            async function toggleHorario(horarioId) {
+                try {
+                    const response = await fetch(`/api/configuracao/horarios-semanais/${horarioId}/toggle`, {
+                        method: 'PATCH',
+                        headers: getAuthHeaders()
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        await carregarHorariosSemanais(medicoSelecionado);
+                    } else {
+                        showMessage('error', data.detail || 'Erro ao alterar status');
+                    }
+                } catch (error) {
+                    console.error('Erro ao alterar status:', error);
+                    showMessage('error', 'Erro ao alterar status');
+                }
+            }
+
+            function showMessage(type, text) {
+                setMessage({ type, text });
+                setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+            }
+
+            function getNomeDia(dia) {
+                const nomes = {
+                    1: "Segunda", 2: "Terça", 3: "Quarta",
+                    4: "Quinta", 5: "Sexta", 6: "Sábado", 7: "Domingo"
+                };
+                return nomes[dia] || dia;
+            }
+
+            function agruparHorariosPorDia() {
+                const grupos = {};
+                diasSemana.forEach(dia => {
+                    grupos[dia.valor] = horariosSemanais.filter(h => h.dia_semana === dia.valor);
+                });
+                return grupos;
+            }
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                            <p className="text-gray-600">Carregando...</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            const horariosAgrupados = agruparHorariosPorDia();
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header */}
+                    <header className="bg-white shadow-sm border-b">
+                        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-900">
+                                        <i className="fas fa-user-md text-blue-600 mr-2"></i>
+                                        Configuração de Profissionais
+                                    </h1>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Gerencie horários e durações de consultas individualizadas
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    {currentUser && (
+                                        <span className="text-sm text-gray-600">
+                                            <i className="fas fa-user mr-2"></i>
+                                            {currentUser.nome}
+                                        </span>
+                                    )}
+                                    <button
+                                        onClick={handleLogout}
+                                        className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    >
+                                        <i className="fas fa-sign-out-alt mr-2"></i>
+                                        Sair
+                                    </button>
+                                    <a
+                                        href="/static/calendario-unificado.html"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                                    >
+                                        <i className="fas fa-calendar mr-2"></i>
+                                        Calendário
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Mensagem */}
+                    {message.text && (
+                        <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 fade-in`}>
+                            <div className={`p-4 rounded-lg ${message.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                                <i className={`fas ${message.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} mr-2`}></i>
+                                {message.text}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Conteúdo */}
+                    <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+                        {/* Seleção de Profissional */}
+                        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <i className="fas fa-stethoscope mr-2 text-blue-600"></i>
+                                Selecione o Profissional
+                            </label>
+                            <select
+                                value={medicoSelecionado || ''}
+                                onChange={(e) => setMedicoSelecionado(parseInt(e.target.value))}
+                                className="w-full max-w-md px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                {medicos.map(medico => (
+                                    <option key={medico.id} value={medico.id}>
+                                        Dr(a). {medico.nome} - {medico.especialidade}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Abas */}
+                        <div className="bg-white rounded-lg shadow-sm">
+                            <div className="border-b border-gray-200">
+                                <nav className="flex -mb-px">
+                                    <button
+                                        onClick={() => setAbaAtiva('geral')}
+                                        className={`px-6 py-4 text-sm font-medium border-b-2 transition ${
+                                            abaAtiva === 'geral' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <i className="fas fa-cog mr-2"></i>
+                                        Configurações Gerais
+                                    </button>
+                                    <button
+                                        onClick={() => setAbaAtiva('horarios')}
+                                        className={`px-6 py-4 text-sm font-medium border-b-2 transition ${
+                                            abaAtiva === 'horarios' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <i className="fas fa-clock mr-2"></i>
+                                        Horários Semanais
+                                    </button>
+                                </nav>
+                            </div>
+
+                            <div className="p-6">
+                                {/* ABA: Configurações Gerais */}
+                                {abaAtiva === 'geral' && (
+                                    <div className="space-y-6 fade-in">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {/* Duração da Consulta */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Duração da Consulta
+                                                </label>
+                                                <select
+                                                    value={configGeral.intervalo_consulta}
+                                                    onChange={(e) => setConfigGeral({...configGeral, intervalo_consulta: parseInt(e.target.value)})}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                >
+                                                    {opcoesIntervalo.map(opcao => (
+                                                        <option key={opcao.valor} value={opcao.valor}>
+                                                            {opcao.texto}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Consultas Simultâneas */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Consultas Simultâneas
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="5"
+                                                    value={configGeral.consultas_simultaneas}
+                                                    onChange={(e) => setConfigGeral({...configGeral, consultas_simultaneas: parseInt(e.target.value)})}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+
+                                            {/* Intervalo de Almoço - Início */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Intervalo de Almoço - Início
+                                                </label>
+                                                <input
+                                                    type="time"
+                                                    value={configGeral.intervalo_almoco_inicio}
+                                                    onChange={(e) => setConfigGeral({...configGeral, intervalo_almoco_inicio: e.target.value})}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+
+                                            {/* Intervalo de Almoço - Fim */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Intervalo de Almoço - Fim
+                                                </label>
+                                                <input
+                                                    type="time"
+                                                    value={configGeral.intervalo_almoco_fim}
+                                                    onChange={(e) => setConfigGeral({...configGeral, intervalo_almoco_fim: e.target.value})}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+
+                                            {/* Tempo Antes da Consulta */}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Tempo de Preparação (minutos)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    max="30"
+                                                    value={configGeral.tempo_antes_consulta}
+                                                    onChange={(e) => setConfigGeral({...configGeral, tempo_antes_consulta: parseInt(e.target.value)})}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-end pt-4">
+                                            <button
+                                                onClick={salvarConfiguracaoGeral}
+                                                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+                                            >
+                                                <i className="fas fa-save mr-2"></i>
+                                                Salvar Configurações Gerais
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ABA: Horários Semanais */}
+                                {abaAtiva === 'horarios' && (
+                                    <div className="fade-in">
+                                        <div className="mb-6 flex justify-between items-center">
+                                            <h3 className="text-lg font-semibold text-gray-800">
+                                                Grade de Horários por Dia da Semana
+                                            </h3>
+                                            <button
+                                                onClick={() => setMostrarFormNovoHorario(!mostrarFormNovoHorario)}
+                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                                            >
+                                                <i className="fas fa-plus mr-2"></i>
+                                                Adicionar Período
+                                            </button>
+                                        </div>
+
+                                        {/* Formulário Novo Horário */}
+                                        {mostrarFormNovoHorario && (
+                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 fade-in">
+                                                <h4 className="font-semibold text-blue-900 mb-4">Novo Período de Atendimento</h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Dia da Semana
+                                                        </label>
+                                                        <select
+                                                            value={novoHorario.dia_semana}
+                                                            onChange={(e) => setNovoHorario({...novoHorario, dia_semana: parseInt(e.target.value)})}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                                        >
+                                                            {diasSemana.map(dia => (
+                                                                <option key={dia.valor} value={dia.valor}>
+                                                                    {dia.texto}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Hora Início
+                                                        </label>
+                                                        <input
+                                                            type="time"
+                                                            value={novoHorario.hora_inicio}
+                                                            onChange={(e) => setNovoHorario({...novoHorario, hora_inicio: e.target.value})}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Hora Fim
+                                                        </label>
+                                                        <input
+                                                            type="time"
+                                                            value={novoHorario.hora_fim}
+                                                            onChange={(e) => setNovoHorario({...novoHorario, hora_fim: e.target.value})}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-end gap-2">
+                                                        <button
+                                                            onClick={adicionarHorarioSemanal}
+                                                            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                                        >
+                                                            <i className="fas fa-check mr-2"></i>
+                                                            Adicionar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setMostrarFormNovoHorario(false)}
+                                                            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                                                        >
+                                                            <i className="fas fa-times"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Grade de Horários */}
+                                        <div className="space-y-4">
+                                            {diasSemana.map(dia => (
+                                                <div key={dia.valor} className="border border-gray-200 rounded-lg overflow-hidden">
+                                                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                                                        <h4 className="font-semibold text-gray-800 flex items-center">
+                                                            <i className="fas fa-calendar-day mr-2 text-blue-600"></i>
+                                                            {dia.texto}
+                                                            <span className="ml-2 text-sm text-gray-500 font-normal">
+                                                                ({horariosAgrupados[dia.valor]?.length || 0} período{horariosAgrupados[dia.valor]?.length !== 1 ? 's' : ''})
+                                                            </span>
+                                                        </h4>
+                                                    </div>
+                                                    <div className="p-4">
+                                                        {horariosAgrupados[dia.valor]?.length > 0 ? (
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                                {horariosAgrupados[dia.valor].map(horario => (
+                                                                    <div
+                                                                        key={horario.id}
+                                                                        className={`horario-card p-4 rounded-lg border-2 transition ${
+                                                                            horario.ativo
+                                                                                ? 'bg-white border-blue-200 hover:border-blue-400'
+                                                                                : 'bg-gray-50 border-gray-200 opacity-60'
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex justify-between items-start mb-2">
+                                                                            <div className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+                                                                                <i className="fas fa-clock text-blue-600 text-sm"></i>
+                                                                                {horario.hora_inicio} - {horario.hora_fim}
+                                                                            </div>
+                                                                            <label className="switch">
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={horario.ativo}
+                                                                                    onChange={() => toggleHorario(horario.id)}
+                                                                                />
+                                                                                <span className="slider"></span>
+                                                                            </label>
+                                                                        </div>
+                                                                        <div className="flex gap-2 mt-3">
+                                                                            <button
+                                                                                onClick={() => deletarHorario(horario.id)}
+                                                                                className="flex-1 px-3 py-1.5 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 transition"
+                                                                            >
+                                                                                <i className="fas fa-trash mr-1"></i>
+                                                                                Excluir
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-gray-400 text-center py-4 italic">
+                                                                Nenhum período de atendimento configurado
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Renderizar
+        ReactDOM.render(<ConfiguracaoMedicos />, document.getElementById('root'));
+    </script>
+
+    <!-- Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
+            });
+        }
+    </script>
+</body>
+</html>

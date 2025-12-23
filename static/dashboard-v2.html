@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Profissional - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        .tab-active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .tab-inactive {
+            background: white;
+            color: #6b7280;
+        }
+        .tab-inactive:hover {
+            background: #f3f4f6;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="min-h-screen bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-2xl font-bold text-purple-600">
+                        <i class="fas fa-hospital mr-2"></i>
+                        Horário Inteligente
+                    </h1>
+                    <span class="text-gray-400">|</span>
+                    <span class="text-lg text-gray-600">Dashboard Analítico</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-gray-700 hidden sm:inline" id="userName">
+                        <i class="fas fa-user-circle mr-2"></i>
+                        Carregando...
+                    </span>
+                    <button
+                        onclick="window.location.href = '/static/calendario-unificado.html'"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                    >
+                        <i class="fas fa-calendar-alt"></i>
+                        <span class="hidden sm:inline">Calendário</span>
+                    </button>
+                    <button
+                        onclick="logout()"
+                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center gap-2"
+                    >
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="hidden sm:inline">Sair</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Filtro de Período -->
+        <div class="bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 py-6">
+                <div class="flex flex-wrap gap-3 justify-center items-center">
+                    <span class="text-white font-semibold hidden sm:inline">
+                        <i class="fas fa-calendar-check mr-2"></i>
+                        Período:
+                    </span>
+                    <button
+                        onclick="setPeriodo('mes_atual')"
+                        id="btn_mes_atual"
+                        class="tab-active px-6 py-3 rounded-lg font-semibold transition shadow-lg"
+                    >
+                        <i class="fas fa-calendar-day mr-2"></i>
+                        Mês Atual
+                    </button>
+                    <button
+                        onclick="setPeriodo('mes_anterior')"
+                        id="btn_mes_anterior"
+                        class="tab-inactive px-6 py-3 rounded-lg font-semibold transition shadow-lg"
+                    >
+                        <i class="fas fa-calendar-minus mr-2"></i>
+                        Mês Anterior
+                    </button>
+                    <button
+                        onclick="setPeriodo('12_meses')"
+                        id="btn_12_meses"
+                        class="tab-inactive px-6 py-3 rounded-lg font-semibold transition shadow-lg"
+                    >
+                        <i class="fas fa-chart-line mr-2"></i>
+                        Últimos 12 Meses
+                    </button>
+                    <button
+                        onclick="loadData()"
+                        class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-3 rounded-lg transition flex items-center gap-2"
+                    >
+                        <i class="fas fa-sync-alt"></i>
+                        Atualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto p-4">
+            <!-- Título do Período -->
+            <div class="mb-6">
+                <h2 class="text-3xl font-bold text-gray-800 text-center" id="periodoTitulo">
+                    <i class="fas fa-chart-pie mr-2"></i>
+                    Carregando...
+                </h2>
+            </div>
+
+            <!-- Cards de Métricas Principais -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <!-- Card Total Agendamentos -->
+                <div class="bg-white p-6 rounded-lg shadow-lg card-hover border-l-4 border-blue-500">
+                    <h3 class="text-gray-500 text-sm font-semibold flex items-center">
+                        <i class="fas fa-calendar-check text-blue-500 mr-2"></i>
+                        Total Agendamentos
+                    </h3>
+                    <p class="text-4xl font-bold text-gray-800 mt-2" id="totalAgendamentos">0</p>
+                    <p class="text-sm mt-2" id="variacaoAgendamentos">
+                        <i class="fas fa-minus"></i> Aguardando dados...
+                    </p>
+                </div>
+
+                <!-- Card Concluídos -->
+                <div class="bg-white p-6 rounded-lg shadow-lg card-hover border-l-4 border-green-500">
+                    <h3 class="text-gray-500 text-sm font-semibold flex items-center">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        Atendimentos Concluídos
+                    </h3>
+                    <p class="text-4xl font-bold text-gray-800 mt-2" id="totalConcluidos">0</p>
+                    <p class="text-sm text-gray-600 mt-2" id="percentualConcluidos">0% do total</p>
+                </div>
+
+                <!-- Card Taxa de Comparecimento -->
+                <div class="bg-white p-6 rounded-lg shadow-lg card-hover border-l-4 border-purple-500">
+                    <h3 class="text-gray-500 text-sm font-semibold flex items-center">
+                        <i class="fas fa-user-check text-purple-500 mr-2"></i>
+                        Taxa de Comparecimento
+                    </h3>
+                    <p class="text-4xl font-bold text-gray-800 mt-2" id="taxaComparecimento">0%</p>
+                    <p class="text-sm mt-2" id="variacaoTaxa">
+                        <i class="fas fa-minus"></i> Aguardando dados...
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- Cards Secundários -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg shadow border-l-4 border-blue-400">
+                    <h3 class="text-blue-700 text-sm font-semibold">Confirmados</h3>
+                    <p class="text-2xl font-bold text-blue-900" id="totalConfirmados">0</p>
+                </div>
+                <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg shadow border-l-4 border-yellow-400">
+                    <h3 class="text-yellow-700 text-sm font-semibold">Remarcados</h3>
+                    <p class="text-2xl font-bold text-yellow-900" id="totalRemarcados">0</p>
+                </div>
+                <div class="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg shadow border-l-4 border-red-400">
+                    <h3 class="text-red-700 text-sm font-semibold">Cancelados</h3>
+                    <p class="text-2xl font-bold text-red-900" id="totalCancelados">0</p>
+                </div>
+                <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg shadow border-l-4 border-gray-400">
+                    <h3 class="text-gray-700 text-sm font-semibold">Faltas</h3>
+                    <p class="text-2xl font-bold text-gray-900" id="totalFaltas">0</p>
+                </div>
+            </div>
+
+            <!-- Gráficos -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Gráfico de Pizza - Distribuição por Status -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-chart-pie text-purple-600 mr-2"></i>
+                        Distribuição por Status
+                    </h3>
+                    <canvas id="chartStatus" style="max-height: 300px;"></canvas>
+                </div>
+
+                <!-- Gráfico de Barras - Agendamentos por Período -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-chart-bar text-blue-600 mr-2"></i>
+                        Agendamentos por <span id="tipoGraficoBarra">Dia</span>
+                    </h3>
+                    <canvas id="chartAgendamentos" style="max-height: 300px;"></canvas>
+                </div>
+            </div>
+
+            <!-- Informações Adicionais -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Top Convênios -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-hospital-user text-green-600 mr-2"></i>
+                        Top 5 Convênios
+                    </h3>
+                    <div id="topConvenios" class="space-y-2">
+                        <p class="text-gray-500 text-center py-4">Carregando...</p>
+                    </div>
+                </div>
+
+                <!-- Horários Mais Populares -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-clock text-orange-600 mr-2"></i>
+                        Horários Mais Procurados
+                    </h3>
+                    <div id="topHorarios" class="space-y-2">
+                        <p class="text-gray-500 text-center py-4">Carregando...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado Global
+        let periodoAtual = 'mes_atual';
+        let chartStatusInstance = null;
+        let chartAgendamentosInstance = null;
+
+        // Verificar autenticação
+        const token = localStorage.getItem('authToken');
+        const userData = localStorage.getItem('userData');
+
+        if (!token || !userData) {
+            window.location.href = '/static/login.html';
+        }
+
+        const user = JSON.parse(userData);
+        document.getElementById('userName').innerHTML = `<i class="fas fa-user-circle mr-2"></i>${user.nome}`;
+
+        // Função de Logout
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/static/login.html';
+        }
+
+        // Função para trocar período
+        function setPeriodo(periodo) {
+            periodoAtual = periodo;
+
+            // Atualizar visual das abas
+            document.querySelectorAll('[id^="btn_"]').forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.add('tab-inactive');
+            });
+
+            document.getElementById(`btn_${periodo}`).classList.remove('tab-inactive');
+            document.getElementById(`btn_${periodo}`).classList.add('tab-active');
+
+            // Carregar dados
+            loadData();
+        }
+
+        // Função para carregar dados da API
+        async function loadData() {
+            try {
+                const response = await fetch(`/api/dashboard/metricas?periodo=${periodoAtual}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar dados');
+                }
+
+                const data = await response.json();
+                renderizarDashboard(data);
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao carregar métricas. Verifique sua conexão.');
+            }
+        }
+
+        // Função para renderizar dashboard
+        function renderizarDashboard(data) {
+            // Título do período
+            document.getElementById('periodoTitulo').textContent = data.mes_ano;
+
+            // Cards principais
+            document.getElementById('totalAgendamentos').textContent = data.total_agendamentos;
+            document.getElementById('totalConcluidos').textContent = data.concluidos;
+            document.getElementById('taxaComparecimento').textContent = `${data.taxa_comparecimento}%`;
+
+            // Percentual de concluídos
+            const percConcluidos = data.total_agendamentos > 0
+                ? ((data.concluidos / data.total_agendamentos) * 100).toFixed(1)
+                : 0;
+            document.getElementById('percentualConcluidos').textContent = `${percConcluidos}% do total`;
+
+            // Comparativo (se disponível)
+            if (data.comparativo_anterior) {
+                const varAgend = data.comparativo_anterior.variacao_agendamentos;
+                const iconAgend = varAgend >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                const colorAgend = varAgend >= 0 ? 'text-green-600' : 'text-red-600';
+
+                document.getElementById('variacaoAgendamentos').innerHTML = `
+                    <i class="fas ${iconAgend} ${colorAgend}"></i>
+                    <span class="${colorAgend} font-semibold">${Math.abs(varAgend).toFixed(1)}%</span>
+                    <span class="text-gray-600"> vs período anterior</span>
+                `;
+
+                const varTaxa = data.comparativo_anterior.variacao_taxa;
+                const iconTaxa = varTaxa >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                const colorTaxa = varTaxa >= 0 ? 'text-green-600' : 'text-red-600';
+
+                document.getElementById('variacaoTaxa').innerHTML = `
+                    <i class="fas ${iconTaxa} ${colorTaxa}"></i>
+                    <span class="${colorTaxa} font-semibold">${Math.abs(varTaxa).toFixed(1)}%</span>
+                    <span class="text-gray-600"> vs período anterior</span>
+                `;
+            } else {
+                document.getElementById('variacaoAgendamentos').innerHTML = `
+                    <i class="fas fa-info-circle text-gray-400"></i>
+                    <span class="text-gray-500">Sem comparativo disponível</span>
+                `;
+                document.getElementById('variacaoTaxa').innerHTML = `
+                    <i class="fas fa-info-circle text-gray-400"></i>
+                    <span class="text-gray-500">Sem comparativo disponível</span>
+                `;
+            }
+
+            // Cards secundários
+            document.getElementById('totalConfirmados').textContent = data.confirmados;
+            document.getElementById('totalRemarcados').textContent = data.remarcados;
+            document.getElementById('totalCancelados').textContent = data.cancelados;
+            document.getElementById('totalFaltas').textContent = data.faltou;
+
+            // Gráficos
+            renderizarGraficoStatus(data.por_status);
+            renderizarGraficoAgendamentos(data.por_dia);
+
+            // Convênios e Horários
+            renderizarTopConvenios(data.por_convenio || []);
+            renderizarTopHorarios(data.horarios_populares || []);
+
+            // Atualizar label do gráfico de barras
+            document.getElementById('tipoGraficoBarra').textContent =
+                periodoAtual === '12_meses' ? 'Mês' : 'Dia';
+        }
+
+        // Gráfico de Pizza - Status
+        function renderizarGraficoStatus(porStatus) {
+            const ctx = document.getElementById('chartStatus').getContext('2d');
+
+            // Destruir gráfico anterior se existir
+            if (chartStatusInstance) {
+                chartStatusInstance.destroy();
+            }
+
+            const labels = porStatus.map(item => item.status);
+            const valores = porStatus.map(item => item.quantidade);
+            const cores = porStatus.map(item => item.cor);
+
+            chartStatusInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: valores,
+                        backgroundColor: cores,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico de Barras - Agendamentos por Dia/Mês
+        function renderizarGraficoAgendamentos(porDia) {
+            const ctx = document.getElementById('chartAgendamentos').getContext('2d');
+
+            // Destruir gráfico anterior se existir
+            if (chartAgendamentosInstance) {
+                chartAgendamentosInstance.destroy();
+            }
+
+            const labels = porDia.map(item => item.dia);
+            const valores = porDia.map(item => item.quantidade);
+
+            chartAgendamentosInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Agendamentos',
+                        data: valores,
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Agendamentos: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Renderizar Top Convênios
+        function renderizarTopConvenios(convenios) {
+            const container = document.getElementById('topConvenios');
+
+            if (convenios.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum dado disponível</p>';
+                return;
+            }
+
+            const maxQtd = Math.max(...convenios.map(c => c.quantidade));
+
+            container.innerHTML = convenios.map((item, index) => {
+                const percentage = (item.quantidade / maxQtd) * 100;
+                const colors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500'];
+
+                return `
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700 w-1/3">${item.convenio}</span>
+                        <div class="flex-1 mx-3">
+                            <div class="bg-gray-200 rounded-full h-4">
+                                <div class="${colors[index % colors.length]} h-4 rounded-full" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                        <span class="text-sm font-bold text-gray-800">${item.quantidade}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Renderizar Top Horários
+        function renderizarTopHorarios(horarios) {
+            const container = document.getElementById('topHorarios');
+
+            if (horarios.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum dado disponível</p>';
+                return;
+            }
+
+            const maxQtd = Math.max(...horarios.map(h => h.quantidade));
+
+            container.innerHTML = horarios.map((item, index) => {
+                const percentage = (item.quantidade / maxQtd) * 100;
+                const colors = ['bg-orange-500', 'bg-red-500', 'bg-yellow-500', 'bg-green-500', 'bg-blue-500'];
+
+                return `
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700 w-1/4">
+                            <i class="fas fa-clock text-orange-500 mr-2"></i>${item.horario}
+                        </span>
+                        <div class="flex-1 mx-3">
+                            <div class="bg-gray-200 rounded-full h-4">
+                                <div class="${colors[index % colors.length]} h-4 rounded-full" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                        <span class="text-sm font-bold text-gray-800">${item.quantidade}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Carregar dados iniciais
+        loadData();
+    </script>
+
+    <!-- Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
+            });
+        }
+    </script>
+</body>
+</html>

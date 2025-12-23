@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia - WhatsApp Business API | Horário Inteligente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #25D366 0%, #128C7E 50%, #075E54 100%); }
+        .facebook-bg { background: linear-gradient(135deg, #1877F2 0%, #0d65d9 100%); }
+        .instagram-bg { background: linear-gradient(135deg, #F58529 0%, #DD2A7B 50%, #8134AF 100%); }
+        .checkbox-item:has(input:checked) { background: #d1fae5; border-color: #10b981; }
+        @media print {
+            .no-print { display: none; }
+            body { font-size: 12px; }
+            section { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Header -->
+    <header class="gradient-bg text-white py-8 shadow-lg no-print">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <i class="fab fa-whatsapp text-5xl"></i>
+                    <div>
+                        <h1 class="text-3xl font-bold">Guia Completo</h1>
+                        <p class="text-green-100">WhatsApp Business API - Horário <span style="font-weight: 600;">inteligente</span></p>
+                    </div>
+                </div>
+                <button onclick="window.print()" class="bg-white text-green-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition">
+                    <i class="fas fa-print mr-2"></i>Imprimir PDF
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 max-w-5xl">
+
+        <!-- Intro -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Objetivo deste Guia</h2>
+            <p class="text-gray-700 mb-4">
+                Este documento contém todas as etapas necessárias para obter acesso à <strong>API oficial do WhatsApp Business</strong>
+                para o sistema Horário Inteligente. Seguindo estas recomendações, você aumentará significativamente as chances de aprovação pelo Meta.
+            </p>
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+                <p class="font-semibold text-yellow-800">
+                    <i class="fas fa-clock mr-2"></i>Tempo estimado: 2-4 semanas
+                </p>
+                <p class="text-yellow-700 text-sm mt-1">
+                    A verificação da empresa pelo Meta pode levar de 1 a 5 dias úteis. Recomenda-se criar os perfis e publicar conteúdo com antecedência.
+                </p>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                <i class="fas fa-road text-green-600 mr-2"></i>Roadmap de Implementação
+            </h2>
+            <div class="space-y-4">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">1</div>
+                    <div class="flex-1 bg-blue-50 p-4 rounded-lg">
+                        <p class="font-semibold text-blue-900">Criar Página no Facebook</p>
+                        <p class="text-blue-700 text-sm">Perfil profissional da empresa</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-pink-600 text-white rounded-full flex items-center justify-center font-bold text-lg">2</div>
+                    <div class="flex-1 bg-pink-50 p-4 rounded-lg">
+                        <p class="font-semibold text-pink-900">Criar Perfil no Instagram Business</p>
+                        <p class="text-pink-700 text-sm">Vinculado à página do Facebook</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-lg">3</div>
+                    <div class="flex-1 bg-purple-50 p-4 rounded-lg">
+                        <p class="font-semibold text-purple-900">Publicar Conteúdo (10-15 posts)</p>
+                        <p class="text-purple-700 text-sm">Criar credibilidade e histórico</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-gray-600 text-white rounded-full flex items-center justify-center font-bold text-lg">4</div>
+                    <div class="flex-1 bg-gray-50 p-4 rounded-lg">
+                        <p class="font-semibold text-gray-900">Obter CNPJ</p>
+                        <p class="text-gray-700 text-sm">Necessário para verificação</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-lg">5</div>
+                    <div class="flex-1 bg-indigo-50 p-4 rounded-lg">
+                        <p class="font-semibold text-indigo-900">Verificar Empresa no Meta Business</p>
+                        <p class="text-indigo-700 text-sm">Enviar documentos oficiais</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-lg">6</div>
+                    <div class="flex-1 bg-green-50 p-4 rounded-lg">
+                        <p class="font-semibold text-green-900">Solicitar WhatsApp Business API</p>
+                        <p class="text-green-700 text-sm">Criar App e obter credenciais</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FASE 1: Facebook -->
+        <section class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="facebook-bg text-white p-6 rounded-xl mb-6">
+                <h2 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fab fa-facebook text-4xl"></i>
+                    Fase 1: Criar Página no Facebook
+                </h2>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">1.1 Acesso</h3>
+            <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                <p class="text-blue-800">
+                    <i class="fas fa-link mr-2"></i>
+                    <strong>Link:</strong> <a href="https://www.facebook.com/pages/create" target="_blank" class="underline">https://www.facebook.com/pages/create</a>
+                </p>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">1.2 Informações da Página</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-300 mb-6">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Campo</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Valor Recomendado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Nome da Página</td>
+                            <td class="border border-gray-300 px-4 py-2">Horário Inteligente</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Categoria Principal</td>
+                            <td class="border border-gray-300 px-4 py-2">Software / Serviço de Tecnologia da Informação</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Categoria Secundária</td>
+                            <td class="border border-gray-300 px-4 py-2">Aplicativo de Saúde e Bem-estar</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Descrição</td>
+                            <td class="border border-gray-300 px-4 py-2">Sistema de agendamento inteligente para clínicas e consultórios. Automatize sua agenda com IA e WhatsApp. Reduza faltas, aumente a produtividade.</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Site</td>
+                            <td class="border border-gray-300 px-4 py-2">https://horariointeligente.com.br</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Email</td>
+                            <td class="border border-gray-300 px-4 py-2">contato@horariointeligente.com.br</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">WhatsApp</td>
+                            <td class="border border-gray-300 px-4 py-2">(24) 98849-3257</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Localização</td>
+                            <td class="border border-gray-300 px-4 py-2">Volta Redonda, RJ, Brasil</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Horário de Funcionamento</td>
+                            <td class="border border-gray-300 px-4 py-2">Seg-Sex: 9h-18h | Sáb: 9h-13h</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">1.3 Imagens</h3>
+            <div class="grid md:grid-cols-2 gap-4 mb-6">
+                <div class="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                    <p class="font-bold text-blue-900 mb-2"><i class="fas fa-user-circle mr-2"></i>Foto de Perfil</p>
+                    <ul class="text-blue-800 text-sm space-y-1">
+                        <li>Tamanho: <strong>180x180 pixels</strong></li>
+                        <li>Formato: PNG com fundo branco ou transparente</li>
+                        <li>Conteúdo: Logo do Horário Inteligente</li>
+                    </ul>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                    <p class="font-bold text-blue-900 mb-2"><i class="fas fa-image mr-2"></i>Foto de Capa</p>
+                    <ul class="text-blue-800 text-sm space-y-1">
+                        <li>Tamanho: <strong>820x312 pixels</strong></li>
+                        <li>Formato: JPG ou PNG</li>
+                        <li>Conteúdo: Banner com slogan + mockup do sistema</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">1.4 Configurações Importantes</h3>
+            <div class="space-y-3">
+                <label class="checkbox-item flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-5 h-5">
+                    <span>Modelo da página: <strong>Serviços</strong> ou <strong>Negócios</strong></span>
+                </label>
+                <label class="checkbox-item flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-5 h-5">
+                    <span>Ativar Messenger com resposta automática</span>
+                </label>
+                <label class="checkbox-item flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-5 h-5">
+                    <span>Botão de ação: <strong>"Saiba mais"</strong> → link para o site</span>
+                </label>
+                <label class="checkbox-item flex items-center gap-3 p-3 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-5 h-5">
+                    <span>Vincular ao Meta Business Suite</span>
+                </label>
+            </div>
+        </section>
+
+        <!-- FASE 2: Instagram -->
+        <section class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="instagram-bg text-white p-6 rounded-xl mb-6">
+                <h2 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fab fa-instagram text-4xl"></i>
+                    Fase 2: Criar Perfil no Instagram Business
+                </h2>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">2.1 Criar Conta</h3>
+            <div class="bg-pink-50 p-4 rounded-lg mb-6">
+                <ol class="list-decimal pl-6 text-pink-800 space-y-2">
+                    <li>Baixe o Instagram no celular ou acesse <a href="https://instagram.com" class="underline">instagram.com</a></li>
+                    <li>Crie uma conta com email profissional (contato@horariointeligente.com.br)</li>
+                    <li>Username sugerido: <strong>@horariointeligente</strong></li>
+                    <li>Vá em Configurações → Conta → Mudar para conta profissional</li>
+                    <li>Escolha <strong>"Empresa"</strong> (não criador)</li>
+                    <li>Vincule à Página do Facebook criada anteriormente</li>
+                </ol>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">2.2 Informações do Perfil</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-300 mb-6">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Campo</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Valor Recomendado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Nome</td>
+                            <td class="border border-gray-300 px-4 py-2">Horário Inteligente</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Username</td>
+                            <td class="border border-gray-300 px-4 py-2">@horariointeligente</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Bio</td>
+                            <td class="border border-gray-300 px-4 py-2">
+                                Agendamento inteligente para clínicas<br>
+                                IA + WhatsApp = Menos faltas<br>
+                                Teste grátis por 7 dias<br>
+                                horariointeligente.com.br
+                            </td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Categoria</td>
+                            <td class="border border-gray-300 px-4 py-2">Software</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Link</td>
+                            <td class="border border-gray-300 px-4 py-2">https://horariointeligente.com.br</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">2.3 Destaques Sugeridos</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-blue-400 to-blue-600 text-white p-4 rounded-lg text-center">
+                    <i class="fas fa-play-circle text-2xl mb-2"></i>
+                    <p class="font-semibold text-sm">Como Funciona</p>
+                </div>
+                <div class="bg-gradient-to-br from-green-400 to-green-600 text-white p-4 rounded-lg text-center">
+                    <i class="fas fa-star text-2xl mb-2"></i>
+                    <p class="font-semibold text-sm">Depoimentos</p>
+                </div>
+                <div class="bg-gradient-to-br from-purple-400 to-purple-600 text-white p-4 rounded-lg text-center">
+                    <i class="fas fa-tags text-2xl mb-2"></i>
+                    <p class="font-semibold text-sm">Planos</p>
+                </div>
+                <div class="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-4 rounded-lg text-center">
+                    <i class="fas fa-question-circle text-2xl mb-2"></i>
+                    <p class="font-semibold text-sm">FAQ</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- FASE 3: Conteúdo -->
+        <section class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-xl mb-6">
+                <h2 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fas fa-edit text-4xl"></i>
+                    Fase 3: Publicar Conteúdo (10-15 posts)
+                </h2>
+            </div>
+
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+                <p class="text-yellow-800">
+                    <i class="fas fa-lightbulb mr-2"></i>
+                    <strong>Dica:</strong> Publique 1 post a cada 2-3 dias para parecer orgânico. Evite publicar tudo de uma vez.
+                </p>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Posts Prontos para Publicar</h3>
+
+            <!-- Post 1 -->
+            <div class="border-2 border-gray-200 rounded-xl p-6 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Post 1</span>
+                    <span class="text-gray-500 text-sm">Apresentação</span>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-800 whitespace-pre-line">Sua clínica ainda agenda consultas pelo telefone?
+
+O Horário Inteligente chegou para revolucionar sua gestão!
+
+Com inteligência artificial e integração com WhatsApp, seus pacientes agendam consultas 24 horas por dia, 7 dias por semana - sem você precisar atender uma ligação sequer.
+
+Benefícios:
+- Agendamento automático via WhatsApp
+- Lembretes inteligentes que reduzem faltas em até 70%
+- Dashboard completo para gestão
+- Atendimento humanizado com IA
+
+Quer saber mais? Link na bio!
+
+#agendamentoonline #clinicamedica #gestaodesaude #whatsappbusiness #tecnologiamedica #inovacaoemsaude</p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><i class="fas fa-image mr-1"></i> Imagem: Mockup do sistema ou logo</p>
+            </div>
+
+            <!-- Post 2 -->
+            <div class="border-2 border-gray-200 rounded-xl p-6 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Post 2</span>
+                    <span class="text-gray-500 text-sm">Problema/Solução</span>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-800 whitespace-pre-line">Você sabia que clínicas perdem em média 20% do faturamento por causa de faltas de pacientes?
+
+O problema não é o paciente esquecer. O problema é a falta de um sistema inteligente de lembretes.
+
+Com o Horário Inteligente, enviamos lembretes automáticos:
+- 24 horas antes
+- 3 horas antes
+- 1 hora antes
+
+E o melhor: o paciente pode confirmar ou reagendar com apenas uma mensagem no WhatsApp!
+
+Resultado? Redução de até 70% nas faltas.
+
+#noshowmedico #faltaspacientes #gestaomedica #clinicaeficiente</p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><i class="fas fa-image mr-1"></i> Imagem: Gráfico mostrando redução de faltas</p>
+            </div>
+
+            <!-- Post 3 -->
+            <div class="border-2 border-gray-200 rounded-xl p-6 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Post 3</span>
+                    <span class="text-gray-500 text-sm">Funcionalidade</span>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-800 whitespace-pre-line">Atendimento 24/7 sem contratar mais funcionários?
+
+Com a nossa IA, isso é possível!
+
+O assistente virtual do Horário Inteligente:
+- Entende linguagem natural em português
+- Responde dúvidas sobre horários disponíveis
+- Agenda, confirma e reagenda consultas
+- Funciona de madrugada, fins de semana e feriados
+
+Sua equipe foca no que importa: o atendimento presencial de qualidade.
+
+#inteligenciaartificial #chatbot #atendimento24horas #automacao</p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><i class="fas fa-image mr-1"></i> Imagem: Print de conversa com a IA</p>
+            </div>
+
+            <!-- Post 4 -->
+            <div class="border-2 border-gray-200 rounded-xl p-6 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Post 4</span>
+                    <span class="text-gray-500 text-sm">Dashboard</span>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-800 whitespace-pre-line">Calendário bagunçado? Agenda em papel? Planilhas confusas?
+
+Chegou a hora de profissionalizar sua gestão!
+
+O Dashboard do Horário Inteligente oferece:
+- Visão completa da agenda (dia, semana, mês)
+- Estatísticas em tempo real
+- Gestão de múltiplos profissionais
+- Relatórios de produtividade
+- Controle de faltas e cancelamentos
+
+Acesse de qualquer lugar: computador, tablet ou celular.
+
+#dashboardmedico #gestaoagenda #organizacao #produtividade</p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><i class="fas fa-image mr-1"></i> Imagem: Screenshot do dashboard</p>
+            </div>
+
+            <!-- Post 5 -->
+            <div class="border-2 border-gray-200 rounded-xl p-6 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Post 5</span>
+                    <span class="text-gray-500 text-sm">Segurança</span>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-800 whitespace-pre-line">Segurança e privacidade são prioridade!
+
+O Horário Inteligente é 100% compatível com a LGPD (Lei Geral de Proteção de Dados).
+
+Nossos compromissos:
+- Criptografia SSL em todas as conexões
+- Dados armazenados em servidores seguros
+- Backup diário automatizado
+- Você é o dono dos seus dados
+- Política de privacidade transparente
+
+Saúde digital com responsabilidade.
+
+Confira nossa política completa: horariointeligente.com.br/static/politica-privacidade.html
+
+#lgpd #protecaodedados #segurancadigital #privacidade</p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><i class="fas fa-image mr-1"></i> Imagem: Ícone de cadeado/segurança</p>
+            </div>
+
+            <!-- Post 6 -->
+            <div class="border-2 border-gray-200 rounded-xl p-6 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Post 6</span>
+                    <span class="text-gray-500 text-sm">Comparativo</span>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-800 whitespace-pre-line">Atendimento Manual vs. Horário Inteligente
+
+ANTES:
+- Telefone tocando o dia todo
+- Agenda em papel ou planilha
+- Esquecimentos e faltas frequentes
+- Secretária sobrecarregada
+- Horário comercial limitado
+
+DEPOIS:
+- WhatsApp responde automaticamente
+- Agenda digital organizada
+- Lembretes reduzem faltas em 70%
+- Equipe focada no atendimento
+- Disponível 24 horas
+
+Qual realidade você prefere?
+
+#transformacaodigital #antesedepois #clinicamoderna</p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><i class="fas fa-image mr-1"></i> Imagem: Comparativo lado a lado</p>
+            </div>
+
+            <!-- Post 7 -->
+            <div class="border-2 border-gray-200 rounded-xl p-6 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Post 7</span>
+                    <span class="text-gray-500 text-sm">FAQ</span>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-800 whitespace-pre-line">Dúvidas Frequentes sobre o Horário Inteligente:
+
+"Preciso de conhecimento técnico?"
+Não! O sistema é intuitivo e oferecemos treinamento completo.
+
+"Funciona com qualquer especialidade?"
+Sim! Médicos, dentistas, psicólogos, fisioterapeutas...
+
+"E se o paciente não usar WhatsApp?"
+Você pode agendar manualmente pelo dashboard.
+
+"Posso testar antes de assinar?"
+Sim! Oferecemos 7 dias de garantia com reembolso total.
+
+"Quanto custa?"
+A partir de R$ 150/mês. Menos que uma consulta perdida por falta!
+
+Mais dúvidas? Chama no WhatsApp!
+
+#faq #duvidasfrequentes #horariointeligente</p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><i class="fas fa-image mr-1"></i> Imagem: Cards com perguntas</p>
+            </div>
+
+            <!-- Post 8 -->
+            <div class="border-2 border-gray-200 rounded-xl p-6 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Post 8</span>
+                    <span class="text-gray-500 text-sm">Depoimento</span>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-800 whitespace-pre-line">"Antes do Horário Inteligente, minha secretária passava horas no telefone agendando consultas. Hoje, 80% dos agendamentos são feitos automaticamente pelo WhatsApp!"
+
+- Dra. Maria Silva*, Cardiologista
+
+"Os lembretes automáticos mudaram minha clínica. As faltas caíram de 25% para menos de 8% em dois meses."
+
+- Dr. João Santos*, Dermatologista
+
+Quer resultados assim na sua clínica?
+
+Link na bio para saber mais!
+
+*Depoimentos ilustrativos
+
+#depoimentos #resultados #casesdesucesso</p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><i class="fas fa-image mr-1"></i> Imagem: Cards de depoimento com aspas</p>
+            </div>
+
+            <!-- Post 9 -->
+            <div class="border-2 border-gray-200 rounded-xl p-6 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Post 9</span>
+                    <span class="text-gray-500 text-sm">Planos</span>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-800 whitespace-pre-line">Planos que cabem no seu bolso!
+
+INDIVIDUAL - R$ 150/mês
+- 1 profissional
+- Agendamentos ilimitados
+- IA + WhatsApp
+- Dashboard completo
+
+CLÍNICA - R$ 200/mês
+- 2 profissionais incluídos
+- +R$ 50 por profissional adicional
+- Todos os recursos do Individual
+- Gestão multi-profissional
+
+Ambos incluem:
+- 7 dias de garantia
+- Treinamento inicial
+- Suporte via WhatsApp
+- Atualizações gratuitas
+
+Comece agora! Link na bio.
+
+#planos #precos #investimento</p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><i class="fas fa-image mr-1"></i> Imagem: Cards de planos lado a lado</p>
+            </div>
+
+            <!-- Post 10 -->
+            <div class="border-2 border-gray-200 rounded-xl p-6 mb-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">Post 10</span>
+                    <span class="text-gray-500 text-sm">CTA Final</span>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <p class="text-gray-800 whitespace-pre-line">Pronto para transformar sua clínica?
+
+Em apenas 3 passos:
+
+1. Acesse nosso site
+2. Escolha seu plano
+3. Comece a usar em minutos!
+
+Não perca mais pacientes por esquecimento.
+Não sobrecarregue mais sua equipe com ligações.
+Não fique preso ao horário comercial.
+
+O futuro da gestão médica é INTELIGENTE.
+
+horariointeligente.com.br
+
+#agendamentointeligente #clinicadofuturo #comecehoje</p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2"><i class="fas fa-image mr-1"></i> Imagem: CTA com seta apontando para o link</p>
+            </div>
+
+            <!-- Posts Extras -->
+            <div class="bg-purple-50 border-2 border-purple-200 rounded-xl p-6 mt-6">
+                <h4 class="font-bold text-purple-900 mb-3"><i class="fas fa-plus-circle mr-2"></i>Posts Extras (opcionais)</h4>
+                <ul class="text-purple-800 space-y-2">
+                    <li><strong>Post 11:</strong> Dica de gestão de agenda para médicos</li>
+                    <li><strong>Post 12:</strong> Como reduzir no-shows na sua clínica (carrossel)</li>
+                    <li><strong>Post 13:</strong> Reels mostrando o sistema funcionando</li>
+                    <li><strong>Post 14:</strong> Post comemorativo (ex: "100 agendamentos realizados")</li>
+                    <li><strong>Post 15:</strong> Bastidores/sobre o desenvolvedor</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- FASE 4: CNPJ -->
+        <section class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="bg-gray-700 text-white p-6 rounded-xl mb-6">
+                <h2 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fas fa-file-alt text-4xl"></i>
+                    Fase 4: Obter CNPJ
+                </h2>
+            </div>
+
+            <p class="text-gray-700 mb-4">
+                O CNPJ é <strong>obrigatório</strong> para verificação da empresa no Meta Business e para solicitar a API do WhatsApp Business.
+            </p>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Opções de Abertura</h3>
+            <div class="grid md:grid-cols-2 gap-4 mb-6">
+                <div class="bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                    <p class="font-bold text-green-900 mb-2"><i class="fas fa-user mr-2"></i>MEI (Microempreendedor Individual)</p>
+                    <ul class="text-green-800 text-sm space-y-1">
+                        <li>Faturamento até R$ 81.000/ano</li>
+                        <li>Abertura gratuita e rápida</li>
+                        <li>CNAE sugerido: 6201-5/00 (Desenvolvimento de software)</li>
+                        <li>Site: gov.br/mei</li>
+                    </ul>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                    <p class="font-bold text-blue-900 mb-2"><i class="fas fa-building mr-2"></i>ME/EPP (Simples Nacional)</p>
+                    <ul class="text-blue-800 text-sm space-y-1">
+                        <li>Faturamento maior que R$ 81.000/ano</li>
+                        <li>Requer contador</li>
+                        <li>Mais flexibilidade de CNAEs</li>
+                        <li>Processo via Junta Comercial</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">Documentos que Serão Necessários</h3>
+            <ul class="list-disc pl-6 text-gray-700 space-y-2">
+                <li>Cartão CNPJ (emitido pela Receita Federal)</li>
+                <li>Contrato Social ou CCMEI (Certificado MEI)</li>
+                <li>Comprovante de endereço comercial</li>
+                <li>Documento de identidade do responsável</li>
+            </ul>
+        </section>
+
+        <!-- FASE 5: Verificação Meta -->
+        <section class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="bg-indigo-600 text-white p-6 rounded-xl mb-6">
+                <h2 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fas fa-check-double text-4xl"></i>
+                    Fase 5: Verificar Empresa no Meta Business
+                </h2>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">5.1 Acessar Meta Business Suite</h3>
+            <div class="bg-indigo-50 p-4 rounded-lg mb-6">
+                <p class="text-indigo-800">
+                    <i class="fas fa-link mr-2"></i>
+                    <strong>Link:</strong> <a href="https://business.facebook.com/settings/info" target="_blank" class="underline">https://business.facebook.com/settings/info</a>
+                </p>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">5.2 Passos para Verificação</h3>
+            <ol class="list-decimal pl-6 text-gray-700 space-y-3 mb-6">
+                <li>Acesse <strong>Configurações de Negócios</strong></li>
+                <li>Vá em <strong>Central de Segurança</strong> → <strong>Verificação</strong></li>
+                <li>Clique em <strong>"Iniciar verificação"</strong></li>
+                <li>Preencha os dados da empresa (razão social = nome no CNPJ)</li>
+                <li>Envie os documentos solicitados:
+                    <ul class="list-disc pl-6 mt-2">
+                        <li>Cartão CNPJ ou Contrato Social</li>
+                        <li>Comprovante de endereço (conta de luz/telefone)</li>
+                    </ul>
+                </li>
+                <li>Aguarde análise (1-5 dias úteis)</li>
+            </ol>
+
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+                <p class="text-yellow-800">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    <strong>Importante:</strong> O nome da Página do Facebook deve corresponder ao nome da empresa no CNPJ para evitar rejeição.
+                </p>
+            </div>
+        </section>
+
+        <!-- FASE 6: WhatsApp API -->
+        <section class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="gradient-bg text-white p-6 rounded-xl mb-6">
+                <h2 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fab fa-whatsapp text-4xl"></i>
+                    Fase 6: Solicitar WhatsApp Business API
+                </h2>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">6.1 Criar App no Meta Developers</h3>
+            <div class="bg-green-50 p-4 rounded-lg mb-6">
+                <p class="text-green-800">
+                    <i class="fas fa-link mr-2"></i>
+                    <strong>Link:</strong> <a href="https://developers.facebook.com/apps/" target="_blank" class="underline">https://developers.facebook.com/apps/</a>
+                </p>
+            </div>
+
+            <ol class="list-decimal pl-6 text-gray-700 space-y-3 mb-6">
+                <li>Clique em <strong>"Criar App"</strong></li>
+                <li>Escolha tipo: <strong>"Empresa"</strong></li>
+                <li>Nome do App: <strong>"Horário Inteligente"</strong></li>
+                <li>Vincule à sua conta do Meta Business verificada</li>
+                <li>No painel do App, adicione o produto <strong>"WhatsApp"</strong></li>
+                <li>Siga o assistente de configuração</li>
+            </ol>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">6.2 Configurar Número de Telefone</h3>
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+                <p class="text-red-800">
+                    <i class="fas fa-exclamation-circle mr-2"></i>
+                    <strong>Atenção:</strong> O número usado na API <strong>NÃO pode</strong> estar vinculado a uma conta pessoal do WhatsApp. Use um número novo ou desvincule o existente antes.
+                </p>
+            </div>
+
+            <ol class="list-decimal pl-6 text-gray-700 space-y-3 mb-6">
+                <li>Na seção WhatsApp, clique em <strong>"Adicionar número de telefone"</strong></li>
+                <li>Insira o número com código do país (+55)</li>
+                <li>Verifique via SMS ou ligação</li>
+                <li>Configure o nome de exibição (Horário Inteligente)</li>
+            </ol>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-4">6.3 Obter Credenciais</h3>
+            <p class="text-gray-700 mb-4">Após configuração, você terá acesso a:</p>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse border border-gray-300 mb-6">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Credencial</th>
+                            <th class="border border-gray-300 px-4 py-2 text-left">Onde Encontrar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Access Token</td>
+                            <td class="border border-gray-300 px-4 py-2">WhatsApp → Configuração da API → Token de acesso</td>
+                        </tr>
+                        <tr class="bg-gray-50">
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Phone Number ID</td>
+                            <td class="border border-gray-300 px-4 py-2">WhatsApp → Configuração da API → ID do número</td>
+                        </tr>
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2 font-semibold">Business Account ID</td>
+                            <td class="border border-gray-300 px-4 py-2">WhatsApp → Configuração da API → ID da conta comercial</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="bg-green-50 border-2 border-green-600 rounded-xl p-6">
+                <h4 class="font-bold text-green-900 mb-3"><i class="fas fa-paper-plane mr-2"></i>Após Obter as Credenciais</h4>
+                <p class="text-green-800">
+                    Envie as credenciais (Access Token, Phone Number ID e Business Account ID) para configuração no Evolution API.
+                    O sistema será atualizado para usar a API oficial do WhatsApp Business.
+                </p>
+            </div>
+        </section>
+
+        <!-- Checklist Final -->
+        <section class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                <i class="fas fa-clipboard-check text-green-600 mr-2"></i>
+                Checklist Final
+            </h2>
+
+            <div class="space-y-3">
+                <label class="checkbox-item flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-6 h-6">
+                    <div>
+                        <span class="font-semibold">Página do Facebook criada</span>
+                        <p class="text-sm text-gray-500">Com todas as informações preenchidas</p>
+                    </div>
+                </label>
+
+                <label class="checkbox-item flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-6 h-6">
+                    <div>
+                        <span class="font-semibold">Perfil Instagram Business criado</span>
+                        <p class="text-sm text-gray-500">Vinculado à página do Facebook</p>
+                    </div>
+                </label>
+
+                <label class="checkbox-item flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-6 h-6">
+                    <div>
+                        <span class="font-semibold">10+ posts publicados</span>
+                        <p class="text-sm text-gray-500">No Facebook e Instagram</p>
+                    </div>
+                </label>
+
+                <label class="checkbox-item flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-6 h-6">
+                    <div>
+                        <span class="font-semibold">CNPJ obtido</span>
+                        <p class="text-sm text-gray-500">MEI ou ME/EPP</p>
+                    </div>
+                </label>
+
+                <label class="checkbox-item flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-6 h-6">
+                    <div>
+                        <span class="font-semibold">Empresa verificada no Meta Business</span>
+                        <p class="text-sm text-gray-500">Documentos aprovados</p>
+                    </div>
+                </label>
+
+                <label class="checkbox-item flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-6 h-6">
+                    <div>
+                        <span class="font-semibold">App criado no Meta Developers</span>
+                        <p class="text-sm text-gray-500">Com produto WhatsApp adicionado</p>
+                    </div>
+                </label>
+
+                <label class="checkbox-item flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-6 h-6">
+                    <div>
+                        <span class="font-semibold">Número de telefone verificado</span>
+                        <p class="text-sm text-gray-500">Número exclusivo para a API</p>
+                    </div>
+                </label>
+
+                <label class="checkbox-item flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-6 h-6">
+                    <div>
+                        <span class="font-semibold">Credenciais obtidas</span>
+                        <p class="text-sm text-gray-500">Access Token, Phone Number ID, Business Account ID</p>
+                    </div>
+                </label>
+
+                <label class="checkbox-item flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer transition">
+                    <input type="checkbox" class="w-6 h-6">
+                    <div>
+                        <span class="font-semibold">Evolution API configurado</span>
+                        <p class="text-sm text-gray-500">Credenciais integradas ao sistema</p>
+                    </div>
+                </label>
+            </div>
+        </section>
+
+        <!-- Contato -->
+        <section class="bg-gradient-to-r from-green-600 to-green-700 rounded-xl shadow-lg p-8 text-white">
+            <h2 class="text-2xl font-bold mb-4">
+                <i class="fas fa-headset mr-2"></i>
+                Precisa de Ajuda?
+            </h2>
+            <p class="mb-4">
+                Quando tiver as credenciais do WhatsApp Business API, entre em contato para configuração:
+            </p>
+            <div class="bg-green-800 p-4 rounded-lg">
+                <p><i class="fas fa-envelope mr-2"></i><strong>Email:</strong> contato@horariointeligente.com.br</p>
+                <p class="mt-2"><i class="fab fa-whatsapp mr-2"></i><strong>WhatsApp:</strong> (24) 98849-3257</p>
+            </div>
+            <p class="text-green-100 text-sm mt-4">
+                Documento gerado em: 16 de Dezembro de 2025
+            </p>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-6 mt-8 no-print">
+        <div class="container mx-auto px-4 text-center">
+            <p>Horário Inteligente - Sistema de Agendamento com IA</p>
+            <p class="text-sm mt-1">Documento interno - Guia de implementação WhatsApp Business API</p>
+        </div>
+    </footer>
+
+</body>
+</html>

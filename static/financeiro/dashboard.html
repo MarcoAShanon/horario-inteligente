@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financeiro - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#10b981">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="bg-white shadow-md border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Dashboard Financeiro</h1>
+                        <p class="text-sm text-gray-600">Gestão Interna - Horário Inteligente</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-700 font-medium" id="userName">
+                        <i class="fas fa-user-circle mr-2"></i>
+                        <span id="userNameText">Carregando...</span>
+                    </span>
+                    <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition flex items-center space-x-2">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Sair</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8">
+                <button onclick="showTab('visao-geral')" id="tab-visao-geral" class="tab-button py-4 px-1 border-b-2 border-green-500 text-green-600 font-medium">
+                    <i class="fas fa-tachometer-alt mr-2"></i>Visão Geral
+                </button>
+                <button onclick="showTab('clientes')" id="tab-clientes" class="tab-button py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium">
+                    <i class="fas fa-building mr-2"></i>Clientes
+                </button>
+                <button onclick="showTab('despesas')" id="tab-despesas" class="tab-button py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium">
+                    <i class="fas fa-receipt mr-2"></i>Despesas
+                </button>
+                <button onclick="showTab('custos')" id="tab-custos" class="tab-button py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium">
+                    <i class="fas fa-dollar-sign mr-2"></i>Custos
+                </button>
+                <button onclick="showTab('relatorios')" id="tab-relatorios" class="tab-button py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium">
+                    <i class="fas fa-file-invoice-dollar mr-2"></i>Relatórios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Alerta Fator R -->
+        <div id="alerta-fator-r" class="hidden mb-6 p-4 rounded-lg border shadow-sm">
+            <div class="flex items-center gap-3">
+                <i id="alerta-fator-icone" class="fas fa-exclamation-triangle text-2xl"></i>
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <p id="alerta-fator-titulo" class="font-semibold"></p>
+                        <span id="alerta-fator-badge" class="text-xs px-2 py-0.5 rounded-full"></span>
+                    </div>
+                    <p id="alerta-fator-mensagem" class="text-sm opacity-80 mt-1"></p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs opacity-60">Economia potencial</p>
+                    <p id="alerta-fator-economia" class="font-bold text-lg"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Visão Geral -->
+        <div id="content-visao-geral" class="tab-content">
+            <!-- Loading -->
+            <div id="loading" class="text-center py-12">
+                <i class="fas fa-spinner fa-spin text-white text-4xl"></i>
+                <p class="text-white mt-4">Carregando métricas...</p>
+            </div>
+
+            <!-- Métricas Cards -->
+            <div id="metricas-cards" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Card: Clientes Ativos -->
+                <div class="glass-card rounded-xl shadow-lg p-6 stat-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-building text-blue-600 text-xl"></i>
+                        </div>
+                        <span class="text-3xl font-bold text-gray-800" id="clientesAtivos">0</span>
+                    </div>
+                    <h3 class="text-gray-600 text-sm font-medium">Clientes Ativos</h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <span id="novosClientes">0</span> novos últimos 7 dias
+                    </p>
+                </div>
+
+                <!-- Card: Total Profissionais -->
+                <div class="glass-card rounded-xl shadow-lg p-6 stat-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-user-md text-purple-600 text-xl"></i>
+                        </div>
+                        <span class="text-3xl font-bold text-gray-800" id="totalMedicos">0</span>
+                    </div>
+                    <h3 class="text-gray-600 text-sm font-medium">Profissionais Ativos</h3>
+                    <p class="text-xs text-gray-500 mt-1">Gerando receita</p>
+                </div>
+
+                <!-- Card: MRR -->
+                <div class="glass-card rounded-xl shadow-lg p-6 stat-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-dollar-sign text-green-600 text-xl"></i>
+                        </div>
+                        <span class="text-3xl font-bold text-gray-800" id="mrr">R$ 0</span>
+                    </div>
+                    <h3 class="text-gray-600 text-sm font-medium">MRR (Receita Recorrente)</h3>
+                    <p class="text-xs text-gray-500 mt-1">Mensal</p>
+                </div>
+
+                <!-- Card: Ticket Médio -->
+                <div class="glass-card rounded-xl shadow-lg p-6 stat-card">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-chart-bar text-yellow-600 text-xl"></i>
+                        </div>
+                        <span class="text-3xl font-bold text-gray-800" id="ticketMedio">R$ 0</span>
+                    </div>
+                    <h3 class="text-gray-600 text-sm font-medium">Ticket Médio</h3>
+                    <p class="text-xs text-gray-500 mt-1">Por cliente</p>
+                </div>
+            </div>
+
+            <!-- Gráfico de Agendamentos -->
+            <div id="chart-container" class="hidden glass-card rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">
+                    <i class="fas fa-calendar-check mr-2 text-green-600"></i>
+                    Agendamentos Este Mês
+                </h3>
+                <div class="text-center py-8">
+                    <span class="text-5xl font-bold text-gray-800" id="agendamentosMes">0</span>
+                    <p class="text-gray-600 mt-2">Total de consultas agendadas</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Clientes -->
+        <div id="content-clientes" class="tab-content hidden">
+            <div class="glass-card rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-gray-800">
+                        <i class="fas fa-building mr-2 text-blue-600"></i>
+                        Lista de Clientes
+                    </h3>
+                    <button onclick="loadClientes()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-sync-alt mr-2"></i>Atualizar
+                    </button>
+                </div>
+
+                <!-- Tabela de Clientes -->
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b-2 border-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subdomínio</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plano</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profissionais</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Faturamento</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientesTableBody" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>Carregando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Despesas -->
+        <div id="content-despesas" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Formulário de Nova Despesa -->
+                <div class="glass-card rounded-xl shadow-lg p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-plus-circle mr-2 text-green-600"></i>
+                        Nova Despesa
+                    </h3>
+                    <form id="formDespesa" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
+                            <input type="text" id="despesaDescricao" required
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                placeholder="Ex: Aluguel escritório">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
+                                <select id="despesaCategoria" required
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500">
+                                    <option value="">Selecione</option>
+                                    <option value="fixa">Fixa/Recorrente</option>
+                                    <option value="variavel">Variável/Eventual</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                                <select id="despesaTipo"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500">
+                                    <option value="">Selecione</option>
+                                    <option value="Infraestrutura">Infraestrutura</option>
+                                    <option value="Pessoal">Pessoal</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="Software">Software/Assinaturas</option>
+                                    <option value="Impostos">Impostos</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$) *</label>
+                                <input type="number" id="despesaValor" step="0.01" min="0" required
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500"
+                                    placeholder="0,00">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
+                                <input type="date" id="despesaVencimento"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="despesaRecorrente"
+                                    class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                                <span class="text-sm text-gray-700">Despesa recorrente</span>
+                            </label>
+                        </div>
+
+                        <div id="recorrenciaContainer" class="hidden space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Periodicidade</label>
+                                <select id="despesaPeriodicidade"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500">
+                                    <option value="mensal">Mensal</option>
+                                    <option value="anual">Anual</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Dia do vencimento</label>
+                                <input type="number" id="despesaDiaRecorrencia" min="1" max="31"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500"
+                                    placeholder="Ex: 10">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                            <textarea id="despesaObservacoes" rows="2"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500"
+                                placeholder="Anotações opcionais..."></textarea>
+                        </div>
+
+                        <button type="submit"
+                            class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
+                            <i class="fas fa-save"></i>
+                            Salvar Despesa
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Lista de Despesas -->
+                <div class="lg:col-span-2 glass-card rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">
+                            <i class="fas fa-list mr-2 text-blue-600"></i>
+                            Despesas Cadastradas
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <select id="filtroDespesaCategoria" onchange="loadDespesas()"
+                                class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500">
+                                <option value="">Todas categorias</option>
+                                <option value="fixa">Fixas</option>
+                                <option value="variavel">Variáveis</option>
+                            </select>
+                            <select id="filtroDespesaStatus" onchange="loadDespesas()"
+                                class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500">
+                                <option value="">Todos status</option>
+                                <option value="pendente">Pendentes</option>
+                                <option value="pago">Pagas</option>
+                            </select>
+                            <button onclick="loadDespesas()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm transition">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Resumo -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                        <div class="bg-blue-50 rounded-lg p-3 text-center">
+                            <p class="text-xs text-gray-600">Total Fixas</p>
+                            <p class="text-lg font-bold text-blue-600" id="resumoFixas">R$ 0</p>
+                        </div>
+                        <div class="bg-purple-50 rounded-lg p-3 text-center">
+                            <p class="text-xs text-gray-600">Total Variáveis</p>
+                            <p class="text-lg font-bold text-purple-600" id="resumoVariaveis">R$ 0</p>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-3 text-center">
+                            <p class="text-xs text-gray-600">Pendentes</p>
+                            <p class="text-lg font-bold text-yellow-600" id="resumoPendentes">R$ 0</p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-3 text-center">
+                            <p class="text-xs text-gray-600">Pagas</p>
+                            <p class="text-lg font-bold text-green-600" id="resumoPagas">R$ 0</p>
+                        </div>
+                    </div>
+
+                    <!-- Tabela -->
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b-2 border-gray-200 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Descrição</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Categoria</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Vencimento</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="despesasTableBody" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="6" class="px-4 py-4 text-center text-gray-500">
+                                        <i class="fas fa-spinner fa-spin mr-2"></i>Carregando...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Custos -->
+        <div id="content-custos" class="tab-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Card: Custos Detalhados -->
+                <div class="glass-card rounded-xl shadow-lg p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-calculator mr-2 text-red-600"></i>
+                        Custos Operacionais
+                    </h3>
+                    <div id="custosDetalhes" class="space-y-4">
+                        <!-- Seção: Custos Fixos -->
+                        <div class="border-b pb-2 mb-2">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Custos Fixos</p>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-server text-blue-600 text-2xl"></i>
+                                <div>
+                                    <p class="text-sm text-gray-600">Infraestrutura</p>
+                                    <p class="text-xs text-gray-500">VPS R$ 160 + Domínio R$ 5,42 + Email R$ 7,99</p>
+                                </div>
+                            </div>
+                            <span class="text-lg font-bold text-gray-800" id="custoInfraestrutura">R$ 173,41</span>
+                        </div>
+
+                        <!-- Despesas Fixas Cadastradas -->
+                        <div id="despesasCadastradas" class="hidden">
+                            <div class="flex items-center justify-between p-4 bg-purple-50 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <i class="fas fa-receipt text-purple-600 text-2xl"></i>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Despesas Fixas</p>
+                                        <p class="text-xs text-gray-500">Contabilidade, INSS, etc.</p>
+                                    </div>
+                                </div>
+                                <span class="text-lg font-bold text-gray-800" id="custoDespesasFixas">R$ 0</span>
+                            </div>
+                        </div>
+
+                        <!-- Seção: Custos Variáveis por Cliente -->
+                        <div class="border-b pb-2 mb-2 mt-4">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Custos Variáveis (por cliente)</p>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-robot text-red-600 text-2xl"></i>
+                                <div>
+                                    <p class="text-sm text-gray-600">IA Claude Haiku</p>
+                                    <p class="text-xs text-gray-500">R$ 0,50/cliente (~385 chamadas)</p>
+                                </div>
+                            </div>
+                            <span class="text-lg font-bold text-gray-800" id="custoIATotal">R$ 0</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <i class="fab fa-whatsapp text-green-600 text-2xl"></i>
+                                <div>
+                                    <p class="text-sm text-gray-600">WhatsApp API</p>
+                                    <p class="text-xs text-gray-500">R$ 4,00/cliente (~80 lembretes)</p>
+                                </div>
+                            </div>
+                            <span class="text-lg font-bold text-gray-800" id="custoWhatsApp">R$ 0</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <i class="fas fa-credit-card text-yellow-600 text-2xl"></i>
+                                <div>
+                                    <p class="text-sm text-gray-600">Gateway + Impostos</p>
+                                    <p class="text-xs text-gray-500">PagSeguro 3,99% + Simples 6%</p>
+                                </div>
+                            </div>
+                            <span class="text-lg font-bold text-gray-800" id="custoGatewayImpostos">R$ 0</span>
+                        </div>
+
+                        <div id="despesasVariaveisCont" class="hidden">
+                            <div class="flex items-center justify-between p-4 bg-orange-50 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <i class="fas fa-random text-orange-600 text-2xl"></i>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Despesas Eventuais</p>
+                                        <p class="text-xs text-gray-500">Deste mês</p>
+                                    </div>
+                                </div>
+                                <span class="text-lg font-bold text-gray-800" id="custoDespesasVariaveis">R$ 0</span>
+                            </div>
+                        </div>
+
+                        <!-- Total -->
+                        <div class="flex items-center justify-between p-4 bg-gray-100 rounded-lg border-2 border-gray-300 mt-4">
+                            <div>
+                                <p class="text-sm font-medium text-gray-700">Total Mensal</p>
+                                <p class="text-xs text-gray-500" id="custoResumoClientes">0 clientes</p>
+                            </div>
+                            <span class="text-2xl font-bold text-gray-900" id="custoTotal">R$ 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Lucratividade -->
+                <div class="glass-card rounded-xl shadow-lg p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">
+                        <i class="fas fa-chart-line mr-2 text-green-600"></i>
+                        Lucratividade
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                            <div>
+                                <p class="text-sm text-gray-600">Receita (MRR)</p>
+                                <p class="text-xs text-gray-500">R$ 150/cliente base</p>
+                            </div>
+                            <span class="text-lg font-bold text-green-600" id="receitaMensal">R$ 0</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+                            <div>
+                                <p class="text-sm text-gray-600">Custos Totais</p>
+                            </div>
+                            <span class="text-lg font-bold text-red-600" id="custoTotalLucro">R$ 0</span>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg">
+                            <div>
+                                <p class="text-sm font-medium text-white">Lucro Líquido</p>
+                            </div>
+                            <span class="text-2xl font-bold text-white" id="lucroLiquido">R$ 0</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="text-center p-4 bg-blue-50 rounded-lg">
+                                <p class="text-xs text-gray-600 mb-1">Margem por Cliente</p>
+                                <span class="text-2xl font-bold text-blue-600" id="margemCliente">R$ 0</span>
+                                <p class="text-xs text-gray-500" id="margemPercentual">0%</p>
+                            </div>
+                            <div class="text-center p-4 bg-purple-50 rounded-lg">
+                                <p class="text-xs text-gray-600 mb-1">Break-even</p>
+                                <span class="text-2xl font-bold text-purple-600" id="breakEven">0</span>
+                                <p class="text-xs text-gray-500">clientes</p>
+                            </div>
+                        </div>
+
+                        <!-- Status Break-even -->
+                        <div id="breakEvenStatus" class="p-4 rounded-lg text-center">
+                            <p class="text-sm font-medium" id="breakEvenMessage">Calculando...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Relatórios -->
+        <div id="content-relatorios" class="tab-content hidden">
+            <div class="glass-card rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-file-invoice-dollar mr-2 text-purple-600"></i>
+                    Relatório de Faturamento
+                </h3>
+
+                <!-- Filtros -->
+                <div class="flex items-center space-x-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Mês</label>
+                        <select id="relatorioMes" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500">
+                            <option value="1">Janeiro</option>
+                            <option value="2">Fevereiro</option>
+                            <option value="3">Março</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Maio</option>
+                            <option value="6">Junho</option>
+                            <option value="7">Julho</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Ano</label>
+                        <select id="relatorioAno" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500">
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                        </select>
+                    </div>
+                    <div class="pt-7">
+                        <button onclick="loadRelatorio()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition">
+                            <i class="fas fa-search mr-2"></i>Buscar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resumo -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <p class="text-sm text-gray-600">Total de Clientes</p>
+                        <p class="text-3xl font-bold text-gray-800" id="relatorioTotalClientes">0</p>
+                    </div>
+                    <div class="bg-green-50 rounded-lg p-4">
+                        <p class="text-sm text-gray-600">Faturamento Total</p>
+                        <p class="text-3xl font-bold text-green-600" id="relatorioFaturamentoTotal">R$ 0</p>
+                    </div>
+                </div>
+
+                <!-- Tabela de Relatório -->
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b-2 border-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profissionais Ativos</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Faturamento</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Agendamentos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="relatorioTableBody" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                                    Selecione mês e ano e clique em Buscar
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal de Edição de Despesa -->
+    <div id="modalEditarDespesa" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-bold text-gray-800">
+                        <i class="fas fa-edit mr-2 text-blue-600"></i>
+                        Editar Despesa
+                    </h3>
+                    <button onclick="fecharModalEditar()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <form id="formEditarDespesa" class="space-y-4">
+                    <input type="hidden" id="editDespesaId">
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
+                        <input type="text" id="editDescricao" required
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
+                            <select id="editCategoria" required
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="fixa">Fixa/Recorrente</option>
+                                <option value="variavel">Variável/Eventual</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                            <select id="editTipo"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="">Selecione</option>
+                                <option value="Infraestrutura">Infraestrutura</option>
+                                <option value="Pessoal">Pessoal</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Software">Software/Assinaturas</option>
+                                <option value="Impostos">Impostos</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Valor (R$) *</label>
+                            <input type="number" id="editValor" step="0.01" min="0" required
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
+                            <input type="date" id="editVencimento"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select id="editStatus"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="pendente">Pendente</option>
+                                <option value="pago">Pago</option>
+                                <option value="cancelado">Cancelado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Data Pagamento</label>
+                            <input type="date" id="editDataPagamento"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="editRecorrente"
+                                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-gray-700">Despesa recorrente</span>
+                        </label>
+                    </div>
+
+                    <div id="editRecorrenciaContainer" class="hidden grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Periodicidade</label>
+                            <select id="editPeriodicidade"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                <option value="mensal">Mensal</option>
+                                <option value="anual">Anual</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Dia vencimento</label>
+                            <input type="number" id="editDiaRecorrencia" min="1" max="31"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Observações</label>
+                        <textarea id="editObservacoes" rows="2"
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+
+                    <div class="flex gap-3 pt-2">
+                        <button type="button" onclick="fecharModalEditar()"
+                            class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2">
+                            <i class="fas fa-save"></i>
+                            Salvar Alterações
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
+            });
+        }
+    </script>
+
+    <script>
+        const API_BASE = '/api/financeiro';
+        let currentTab = 'visao-geral';
+
+        // Verificar autenticação
+        function checkAuth() {
+            const token = localStorage.getItem('financeiroToken');
+            const user = localStorage.getItem('financeiroUser');
+
+            if (!token || !user) {
+                window.location.href = '/static/financeiro/login.html';
+                return false;
+            }
+
+            // Mostrar nome do usuário
+            const userData = JSON.parse(user);
+            document.getElementById('userNameText').textContent = userData.nome;
+
+            return true;
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem('financeiroToken');
+            localStorage.removeItem('financeiroUser');
+            window.location.href = '/static/financeiro/login.html';
+        }
+
+        // Fazer requisição com token
+        async function apiRequest(endpoint, options = {}) {
+            const token = localStorage.getItem('financeiroToken');
+
+            const response = await fetch(endpoint, {
+                ...options,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            });
+
+            if (response.status === 401) {
+                logout();
+                throw new Error('Não autorizado');
+            }
+
+            return response.json();
+        }
+
+        // Trocar tabs
+        function showTab(tabName) {
+            // Esconder todos os conteúdos
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+
+            // Remover estilo ativo de todos os botões
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('border-green-500', 'text-green-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+
+            // Mostrar conteúdo selecionado
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+
+            // Ativar botão
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.classList.remove('border-transparent', 'text-gray-500');
+            activeBtn.classList.add('border-green-500', 'text-green-600');
+
+            currentTab = tabName;
+
+            // Carregar dados da tab
+            if (tabName === 'visao-geral') { loadMetricas(); loadAlertaFatorR(); }
+            else if (tabName === 'clientes') loadClientes();
+            else if (tabName === 'despesas') loadDespesas();
+            else if (tabName === 'custos') loadCustos();
+        }
+
+        // ==================== DESPESAS ====================
+
+        // Carregar despesas
+        async function loadDespesas() {
+            try {
+                const categoria = document.getElementById('filtroDespesaCategoria').value;
+                const status = document.getElementById('filtroDespesaStatus').value;
+
+                let url = `${API_BASE}/despesas?`;
+                if (categoria) url += `categoria=${categoria}&`;
+                if (status) url += `status=${status}&`;
+
+                const data = await apiRequest(url);
+
+                if (data.success) {
+                    // Atualizar resumo
+                    document.getElementById('resumoFixas').textContent = `R$ ${data.resumo.total_fixas.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                    document.getElementById('resumoVariaveis').textContent = `R$ ${data.resumo.total_variaveis.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                    document.getElementById('resumoPendentes').textContent = `R$ ${data.resumo.total_pendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                    document.getElementById('resumoPagas').textContent = `R$ ${data.resumo.total_pago.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+
+                    // Renderizar tabela
+                    const tbody = document.getElementById('despesasTableBody');
+
+                    if (data.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">Nenhuma despesa cadastrada</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = data.data.map(d => `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3">
+                                <div class="font-medium text-gray-900">${d.descricao}</div>
+                                <div class="text-xs text-gray-500">${d.tipo || ''} ${d.recorrente ? `<span class="text-blue-600">(${d.periodicidade === 'anual' ? 'Anual' : 'Mensal'})</span>` : ''}</div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full ${
+                                    d.categoria === 'fixa' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                                }">
+                                    ${d.categoria === 'fixa' ? 'Fixa' : 'Variável'}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 font-semibold text-gray-900">
+                                R$ ${d.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-600">
+                                ${d.data_vencimento ? new Date(d.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full ${
+                                    d.status === 'pago' ? 'bg-green-100 text-green-800' :
+                                    d.status === 'pendente' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                                }">
+                                    ${d.status === 'pago' ? 'Pago' : d.status === 'pendente' ? 'Pendente' : 'Cancelado'}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-2">
+                                    <button onclick='abrirModalEditar(${JSON.stringify(d).replace(/'/g, "\\'")})'  class="text-blue-600 hover:text-blue-800" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    ${d.status === 'pendente' ? `
+                                        <button onclick="marcarComoPago(${d.id})" class="text-green-600 hover:text-green-800" title="Marcar como pago">
+                                            <i class="fas fa-check-circle"></i>
+                                        </button>
+                                    ` : ''}
+                                    <button onclick="deletarDespesa(${d.id})" class="text-red-600 hover:text-red-800" title="Excluir">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar despesas:', error);
+                document.getElementById('despesasTableBody').innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-red-500">Erro ao carregar despesas</td></tr>';
+            }
+        }
+
+        // Criar nova despesa
+        async function criarDespesa(event) {
+            event.preventDefault();
+
+            const despesa = {
+                descricao: document.getElementById('despesaDescricao').value,
+                categoria: document.getElementById('despesaCategoria').value,
+                tipo: document.getElementById('despesaTipo').value || null,
+                valor: parseFloat(document.getElementById('despesaValor').value),
+                data_vencimento: document.getElementById('despesaVencimento').value || null,
+                recorrente: document.getElementById('despesaRecorrente').checked,
+                periodicidade: document.getElementById('despesaPeriodicidade').value,
+                dia_recorrencia: document.getElementById('despesaDiaRecorrencia').value ? parseInt(document.getElementById('despesaDiaRecorrencia').value) : null,
+                observacoes: document.getElementById('despesaObservacoes').value || null
+            };
+
+            try {
+                const response = await apiRequest(`${API_BASE}/despesas`, {
+                    method: 'POST',
+                    body: JSON.stringify(despesa)
+                });
+
+                if (response.success) {
+                    alert('Despesa criada com sucesso!');
+                    document.getElementById('formDespesa').reset();
+                    document.getElementById('recorrenciaContainer').classList.add('hidden');
+                    loadDespesas();
+                }
+            } catch (error) {
+                console.error('Erro ao criar despesa:', error);
+                alert('Erro ao criar despesa. Tente novamente.');
+            }
+        }
+
+        // Marcar como pago
+        async function marcarComoPago(id) {
+            if (!confirm('Marcar esta despesa como paga?')) return;
+
+            try {
+                const response = await apiRequest(`${API_BASE}/despesas/${id}/pagar`, {
+                    method: 'POST',
+                    body: JSON.stringify({ data_pagamento: new Date().toISOString().split('T')[0] })
+                });
+
+                if (response.success) {
+                    loadDespesas();
+                }
+            } catch (error) {
+                console.error('Erro ao marcar como pago:', error);
+                alert('Erro ao atualizar despesa.');
+            }
+        }
+
+        // Deletar despesa
+        async function deletarDespesa(id) {
+            if (!confirm('Tem certeza que deseja excluir esta despesa?')) return;
+
+            try {
+                const response = await apiRequest(`${API_BASE}/despesas/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.success) {
+                    loadDespesas();
+                }
+            } catch (error) {
+                console.error('Erro ao deletar despesa:', error);
+                alert('Erro ao excluir despesa.');
+            }
+        }
+
+        // Toggle campo recorrência (formulário de criação)
+        document.getElementById('despesaRecorrente').addEventListener('change', function() {
+            const container = document.getElementById('recorrenciaContainer');
+            if (this.checked) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        });
+
+        // Toggle campo recorrência (modal de edição)
+        document.getElementById('editRecorrente').addEventListener('change', function() {
+            const container = document.getElementById('editRecorrenciaContainer');
+            if (this.checked) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        });
+
+        // Form submit (criação)
+        document.getElementById('formDespesa').addEventListener('submit', criarDespesa);
+
+        // Form submit (edição)
+        document.getElementById('formEditarDespesa').addEventListener('submit', salvarEdicao);
+
+        // Abrir modal de edição
+        function abrirModalEditar(despesa) {
+            document.getElementById('editDespesaId').value = despesa.id;
+            document.getElementById('editDescricao').value = despesa.descricao;
+            document.getElementById('editCategoria').value = despesa.categoria;
+            document.getElementById('editTipo').value = despesa.tipo || '';
+            document.getElementById('editValor').value = despesa.valor;
+            document.getElementById('editVencimento').value = despesa.data_vencimento || '';
+            document.getElementById('editStatus').value = despesa.status;
+            document.getElementById('editDataPagamento').value = despesa.data_pagamento || '';
+            document.getElementById('editRecorrente').checked = despesa.recorrente;
+            document.getElementById('editPeriodicidade').value = despesa.periodicidade || 'mensal';
+            document.getElementById('editDiaRecorrencia').value = despesa.dia_recorrencia || '';
+            document.getElementById('editObservacoes').value = despesa.observacoes || '';
+
+            // Mostrar/esconder campos de recorrência
+            const container = document.getElementById('editRecorrenciaContainer');
+            if (despesa.recorrente) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+
+            document.getElementById('modalEditarDespesa').classList.remove('hidden');
+            document.getElementById('modalEditarDespesa').classList.add('flex');
+        }
+
+        // Fechar modal de edição
+        function fecharModalEditar() {
+            document.getElementById('modalEditarDespesa').classList.add('hidden');
+            document.getElementById('modalEditarDespesa').classList.remove('flex');
+        }
+
+        // Salvar edição
+        async function salvarEdicao(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('editDespesaId').value;
+            const despesa = {
+                descricao: document.getElementById('editDescricao').value,
+                categoria: document.getElementById('editCategoria').value,
+                tipo: document.getElementById('editTipo').value || null,
+                valor: parseFloat(document.getElementById('editValor').value),
+                data_vencimento: document.getElementById('editVencimento').value || null,
+                status: document.getElementById('editStatus').value,
+                data_pagamento: document.getElementById('editDataPagamento').value || null,
+                recorrente: document.getElementById('editRecorrente').checked,
+                periodicidade: document.getElementById('editPeriodicidade').value,
+                dia_recorrencia: document.getElementById('editDiaRecorrencia').value ? parseInt(document.getElementById('editDiaRecorrencia').value) : null,
+                observacoes: document.getElementById('editObservacoes').value || null
+            };
+
+            try {
+                const response = await apiRequest(`${API_BASE}/despesas/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(despesa)
+                });
+
+                if (response.success) {
+                    alert('Despesa atualizada com sucesso!');
+                    fecharModalEditar();
+                    loadDespesas();
+                }
+            } catch (error) {
+                console.error('Erro ao atualizar despesa:', error);
+                alert('Erro ao atualizar despesa. Tente novamente.');
+            }
+        }
+
+        // ==================== MÉTRICAS ====================
+
+        // Carregar métricas gerais
+        async function loadMetricas() {
+            try {
+                const data = await apiRequest(`${API_BASE}/dashboard/metricas`);
+
+                if (data.success) {
+                    const metrics = data.data;
+
+                    document.getElementById('clientesAtivos').textContent = metrics.clientes_ativos;
+                    document.getElementById('novosClientes').textContent = metrics.novos_clientes_7dias;
+                    document.getElementById('totalMedicos').textContent = metrics.total_medicos;
+                    document.getElementById('mrr').textContent = `R$ ${metrics.mrr.toLocaleString('pt-BR')}`;
+                    document.getElementById('ticketMedio').textContent = `R$ ${metrics.ticket_medio.toFixed(2)}`;
+                    document.getElementById('agendamentosMes').textContent = metrics.agendamentos_mes;
+
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('metricas-cards').classList.remove('hidden');
+                    document.getElementById('chart-container').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar métricas:', error);
+                alert('Erro ao carregar métricas');
+            }
+        }
+
+        // Carregar alerta de Fator R
+        async function loadAlertaFatorR() {
+            try {
+                const data = await apiRequest(`${API_BASE}/alertas/fator-r`);
+
+                if (data.success) {
+                    const alerta = document.getElementById('alerta-fator-r');
+                    const icone = document.getElementById('alerta-fator-icone');
+                    const titulo = document.getElementById('alerta-fator-titulo');
+                    const badge = document.getElementById('alerta-fator-badge');
+                    const mensagem = document.getElementById('alerta-fator-mensagem');
+                    const economia = document.getElementById('alerta-fator-economia');
+
+                    // Se não há receita ou status OK, não mostrar alerta
+                    if (data.status === 'N/A' || data.status === 'OK') {
+                        alerta.classList.add('hidden');
+                        return;
+                    }
+
+                    alerta.classList.remove('hidden');
+
+                    if (data.nivel === 'warning') {
+                        alerta.className = 'mb-6 p-4 rounded-lg border shadow-sm border-yellow-400 bg-yellow-50 text-yellow-800';
+                        icone.className = 'fas fa-exclamation-triangle text-2xl text-yellow-500';
+                        badge.className = 'text-xs px-2 py-0.5 rounded-full bg-yellow-200 text-yellow-800';
+                        badge.textContent = 'ATENÇÃO';
+                    } else if (data.nivel === 'error') {
+                        alerta.className = 'mb-6 p-4 rounded-lg border shadow-sm border-red-400 bg-red-50 text-red-800';
+                        icone.className = 'fas fa-exclamation-circle text-2xl text-red-500';
+                        badge.className = 'text-xs px-2 py-0.5 rounded-full bg-red-200 text-red-800';
+                        badge.textContent = 'CRÍTICO';
+                    }
+
+                    titulo.textContent = `Fator R: ${data.fator_r}%`;
+                    mensagem.textContent = data.mensagem;
+                    economia.textContent = `R$ ${data.economia_mensal_anexo_iii.toLocaleString('pt-BR', {minimumFractionDigits: 2})}/mês`;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar alerta Fator R:', error);
+            }
+        }
+
+        // Carregar lista de clientes
+        async function loadClientes() {
+            try {
+                const tbody = document.getElementById('clientesTableBody');
+                tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>Carregando...</td></tr>';
+
+                const data = await apiRequest(`${API_BASE}/dashboard/clientes`);
+
+                if (data.success) {
+                    if (data.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-gray-500">Nenhum cliente cadastrado</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = data.data.map(cliente => `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4">
+                                <div>
+                                    <div class="font-medium text-gray-900">${cliente.nome}</div>
+                                    <div class="text-xs text-gray-500">ID: ${cliente.id}</div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <a href="${cliente.url}" target="_blank" class="text-blue-600 hover:underline text-sm">
+                                    ${cliente.subdomain}
+                                </a>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full ${
+                                    cliente.plano === 'profissional' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                                }">
+                                    ${cliente.plano}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900">${cliente.medicos_ativos} ativos</div>
+                                <div class="text-xs text-gray-500">${cliente.total_medicos} total</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="font-semibold text-green-600">R$ ${cliente.valor_mensal.toFixed(2)}</div>
+                                <div class="text-xs text-gray-500">por mês</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full ${
+                                    cliente.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }">
+                                    ${cliente.ativo ? 'Ativo' : 'Inativo'}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <button onclick="window.open('${cliente.url}', '_blank')" class="text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+                document.getElementById('clientesTableBody').innerHTML = '<tr><td colspan="7" class="px-6 py-4 text-center text-red-500">Erro ao carregar dados</td></tr>';
+            }
+        }
+
+        // Carregar custos
+        async function loadCustos() {
+            try {
+                const data = await apiRequest(`${API_BASE}/dashboard/custos`);
+
+                if (data.success) {
+                    const custos = data.data;
+                    const formatMoney = (v) => v.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                    // Infraestrutura
+                    document.getElementById('custoInfraestrutura').textContent = `R$ ${formatMoney(custos.custos.infraestrutura.total)}`;
+
+                    // Custos variáveis por cliente
+                    if (custos.custos.custos_variaveis_cliente) {
+                        const cv = custos.custos.custos_variaveis_cliente;
+                        document.getElementById('custoIATotal').textContent = `R$ ${formatMoney(custos.custos.ia_claude.total)}`;
+                        document.getElementById('custoWhatsApp').textContent = `R$ ${formatMoney(cv.whatsapp_api * custos.total_clientes)}`;
+                        document.getElementById('custoGatewayImpostos').textContent = `R$ ${formatMoney((cv.gateway_pagamento + cv.simples_nacional) * custos.total_clientes)}`;
+                    }
+
+                    // Totais
+                    document.getElementById('custoTotal').textContent = `R$ ${formatMoney(custos.custos.total_mensal)}`;
+                    document.getElementById('custoResumoClientes').textContent = `${custos.total_clientes} cliente(s) ativos`;
+                    document.getElementById('custoTotalLucro').textContent = `R$ ${formatMoney(custos.custos.total_mensal)}`;
+                    document.getElementById('receitaMensal').textContent = `R$ ${formatMoney(custos.receita.mrr)}`;
+                    document.getElementById('lucroLiquido').textContent = `R$ ${formatMoney(custos.lucro.mensal)}`;
+
+                    // Margem e Break-even
+                    document.getElementById('margemCliente').textContent = `R$ ${formatMoney(custos.lucro.margem_por_cliente)}`;
+                    document.getElementById('margemPercentual').textContent = `${custos.lucro.margem_percentual.toFixed(1)}%`;
+                    document.getElementById('breakEven').textContent = custos.analise.break_even_clientes;
+
+                    // Status Break-even
+                    const breakEvenStatus = document.getElementById('breakEvenStatus');
+                    const breakEvenMessage = document.getElementById('breakEvenMessage');
+                    if (custos.total_clientes >= custos.analise.break_even_clientes) {
+                        breakEvenStatus.className = 'p-4 rounded-lg text-center bg-green-100';
+                        breakEvenMessage.className = 'text-sm font-medium text-green-700';
+                        breakEvenMessage.textContent = `Break-even atingido! (+${custos.total_clientes - custos.analise.break_even_clientes} clientes além)`;
+                    } else {
+                        breakEvenStatus.className = 'p-4 rounded-lg text-center bg-yellow-100';
+                        breakEvenMessage.className = 'text-sm font-medium text-yellow-700';
+                        breakEvenMessage.textContent = custos.analise.status_break_even;
+                    }
+
+                    // Exibir despesas cadastradas se houver
+                    if (custos.custos.despesas_cadastradas) {
+                        const despesas = custos.custos.despesas_cadastradas;
+
+                        if (despesas.fixas > 0) {
+                            document.getElementById('despesasCadastradas').classList.remove('hidden');
+                            document.getElementById('custoDespesasFixas').textContent = `R$ ${formatMoney(despesas.fixas)}`;
+                        } else {
+                            document.getElementById('despesasCadastradas').classList.add('hidden');
+                        }
+
+                        if (despesas.variaveis > 0) {
+                            document.getElementById('despesasVariaveisCont').classList.remove('hidden');
+                            document.getElementById('custoDespesasVariaveis').textContent = `R$ ${formatMoney(despesas.variaveis)}`;
+                        } else {
+                            document.getElementById('despesasVariaveisCont').classList.add('hidden');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar custos:', error);
+                alert('Erro ao carregar custos');
+            }
+        }
+
+        // Carregar relatório
+        async function loadRelatorio() {
+            try {
+                const mes = document.getElementById('relatorioMes').value;
+                const ano = document.getElementById('relatorioAno').value;
+
+                const tbody = document.getElementById('relatorioTableBody');
+                tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center"><i class="fas fa-spinner fa-spin mr-2"></i>Carregando...</td></tr>';
+
+                const data = await apiRequest(`${API_BASE}/relatorios/faturamento?mes=${mes}&ano=${ano}`);
+
+                if (data.success) {
+                    document.getElementById('relatorioTotalClientes').textContent = data.resumo.total_clientes;
+                    document.getElementById('relatorioFaturamentoTotal').textContent = `R$ ${data.resumo.faturamento_total.toFixed(2)}`;
+
+                    if (data.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Nenhum dado encontrado para este período</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = data.data.map(item => `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4">
+                                <div class="font-medium text-gray-900">${item.cliente_nome}</div>
+                                <div class="text-xs text-gray-500">${item.subdomain}</div>
+                            </td>
+                            <td class="px-6 py-4 text-gray-900">${item.medicos_ativos}</td>
+                            <td class="px-6 py-4 font-semibold text-green-600">R$ ${item.faturamento_mensal.toFixed(2)}</td>
+                            <td class="px-6 py-4">
+                                <div class="text-sm text-gray-900">${item.agendamentos.total} total</div>
+                                <div class="text-xs text-gray-500">${item.agendamentos.realizados} realizados</div>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar relatório:', error);
+                document.getElementById('relatorioTableBody').innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">Erro ao carregar relatório</td></tr>';
+            }
+        }
+
+        // Inicializar
+        if (checkAuth()) {
+            // Setar mês e ano atual
+            const hoje = new Date();
+            document.getElementById('relatorioMes').value = hoje.getMonth() + 1;
+            document.getElementById('relatorioAno').value = hoje.getFullYear();
+
+            // Carregar dados iniciais
+            loadMetricas();
+            loadAlertaFatorR();
+        }
+    </script>
+</body>
+</html>

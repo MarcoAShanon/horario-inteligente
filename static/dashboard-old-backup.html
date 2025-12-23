@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Profissional - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        // Usar URL relativa para funcionar em qualquer ambiente
+        const API_URL = '/api';
+
+        // Componente de Login
+        function Login({ onLogin }) {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState('');
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError('');
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('username', email);
+                    formData.append('password', password);
+                    
+                    const response = await axios.post(`${API_URL}/auth/login`, formData);
+                    // Usar mesmas chaves do sistema principal
+                    localStorage.setItem('authToken', response.data.access_token);
+                    localStorage.setItem('userData', JSON.stringify(response.data.user));
+                    onLogin(response.data.user);
+                } catch (err) {
+                    setError('Email ou senha incorretos');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4">
+                    <div className="glass-effect rounded-2xl shadow-2xl p-8 w-full max-w-md">
+                        <div className="text-center mb-8">
+                            <i className="fas fa-hospital text-6xl text-purple-600 mb-4"></i>
+                            <h1 className="text-3xl font-bold text-gray-800">Horário Inteligente</h1>
+                            <p className="text-gray-600 mt-2">Portal Profissional</p>
+                        </div>
+                        
+                        <form onSubmit={handleLogin}>
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-bold mb-2">
+                                    <i className="fas fa-envelope mr-2"></i>Email
+                                </label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-purple-500 focus:outline-none"
+                                    placeholder="seu@email.com"
+                                    required
+                                />
+                            </div>
+                            
+                            <div className="mb-6">
+                                <label className="block text-gray-700 text-sm font-bold mb-2">
+                                    <i className="fas fa-lock mr-2"></i>Senha
+                                </label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-purple-500 focus:outline-none"
+                                    placeholder="••••••••"
+                                    required
+                                />
+                            </div>
+                            
+                            {error && (
+                                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+                                    {error}
+                                </div>
+                            )}
+                            
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-4 rounded-lg hover:opacity-90 transition duration-200"
+                            >
+                                {loading ? 'Entrando...' : 'Entrar'}
+                            </button>
+                        </form>
+                        
+                        <div className="mt-6 text-center text-sm text-gray-600">
+                            <strong>Credenciais de teste:</strong><br/>
+                            Admin: admin@prosaude.com / admin123<br/>
+                            Médico: tania@prosaude.com / admin123
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Componente Dashboard
+        function Dashboard({ medico, onLogout }) {
+            const [stats, setStats] = useState(null);
+            const [agenda, setAgenda] = useState([]);
+            const [activeTab, setActiveTab] = useState('dashboard');
+
+            useEffect(() => {
+                loadData();
+            }, []);
+
+            const loadData = async () => {
+                try {
+                    // Usar mesma chave do sistema principal
+                    const token = localStorage.getItem('authToken');
+                    const config = { headers: { Authorization: `Bearer ${token}` }};
+
+                    const [statsRes, agendaRes] = await Promise.all([
+                        axios.get(`${API_URL}/dashboard/stats`, config),
+                        axios.get(`${API_URL}/dashboard/agenda/hoje`, config)
+                    ]);
+                    
+                    setStats(statsRes.data);
+                    setAgenda(agendaRes.data);
+                } catch (err) {
+                    console.error('Erro:', err);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    <header className="bg-white shadow">
+                        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+                            <div className="flex items-center gap-4">
+                                <h1 className="text-2xl font-bold text-purple-600">
+                                    <i className="fas fa-hospital mr-2"></i>
+                                    Horário Inteligente
+                                </h1>
+                                <span className="text-gray-400">|</span>
+                                <span className="text-lg text-gray-600">Dashboard</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-gray-700 hidden sm:inline">
+                                    <i className="fas fa-user-circle mr-2"></i>
+                                    {medico.nome}
+                                </span>
+                                <button
+                                    onClick={() => window.location.href = '/static/calendario-unificado.html'}
+                                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                                >
+                                    <i className="fas fa-calendar-alt"></i>
+                                    <span className="hidden sm:inline">Calendário</span>
+                                </button>
+                                <button
+                                    onClick={onLogout}
+                                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center gap-2"
+                                >
+                                    <i className="fas fa-sign-out-alt"></i>
+                                    <span className="hidden sm:inline">Sair</span>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Barra de Navegação Rápida */}
+                    <div className="bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg">
+                        <div className="max-w-7xl mx-auto px-4 py-3">
+                            <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                                <button
+                                    onClick={() => window.location.href = '/static/calendario-unificado.html'}
+                                    className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition flex items-center gap-2 backdrop-blur"
+                                >
+                                    <i className="fas fa-calendar-check"></i>
+                                    <span>Ver Agenda</span>
+                                </button>
+                                <button
+                                    onClick={() => window.location.href = '/static/perfil.html'}
+                                    className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition flex items-center gap-2 backdrop-blur"
+                                >
+                                    <i className="fas fa-user-cog"></i>
+                                    <span>Meu Perfil</span>
+                                </button>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition flex items-center gap-2 backdrop-blur"
+                                >
+                                    <i className="fas fa-sync-alt"></i>
+                                    <span>Atualizar</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-7xl mx-auto p-4">
+                        {/* Estatísticas Principais */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-gray-500 text-sm">Total Pacientes</h3>
+                                <p className="text-3xl font-bold">{stats?.total_pacientes || 0}</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-gray-500 text-sm">Consultas Hoje</h3>
+                                <p className="text-3xl font-bold">{stats?.consultas_hoje || 0}</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-gray-500 text-sm">Esta Semana</h3>
+                                <p className="text-3xl font-bold">{stats?.consultas_semana || 0}</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-lg shadow">
+                                <h3 className="text-gray-500 text-sm">Taxa Ocupação</h3>
+                                <p className="text-3xl font-bold">{stats?.taxa_ocupacao || 0}%</p>
+                            </div>
+                        </div>
+
+                        {/* NOVO: Métricas de Comparecimento */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg shadow border-l-4 border-green-500">
+                                <h3 className="text-green-700 text-sm font-semibold flex items-center">
+                                    <i className="fas fa-check-circle mr-2"></i>
+                                    Atendimentos Realizados
+                                </h3>
+                                <p className="text-3xl font-bold text-green-900">{stats?.atendimentos_realizados || 0}</p>
+                                <p className="text-xs text-green-600 mt-1">Consultas concluídas</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-lg shadow border-l-4 border-yellow-500">
+                                <h3 className="text-yellow-700 text-sm font-semibold flex items-center">
+                                    <i className="fas fa-user-times mr-2"></i>
+                                    Faltas sem Aviso
+                                </h3>
+                                <p className="text-3xl font-bold text-yellow-900">{stats?.faltas_sem_aviso || 0}</p>
+                                <p className="text-xs text-yellow-600 mt-1">Pacientes não compareceram</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-lg shadow border-l-4 border-gray-400">
+                                <h3 className="text-gray-700 text-sm font-semibold flex items-center">
+                                    <i className="fas fa-ban mr-2"></i>
+                                    Cancelamentos
+                                </h3>
+                                <p className="text-3xl font-bold text-gray-900">{stats?.cancelamentos || 0}</p>
+                                <p className="text-xs text-gray-600 mt-1">Consultas canceladas</p>
+                            </div>
+                            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg shadow border-l-4 border-blue-500">
+                                <h3 className="text-blue-700 text-sm font-semibold flex items-center">
+                                    <i className="fas fa-chart-line mr-2"></i>
+                                    Taxa de Comparecimento
+                                </h3>
+                                <p className="text-3xl font-bold text-blue-900">
+                                    {stats?.taxa_comparecimento || 0}%
+                                </p>
+                                <p className="text-xs text-blue-600 mt-1">
+                                    {stats?.atendimentos_realizados || 0} de {(stats?.atendimentos_realizados || 0) + (stats?.faltas_sem_aviso || 0)} agendados
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow p-6">
+                            <h2 className="text-xl font-bold mb-4">Agenda de Hoje</h2>
+                            <div className="space-y-2">
+                                {agenda.map(item => (
+                                    <div key={item.id} className="border rounded p-3 flex justify-between">
+                                        <div>
+                                            <span className="font-bold">{item.horario}</span> - {item.paciente}
+                                        </div>
+                                        <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
+                                            {item.status}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // App Principal
+        function App() {
+            const [medico, setMedico] = useState(null);
+
+            useEffect(() => {
+                // Usar mesma chave do sistema principal
+                const medicoData = localStorage.getItem('userData');
+                if (medicoData) {
+                    setMedico(JSON.parse(medicoData));
+                }
+            }, []);
+
+            const handleLogin = (medicoData) => {
+                setMedico(medicoData);
+            };
+
+            const handleLogout = () => {
+                localStorage.clear();
+                setMedico(null);
+            };
+
+            return medico ? 
+                <Dashboard medico={medico} onLogout={handleLogout} /> : 
+                <Login onLogin={handleLogin} />;
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+
+    <!-- Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
+            });
+        }
+    </script>
+</body>
+</html>

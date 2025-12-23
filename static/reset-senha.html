@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redefinir Senha - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-md p-8">
+        <div class="text-center mb-6">
+            <i class="fas fa-lock text-5xl text-blue-600 mb-3"></i>
+            <h1 class="text-2xl font-bold text-gray-800">Redefinir Senha</h1>
+            <p class="text-gray-600 mt-2">Digite sua nova senha</p>
+        </div>
+
+        <form id="formReset" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Nova Senha (mín. 6 caracteres)</label>
+                <input type="password" id="nova_senha" minlength="6" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Confirmar Nova Senha</label>
+                <input type="password" id="confirmar_senha" minlength="6" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <button type="submit" id="btnSubmit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                Redefinir Senha
+            </button>
+        </form>
+
+        <div id="mensagemSucesso" class="hidden mt-6 p-4 bg-green-50 border-l-4 border-green-500 rounded text-center">
+            <p class="text-green-700 mb-3">
+                <i class="fas fa-check-circle text-2xl"></i><br>
+                <strong>Senha redefinida com sucesso!</strong>
+            </p>
+            <a href="/static/login.html" class="inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                Fazer Login
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Pegar token da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        if (!token) {
+            alert('❌ Link inválido ou expirado');
+            window.location.href = '/static/esqueci-senha.html';
+        }
+
+        document.getElementById('formReset').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const nova_senha = document.getElementById('nova_senha').value;
+            const confirmar_senha = document.getElementById('confirmar_senha').value;
+
+            if (nova_senha !== confirmar_senha) {
+                alert('❌ As senhas não coincidem!');
+                return;
+            }
+
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Redefinindo...';
+
+            try {
+                const response = await fetch('/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, nova_senha })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.sucesso) {
+                    document.getElementById('formReset').classList.add('hidden');
+                    document.getElementById('mensagemSucesso').classList.remove('hidden');
+                } else {
+                    alert('❌ Erro: ' + (result.detail || 'Erro ao redefinir senha'));
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = 'Redefinir Senha';
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('❌ Erro ao redefinir senha.');
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'Redefinir Senha';
+            }
+        });
+    </script>
+
+    <!-- Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
+            });
+        }
+    </script>
+</body>
+</html>

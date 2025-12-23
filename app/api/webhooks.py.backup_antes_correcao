@@ -1,0 +1,462 @@
+"""
+Webhook com IA Anthropic integrada - VERSÃO FINAL
+Arquivo: app/api/webhooks.py
+Sistema Pro-Saúde com Claude 3.5 Sonnet
+"""
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
+import logging
+import json
+import aiohttp
+from typing import Optional, Dict, Any, List
+from datetime import datetime
+import os
+from sqlalchemy import text
+
+# Configurar logging
+logger = logging.getLogger(__name__)
+
+# Configuração da Evolution API
+EVOLUTION_API_URL = "http://localhost:8082"
+EVOLUTION_API_KEY = "evolution-api-prosaude-123"
+INSTANCE_NAME = "prosaude-whatsapp"
+
+# ID da clínica Pro-Saúde (do banco de dados)
+CLIENTE_ID = 1  # Pro-Saúde tem ID 1 no banco
+
+# Importar database e serviços
+from app.database import SessionLocal
+from app.services.anthropic_service import AnthropicService
+
+router = APIRouter()
+
+# Dicionário para armazenar contexto das conversas
+conversation_contexts: Dict[str, List[Dict]] = {}
+
+@router.post("/whatsapp/{instance_name}")
+async def webhook_whatsapp(instance_name: str, request: Request):
+    """
+    Webhook principal com IA Claude 3.5 Sonnet integrada
+    """
+    try:
+        # Receber dados
+        webhook_data = await request.json()
+        logger.info(f"📨 Webhook recebido para {instance_name}")
+        logger.info(f"🔍 DEBUG - Dados recebidos: {json.dumps(webhook_data, indent=2)}")
+
+        # Extrair informações da mensagem
+        message_info = extract_message_info(webhook_data)
+
+        if not message_info:
+            logger.info("Mensagem ignorada (não é texto ou é do bot)")
+            return JSONResponse(
+                status_code=200,
+                content={"status": "ignored", "reason": "not_user_message"}
+            )
+
+        sender = message_info['sender']
+        text = message_info['text']
+        push_name = message_info.get('push_name', 'Cliente')
+
+        logger.info(f"💬 {push_name} ({sender}): {text}")
+        logger.info(f"🔍 DEBUG - Chamando process_with_anthropic_ai...")
+
+        # Processar com IA Anthropic
+        response_message = await process_with_anthropic_ai(text, sender, push_name)
+        logger.info(f"🔍 DEBUG - Resposta da IA recebida: {response_message[:100] if response_message else 'NENHUMA'}")
+
+        if response_message:
+            # Enviar resposta via WhatsApp
+            success = await send_whatsapp_response(instance_name, sender, response_message)
+
+            if success:
+                logger.info(f"✅ Resposta IA enviada para {push_name}")
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "status": "success",
+                        "response_sent": True,
+                        "ai_used": True,
+                        "model": "claude-3.5-sonnet"
+                    }
+                )
+            else:
+                logger.error(f"Erro ao enviar resposta para {sender}")
+                return JSONResponse(
+                    status_code=200,
+                    content={"status": "error", "response_sent": False}
+                )
+
+        logger.warning("🔍 DEBUG - Nenhuma resposta da IA, retornando processed")
+        return JSONResponse(
+            status_code=200,
+            content={"status": "processed"}
+        )
+
+    except Exception as e:
+        logger.error(f"Erro no webhook: {e}", exc_info=True)
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "message": str(e)}
+        )
+
+async def process_with_anthropic_ai(text: str, sender: str, push_name: str) -> str:
+    """
+    Processa mensagem usando AnthropicService existente
+    """
+    logger.info(f"🔍 INICIANDO process_with_anthropic_ai")
+    logger.info(f"🔍 Parâmetros: text='{text[:50]}...', sender='{sender}', push_name='{push_name}'")
+    
+    db = SessionLocal()
+    logger.info("🔍 Conexão com banco criada")
+    
+    try:
+        logger.info(f"🔍 Criando AnthropicService com cliente_id={CLIENTE_ID}")
+        
+        # Inicializar serviço Anthropic com o banco
+        ai_service = AnthropicService(db=db, cliente_id=CLIENTE_ID)
+        logger.info("🔍 AnthropicService criado com sucesso")
+        
+        # Verificar se IA está ativa
+        logger.info(f"🔍 use_real_ai = {ai_service.use_real_ai}")
+        
+        # Obter contexto da conversa
+        if sender not in conversation_contexts:
+            conversation_contexts[sender] = []
+            logger.info(f"🔍 Novo contexto criado para {sender}")
+        else:
+            logger.info(f"🔍 Contexto existente para {sender}: {len(conversation_contexts[sender])} msgs")
+
+        contexto_conversa = conversation_contexts[sender]
+
+        # Processar mensagem com IA
+        logger.info(f"🤖 Processando com Claude 3.5 Sonnet...")
+        logger.info(f"🔍 Chamando ai_service.processar_mensagem...")
+        
+        resultado = ai_service.processar_mensagem(
+            mensagem=text,
+            telefone=sender,
+            contexto_conversa=contexto_conversa
+        )
+        
+        logger.info(f"🔍 Resultado recebido: {type(resultado)}")
+        logger.info(f"🔍 Chaves do resultado: {list(resultado.keys()) if isinstance(resultado, dict) else 'NÃO É DICT'}")
+
+        # Extrair resposta
+        resposta = resultado.get("resposta", "Como posso ajudá-lo?")
+        intencao = resultado.get("intencao", "outros")
+        proxima_acao = resultado.get("proxima_acao", "informar")
+        dados_coletados = resultado.get("dados_coletados", {})
+
+        # Extrair e converter data de data_preferida
+        data_preferida = dados_coletados.get("data_preferida", "")
+        if data_preferida and "/" in data_preferida:
+            partes = data_preferida.split()
+            data_br = partes[0]
+            hora = partes[1] if len(partes) >= 2 else "09:00"
+            dia, mes, ano = data_br.split("/")
+            dados_coletados["data"] = f"{ano}-{mes}-{dia}"
+            dados_coletados["hora"] = hora
+            logger.info(f"✅ Data convertida: {dados_coletados["data"]} {dados_coletados["hora"]}")
+
+        logger.info(f"🔍 Resposta extraída: '{resposta[:100]}...'")
+        logger.info(f"   Intenção detectada: {intencao}")
+        logger.info(f"   Próxima ação: {proxima_acao}")
+
+        # Atualizar contexto da conversa
+        conversation_contexts[sender].append({
+            "tipo": "user",
+            "texto": text,
+            "timestamp": datetime.now().isoformat()
+        })
+        conversation_contexts[sender].append({
+            "tipo": "assistant",
+            "texto": resposta,
+            "timestamp": datetime.now().isoformat(),
+            "intencao": intencao
+        })
+
+        # Limitar histórico a 10 mensagens
+        if len(conversation_contexts[sender]) > 10:
+            conversation_contexts[sender] = conversation_contexts[sender][-10:]
+
+        # Adicionar ações baseadas na intenção
+        if proxima_acao == "verificar_agenda" and dados_coletados.get("medico_id"):
+            # Aqui poderia integrar com calendario_service
+            resposta += "\n\n📅 _Verificando agenda disponível..._"
+
+        # Criar agendamento se tiver data e hora
+        if intencao == "agendamento" and dados_coletados.get("data") and dados_coletados.get("hora"):
+            try:
+                nome_paciente = push_name or "Paciente WhatsApp"
+                telefone = sender.replace("@s.whatsapp.net", "")
+                paciente = db.execute(text("SELECT id FROM pacientes WHERE telefone = :tel LIMIT 1"), {"tel": telefone}).fetchone()
+                if not paciente:
+                    result = db.execute(text("INSERT INTO pacientes (nome, telefone, cliente_id, convenio, criado_em, atualizado_em) VALUES (:nome, :tel, 1, :conv, NOW(), NOW()) RETURNING id"), {"nome": nome_paciente, "tel": telefone, "conv": dados_coletados.get("convenio", "Particular")})
+                    paciente_id = result.scalar()
+                else:
+                    paciente_id = paciente.id
+                data_hora_str = dados_coletados.get("data") + " " + dados_coletados.get("hora") + ":00"
+                db.execute(text("INSERT INTO agendamentos (paciente_id, medico_id, data_hora, status, tipo_atendimento, motivo_consulta, criado_em, atualizado_em) VALUES (:pac, 2, :dt, 'confirmado', 'consulta', :mot, NOW(), NOW())"), {"pac": paciente_id, "dt": data_hora_str, "mot": dados_coletados.get("especialidade", "Consulta WhatsApp")})
+                db.commit()
+                logger.info(f"✅ Agendamento criado para {nome_paciente}")
+            except Exception as e:
+                logger.error(f"❌ Erro: {e}")
+                db.rollback()
+
+        elif proxima_acao == "agendar":
+            logger.info(f"📝 Tentando criar agendamento. Dados coletados: {dados_coletados}")
+            logger.info(f"📝 Telefone: {sender}, Nome: {push_name}")
+            # Criar agendamento real no banco de dados
+            if dados_coletados.get("data") and dados_coletados.get("hora"):
+                try:
+
+                    # Preparar dados do paciente
+                    nome_paciente = push_name or "Paciente WhatsApp"
+                    telefone = sender.replace("@s.whatsapp.net", "")
+
+                    # Criar ou buscar paciente
+                    paciente = db.execute(text("""
+                        SELECT id FROM pacientes WHERE telefone = :tel LIMIT 1
+                    """), {"tel": telefone}).fetchone()
+
+                    if not paciente:
+                        result = db.execute(text("""
+                            INSERT INTO pacientes (nome, telefone, cliente_id, convenio, criado_em, atualizado_em)
+                            VALUES (:nome, :tel, 1, 'Particular', NOW(), NOW())
+                            RETURNING id
+                        """), {"nome": nome_paciente, "tel": telefone})
+                        paciente_id = result.scalar()
+                    else:
+                        paciente_id = paciente.id
+
+                    # Criar agendamento
+                    medico_id = dados_coletados.get("medico_id", 1)
+                    data_hora = f"{dados_coletados['data']} {dados_coletados['hora']}:00"
+
+                    db.execute(text("""
+                        INSERT INTO agendamentos (paciente_id, medico_id, data_hora, status, tipo_atendimento, motivo_consulta, criado_em, atualizado_em)
+                        VALUES (:pac_id, :med_id, :dt, 'confirmado', 'consulta', 'Agendamento via WhatsApp', NOW(), NOW())
+                    """), {"pac_id": paciente_id, "med_id": medico_id, "dt": data_hora})
+
+                    db.commit()
+                    logger.info(f"✅ Agendamento criado via WhatsApp para {nome_paciente}")
+                    resposta += "\n\n✅ *Agendamento confirmado e salvo com sucesso!*"
+                except Exception as e:
+                    logger.error(f"Erro ao criar agendamento: {e}")
+                    resposta += "\n\n❌ *Erro ao salvar agendamento. Por favor, tente novamente.*"
+            else:
+                resposta += "\n\n✅ *Para confirmar o agendamento, digite 'confirmar'*"
+
+        # Formatar resposta para WhatsApp
+        resposta_formatada = formatar_para_whatsapp(resposta)
+        logger.info(f"🔍 Resposta formatada: '{resposta_formatada[:100]}...'")
+
+        return resposta_formatada
+
+    except Exception as e:
+        logger.error(f"❌ ERRO ao processar com IA: {e}", exc_info=True)
+        logger.info(f"🔍 Usando fallback response...")
+        # Fallback para resposta simples
+        return get_fallback_response(text, push_name)
+    finally:
+        logger.info(f"🔍 Fechando conexão com banco")
+        db.close()
+
+def formatar_para_whatsapp(texto: str) -> str:
+    """
+    Formata texto para WhatsApp com melhor aparência
+    """
+    # Converter ** para * (negrito no WhatsApp)
+    texto = texto.replace("**", "*")
+
+    # Adicionar emojis se não tiver
+    if "olá" in texto.lower() and "👋" not in texto:
+        texto = "👋 " + texto
+
+    if "agenda" in texto.lower() and "📅" not in texto:
+        texto = texto.replace("agenda", "📅 agenda")
+
+    if "médico" in texto.lower() and "👨‍⚕️" not in texto:
+        texto = texto.replace("médico", "👨‍⚕️ médico")
+
+    # Limitar tamanho
+    if len(texto) > 4000:
+        texto = texto[:3997] + "..."
+
+    return texto
+
+def extract_message_info(webhook_data: dict) -> Optional[Dict[str, Any]]:
+    """
+    Extrai informações da mensagem (Evolution API v1.7.4)
+    """
+    try:
+        logger.info(f"🔍 Extraindo info da mensagem...")
+        
+        if 'data' in webhook_data:
+            data = webhook_data['data']
+            logger.info(f"🔍 'data' encontrado, chaves: {list(data.keys())}")
+
+            if 'message' in data:
+                message = data['message']
+                key = data.get('key', {})
+                logger.info(f"🔍 'message' encontrado, tipo: {type(message)}")
+
+                # Ignorar mensagens do bot
+                if key.get('fromMe', False):
+                    logger.info(f"🔍 Mensagem ignorada: é do bot (fromMe=True)")
+                    return None
+
+                # Extrair texto
+                text = None
+                if isinstance(message, dict):
+                    text = (
+                        message.get('conversation') or
+                        message.get('text') or
+                        (message.get('extendedTextMessage', {}).get('text'))
+                    )
+                elif isinstance(message, str):
+                    text = message
+
+                logger.info(f"🔍 Texto extraído: '{text}'")
+
+                if text:
+                    sender = key.get('remoteJid', '').replace('@s.whatsapp.net', '')
+                    push_name = data.get('pushName', 'Cliente')
+                    
+                    logger.info(f"🔍 Info extraída: sender={sender}, push_name={push_name}")
+
+                    return {
+                        'sender': sender,
+                        'text': text,
+                        'push_name': push_name
+                    }
+
+        logger.info(f"🔍 Nenhuma mensagem válida encontrada")
+        return None
+
+    except Exception as e:
+        logger.error(f"Erro ao extrair mensagem: {e}", exc_info=True)
+        return None
+
+async def send_whatsapp_response(instance_name: str, to_number: str, message: str) -> bool:
+    """
+    Envia resposta via Evolution API v1.7.4
+    """
+    try:
+        # Formatar número
+        to_number = to_number.replace('@s.whatsapp.net', '')
+        if not to_number.startswith('55'):
+            to_number = '55' + to_number
+
+        url = f"{EVOLUTION_API_URL}/message/sendText/{instance_name}"
+
+        payload = {
+            "number": to_number,
+            "textMessage": {
+                "text": message
+            },
+            "options": {
+                "delay": 1200,  # Delay natural
+                "presence": "composing"
+            }
+        }
+
+        headers = {
+            "apikey": EVOLUTION_API_KEY,
+            "Content-Type": "application/json"
+        }
+
+        logger.info(f"📤 Enviando resposta IA para {to_number}")
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, headers=headers) as response:
+                if response.status in [200, 201]:
+                    logger.info("✅ Mensagem enviada")
+                    return True
+                else:
+                    error = await response.text()
+                    logger.error(f"Erro ao enviar: {error}")
+                    return False
+
+    except Exception as e:
+        logger.error(f"Erro ao enviar WhatsApp: {e}")
+        return False
+
+def get_fallback_response(text: str, user_name: str) -> str:
+    """
+    Respostas de fallback caso IA falhe
+    """
+    logger.info(f"🔍 Gerando fallback response para: {text[:50]}")
+    
+    text_lower = text.lower().strip()
+
+    if any(word in text_lower for word in ['oi', 'olá', 'bom dia', 'boa tarde', 'boa noite']):
+        return f"""👋 Olá {user_name}! Bem-vindo à *Clínica Pro-Saúde*!
+
+Sou a assistente virtual com inteligência artificial.
+
+Como posso ajudar você hoje?
+• Agendar consultas
+• Informações sobre médicos
+• Horários disponíveis
+• Convênios aceitos
+
+_Digite sua necessidade que vou entender!_"""
+
+    elif any(word in text_lower for word in ['agendar', 'marcar', 'consulta']):
+        return """📅 *AGENDAMENTO DE CONSULTAS*
+
+Temos os seguintes médicos:
+• *Dr. Marco Silva* - Clínico Geral
+• *Dra. Tânia Oliveira* - Cardiologista
+
+Qual médico você prefere?"""
+
+    else:
+        return f"""Entendi sua mensagem, {user_name}.
+
+Como posso ajudar?
+• Agendar consulta
+• Ver médicos disponíveis
+• Horários da clínica
+• Convênios aceitos
+
+_Pode escrever naturalmente!_"""
+
+@router.post("/whatsapp")
+async def webhook_global(request: Request):
+    """Webhook alternativo sem instance_name"""
+    return await webhook_whatsapp(INSTANCE_NAME, request)
+
+@router.get("/whatsapp/test")
+async def test_webhook():
+    """Endpoint de teste"""
+
+    # Testar conexão com banco
+    db = SessionLocal()
+    try:
+        ai_service = AnthropicService(db=db, cliente_id=CLIENTE_ID)
+        ai_available = ai_service.use_real_ai
+    except:
+        ai_available = False
+    finally:
+        db.close()
+
+    return {
+        "status": "active",
+        "instance": INSTANCE_NAME,
+        "ai_configured": bool(os.getenv('ANTHROPIC_API_KEY')),
+        "ai_available": ai_available,
+        "model": "claude-3.5-sonnet-20241022",
+        "cliente_id": CLIENTE_ID,
+        "timestamp": datetime.now().isoformat()
+    }
+
+@router.get("/whatsapp/clear/{phone}")
+async def clear_conversation(phone: str):
+    """Limpa histórico de conversa de um número"""
+    if phone in conversation_contexts:
+        del conversation_contexts[phone]
+        return {"status": "cleared", "phone": phone}
+    return {"status": "not_found", "phone": phone}

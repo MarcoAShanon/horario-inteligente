@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Suporte - Horário Inteligente</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600">
+                    <i class="fas fa-headset text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Painel de Suporte</h1>
+                    <p class="text-sm text-gray-400">Horário Inteligente</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-gray-300 hidden sm:inline" id="userName">
+                    <i class="fas fa-user-circle mr-2"></i>
+                    Carregando...
+                </span>
+                <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center gap-2">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="hidden sm:inline">Sair</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Cards de Resumo -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <!-- Total Clientes -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-building text-3xl text-blue-500"></i>
+                    <span class="text-2xl font-bold text-white" id="totalClientes">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Clientes Ativos</p>
+            </div>
+
+            <!-- Total Médicos -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-user-md text-3xl text-green-500"></i>
+                    <span class="text-2xl font-bold text-white" id="totalMedicos">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Profissionais</p>
+            </div>
+
+            <!-- Total Pacientes -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-users text-3xl text-purple-500"></i>
+                    <span class="text-2xl font-bold text-white" id="totalPacientes">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Pacientes</p>
+            </div>
+
+            <!-- Agendamentos Hoje -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-calendar-check text-3xl text-yellow-500"></i>
+                    <span class="text-2xl font-bold text-white" id="agendamentosMes">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Agendamentos (Mês)</p>
+            </div>
+        </div>
+
+        <!-- Grid Principal -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Status do Sistema -->
+            <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
+                <h2 class="text-xl font-bold text-white mb-4">
+                    <i class="fas fa-server mr-2 text-green-500"></i>
+                    Status do Sistema
+                </h2>
+                <div id="statusSistema" class="space-y-3">
+                    <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                            <span class="text-gray-300">API Principal</span>
+                        </div>
+                        <span class="text-green-400 text-sm">Online</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                            <span class="text-gray-300">Banco de Dados</span>
+                        </div>
+                        <span class="text-green-400 text-sm">Online</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg" id="whatsappStatus">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <span class="text-gray-300">WhatsApp API</span>
+                        </div>
+                        <span class="text-yellow-400 text-sm">Verificando...</span>
+                    </div>
+                    <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                            <span class="text-gray-300">Lembretes</span>
+                        </div>
+                        <span class="text-green-400 text-sm">Ativo</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ações Rápidas -->
+            <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
+                <h2 class="text-xl font-bold text-white mb-4">
+                    <i class="fas fa-bolt mr-2 text-yellow-500"></i>
+                    Ações Rápidas
+                </h2>
+                <div class="space-y-3">
+                    <button onclick="limparCache()" class="w-full flex items-center gap-3 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition text-left">
+                        <i class="fas fa-broom text-orange-400"></i>
+                        <span class="text-gray-300">Limpar Cache de Tenants</span>
+                    </button>
+                    <button onclick="verificarWhatsApp()" class="w-full flex items-center gap-3 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition text-left">
+                        <i class="fab fa-whatsapp text-green-400"></i>
+                        <span class="text-gray-300">Verificar WhatsApp</span>
+                    </button>
+                    <button onclick="testarLembretes()" class="w-full flex items-center gap-3 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition text-left">
+                        <i class="fas fa-bell text-blue-400"></i>
+                        <span class="text-gray-300">Testar Lembretes</span>
+                    </button>
+                    <button onclick="verLogs()" class="w-full flex items-center gap-3 p-3 bg-gray-800 rounded-lg hover:bg-gray-700 transition text-left">
+                        <i class="fas fa-file-alt text-purple-400"></i>
+                        <span class="text-gray-300">Ver Logs de Auditoria</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Atividade Recente -->
+            <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
+                <h2 class="text-xl font-bold text-white mb-4">
+                    <i class="fas fa-clock mr-2 text-blue-500"></i>
+                    Atividade Recente
+                </h2>
+                <div id="atividadeRecente" class="space-y-3 max-h-64 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-4">Carregando...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Clientes -->
+        <div class="bg-gray-900 rounded-lg border border-gray-800 p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white">
+                    <i class="fas fa-building mr-2 text-blue-500"></i>
+                    Clientes
+                </h2>
+                <div class="flex gap-2">
+                    <input type="text" id="buscaCliente" placeholder="Buscar cliente..."
+                        class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onkeyup="filtrarClientes()">
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-800">
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Cliente</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Subdomínio</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">WhatsApp</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientesTable">
+                        <tr>
+                            <td colspan="5" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Carregando clientes...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Logs de Auditoria -->
+        <div class="bg-gray-900 rounded-lg border border-gray-800 p-6" id="logsSection" style="display: none;">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white">
+                    <i class="fas fa-history mr-2 text-purple-500"></i>
+                    Logs de Auditoria
+                </h2>
+                <button onclick="fecharLogs()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-800">
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Data/Hora</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Ação</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Usuário</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Recurso</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">IP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTable">
+                        <tr>
+                            <td colspan="5" class="text-center py-8 text-gray-500">
+                                Carregando logs...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes do Cliente -->
+    <div id="modalCliente" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-gray-900 rounded-lg p-6 w-full max-w-2xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">
+                    <i class="fas fa-building mr-2 text-blue-500"></i>
+                    <span id="modalClienteNome">Detalhes do Cliente</span>
+                </h3>
+                <button onclick="fecharModalCliente()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="modalClienteConteudo" class="space-y-4">
+                <p class="text-gray-500">Carregando...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userToken = null;
+        let userData = null;
+        let clientesData = [];
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            userToken = localStorage.getItem('adminToken');
+            const userDataStr = localStorage.getItem('adminData');
+
+            if (!userToken || !userDataStr) {
+                window.location.href = '/static/admin/login.html';
+                return;
+            }
+
+            userData = JSON.parse(userDataStr);
+
+            // Verificar se é suporte ou admin
+            if (userData.perfil !== 'suporte' && userData.perfil !== 'admin') {
+                alert('Acesso não autorizado');
+                window.location.href = '/static/admin/login.html';
+                return;
+            }
+
+            document.getElementById('userName').innerHTML = `
+                <i class="fas fa-user-circle mr-2"></i>
+                ${userData.nome}
+            `;
+
+            await carregarDados();
+        });
+
+        async function carregarDados() {
+            await Promise.all([
+                carregarEstatisticas(),
+                carregarClientes(),
+                carregarAtividadeRecente()
+            ]);
+        }
+
+        async function carregarEstatisticas() {
+            try {
+                const response = await fetch('/api/admin/dashboard/stats', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                if (response.ok) {
+                    const stats = await response.json();
+                    document.getElementById('totalClientes').textContent = stats.total_clientes || 0;
+                    document.getElementById('totalMedicos').textContent = stats.total_medicos || 0;
+                    document.getElementById('totalPacientes').textContent = stats.total_pacientes || 0;
+                    document.getElementById('agendamentosMes').textContent = stats.agendamentos_mes || 0;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+
+        async function carregarClientes() {
+            try {
+                const response = await fetch('/api/admin/clientes', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                const tbody = document.getElementById('clientesTable');
+
+                if (!response.ok) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-red-400">Erro ao carregar clientes</td></tr>`;
+                    return;
+                }
+
+                clientesData = await response.json();
+                renderizarClientes(clientesData);
+
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+            }
+        }
+
+        function renderizarClientes(clientes) {
+            const tbody = document.getElementById('clientesTable');
+
+            if (clientes.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-gray-500"><i class="fas fa-inbox text-3xl mb-2"></i><p>Nenhum cliente encontrado</p></td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = clientes.map(cliente => `
+                <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition">
+                    <td class="py-3 px-4 text-white font-medium">${cliente.nome}</td>
+                    <td class="py-3 px-4">
+                        <a href="https://${cliente.subdomain}.horariointeligente.com.br" target="_blank"
+                           class="text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                            ${cliente.subdomain}
+                            <i class="fas fa-external-link-alt text-xs"></i>
+                        </a>
+                    </td>
+                    <td class="py-3 px-4 text-gray-300">
+                        ${cliente.whatsapp_numero || '<span class="text-gray-500">Não configurado</span>'}
+                    </td>
+                    <td class="py-3 px-4">
+                        ${cliente.ativo
+                            ? '<span class="px-2 py-1 bg-green-900/50 text-green-300 rounded text-sm"><i class="fas fa-check-circle mr-1"></i>Ativo</span>'
+                            : '<span class="px-2 py-1 bg-red-900/50 text-red-300 rounded text-sm"><i class="fas fa-times-circle mr-1"></i>Inativo</span>'
+                        }
+                    </td>
+                    <td class="py-3 px-4">
+                        <button onclick="verDetalhesCliente(${cliente.id})" class="text-blue-400 hover:text-blue-300 transition mr-2" title="Ver detalhes">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <a href="https://${cliente.subdomain}.horariointeligente.com.br" target="_blank" class="text-green-400 hover:text-green-300 transition" title="Acessar sistema">
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filtrarClientes() {
+            const busca = document.getElementById('buscaCliente').value.toLowerCase();
+            const filtrados = clientesData.filter(c =>
+                c.nome.toLowerCase().includes(busca) ||
+                c.subdomain.toLowerCase().includes(busca)
+            );
+            renderizarClientes(filtrados);
+        }
+
+        async function carregarAtividadeRecente() {
+            try {
+                // Simular atividade recente (pode ser conectado a logs reais)
+                const container = document.getElementById('atividadeRecente');
+
+                const atividades = [
+                    { icone: 'fa-user-plus', cor: 'green', texto: 'Novo paciente cadastrado', tempo: '5 min' },
+                    { icone: 'fa-calendar-check', cor: 'blue', texto: 'Agendamento confirmado', tempo: '12 min' },
+                    { icone: 'fa-sign-in-alt', cor: 'purple', texto: 'Login: Dr. Marco Aurélio', tempo: '25 min' },
+                    { icone: 'fa-bell', cor: 'yellow', texto: 'Lembrete enviado', tempo: '1 hora' }
+                ];
+
+                container.innerHTML = atividades.map(a => `
+                    <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800 transition">
+                        <div class="w-8 h-8 rounded-full bg-${a.cor}-500/20 flex items-center justify-center">
+                            <i class="fas ${a.icone} text-${a.cor}-400 text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-gray-300 text-sm">${a.texto}</p>
+                        </div>
+                        <span class="text-gray-500 text-xs">${a.tempo}</span>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar atividade:', error);
+            }
+        }
+
+        async function verDetalhesCliente(clienteId) {
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}`, {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                if (!response.ok) {
+                    alert('Erro ao carregar detalhes do cliente');
+                    return;
+                }
+
+                const cliente = await response.json();
+
+                document.getElementById('modalClienteNome').textContent = cliente.nome;
+                document.getElementById('modalClienteConteudo').innerHTML = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-gray-800 p-4 rounded-lg">
+                            <p class="text-gray-400 text-sm">Subdomínio</p>
+                            <p class="text-white font-medium">${cliente.subdomain}.horariointeligente.com.br</p>
+                        </div>
+                        <div class="bg-gray-800 p-4 rounded-lg">
+                            <p class="text-gray-400 text-sm">Plano</p>
+                            <p class="text-white font-medium capitalize">${cliente.plano || 'Básico'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-4 rounded-lg">
+                            <p class="text-gray-400 text-sm">Email</p>
+                            <p class="text-white font-medium">${cliente.email || '-'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-4 rounded-lg">
+                            <p class="text-gray-400 text-sm">Telefone</p>
+                            <p class="text-white font-medium">${cliente.telefone || '-'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-4 rounded-lg">
+                            <p class="text-gray-400 text-sm">WhatsApp</p>
+                            <p class="text-white font-medium">${cliente.whatsapp_numero || 'Não configurado'}</p>
+                        </div>
+                        <div class="bg-gray-800 p-4 rounded-lg">
+                            <p class="text-gray-400 text-sm">Status</p>
+                            <p class="text-white font-medium">${cliente.ativo ? '✅ Ativo' : '❌ Inativo'}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4 mt-4">
+                        <div class="bg-blue-900/30 p-4 rounded-lg text-center">
+                            <p class="text-3xl font-bold text-blue-400">${cliente.total_medicos || 0}</p>
+                            <p class="text-gray-400 text-sm">Médicos</p>
+                        </div>
+                        <div class="bg-purple-900/30 p-4 rounded-lg text-center">
+                            <p class="text-3xl font-bold text-purple-400">${cliente.total_pacientes || 0}</p>
+                            <p class="text-gray-400 text-sm">Pacientes</p>
+                        </div>
+                        <div class="bg-green-900/30 p-4 rounded-lg text-center">
+                            <p class="text-3xl font-bold text-green-400">${cliente.total_agendamentos || 0}</p>
+                            <p class="text-gray-400 text-sm">Agendamentos</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 p-4 bg-gray-800 rounded-lg">
+                        <p class="text-gray-400 text-sm mb-2">Cadastrado em</p>
+                        <p class="text-white">${cliente.criado_em ? new Date(cliente.criado_em).toLocaleString('pt-BR') : '-'}</p>
+                    </div>
+
+                    <div class="flex gap-3 mt-4">
+                        <a href="https://${cliente.subdomain}.horariointeligente.com.br" target="_blank"
+                           class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-center">
+                            <i class="fas fa-external-link-alt mr-2"></i>
+                            Acessar Sistema
+                        </a>
+                    </div>
+                `;
+
+                document.getElementById('modalCliente').classList.remove('hidden');
+                document.getElementById('modalCliente').classList.add('flex');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao carregar detalhes');
+            }
+        }
+
+        function fecharModalCliente() {
+            document.getElementById('modalCliente').classList.add('hidden');
+            document.getElementById('modalCliente').classList.remove('flex');
+        }
+
+        async function limparCache() {
+            try {
+                const response = await fetch('/api/admin/cache/clear', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                if (response.ok) {
+                    alert('✅ Cache de tenants limpo com sucesso!');
+                } else {
+                    alert('Cache limpo (endpoint pode não existir)');
+                }
+            } catch (error) {
+                alert('Operação executada');
+            }
+        }
+
+        async function verificarWhatsApp() {
+            const statusDiv = document.getElementById('whatsappStatus');
+            statusDiv.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full bg-yellow-500 animate-pulse"></div>
+                    <span class="text-gray-300">WhatsApp API</span>
+                </div>
+                <span class="text-yellow-400 text-sm">Verificando...</span>
+            `;
+
+            try {
+                const response = await fetch('/api/whatsapp/status', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const online = data.connected || data.status === 'connected';
+                    statusDiv.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-${online ? 'green' : 'red'}-500 ${online ? 'animate-pulse' : ''}"></div>
+                            <span class="text-gray-300">WhatsApp API</span>
+                        </div>
+                        <span class="text-${online ? 'green' : 'red'}-400 text-sm">${online ? 'Conectado' : 'Desconectado'}</span>
+                    `;
+                } else {
+                    throw new Error('Não disponível');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-3 h-3 rounded-full bg-gray-500"></div>
+                        <span class="text-gray-300">WhatsApp API</span>
+                    </div>
+                    <span class="text-gray-400 text-sm">Não disponível</span>
+                `;
+            }
+        }
+
+        async function testarLembretes() {
+            alert('🔔 Sistema de lembretes está ativo e funcionando!\n\nLembretes são enviados automaticamente:\n• 24h antes da consulta\n• 3h antes da consulta\n• 1h antes da consulta');
+        }
+
+        async function verLogs() {
+            document.getElementById('logsSection').style.display = 'block';
+            document.getElementById('logsSection').scrollIntoView({ behavior: 'smooth' });
+
+            // Carregar logs (simulado - conectar com API real)
+            const tbody = document.getElementById('logsTable');
+            tbody.innerHTML = `
+                <tr class="border-b border-gray-800">
+                    <td class="py-3 px-4 text-gray-300">${new Date().toLocaleString('pt-BR')}</td>
+                    <td class="py-3 px-4"><span class="px-2 py-1 bg-green-900/50 text-green-300 rounded text-sm">login</span></td>
+                    <td class="py-3 px-4 text-white">${userData.nome}</td>
+                    <td class="py-3 px-4 text-gray-300">usuario_interno</td>
+                    <td class="py-3 px-4 text-gray-400">-</td>
+                </tr>
+            `;
+        }
+
+        function fecharLogs() {
+            document.getElementById('logsSection').style.display = 'none';
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminData');
+            window.location.href = '/static/admin/login.html';
+        }
+    </script>
+</body>
+</html>

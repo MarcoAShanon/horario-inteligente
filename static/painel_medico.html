@@ -1,0 +1,409 @@
+# app/api/painel/painel_routes.py
+# Rotas para o painel web dos médicos
+# Marco - Sistema Pro-Saúde
+
+from fastapi import APIRouter, HTTPException, Depends, Request, Form
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta, time
+import hashlib
+import jwt
+import os
+from pathlib import Path
+
+from ...database import get_db
+from ...models.medico import Medico
+from ...services.calendario_service import calendario_service
+
+router = APIRouter(
+    prefix="/painel",
+    tags=["Painel Médico"]
+)
+
+# Configuração JWT
+SECRET_KEY = "prosaude_secret_key_2025"  # Em produção, usar variável de ambiente
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 8
+
+security = HTTPBearer()
+
+def create_access_token(medico_id: int, crm: str):
+    """Cria token JWT para autenticação"""
+    expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    to_encode = {
+        "medico_id": medico_id,
+        "crm": crm,
+        "exp": expire
+    }
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Verifica token JWT"""
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        medico_id = payload.get("medico_id")
+        crm = payload.get("crm")
+        if medico_id is None or crm is None:
+            raise HTTPException(status_code=401, detail="Token inválido")
+        return {"medico_id": medico_id, "crm": crm}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado")
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+@router.get("/", response_class=HTMLResponse)
+async def painel_home():
+    """Serve o painel principal dos médicos"""
+    # Caminho para o arquivo HTML
+    html_path = Path(__file__).parent.parent.parent.parent / "static" / "painel_medico.html"
+    
+    if not html_path.exists():
+        raise HTTPException(status_code=404, detail="Painel não encontrado")
+    
+    with open(html_path, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    
+    return HTMLResponse(content=html_content)
+
+@router.post("/login")
+async def login(
+    crm: str = Form(...),
+    senha: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Autentica médico no painel"""
+    try:
+        # Buscar médico por CRM
+        medico = db.query(Medico).filter(Medico.crm == crm).first()
+        
+        if not medico:
+            raise HTTPException(status_code=401, detail="CRM não encontrado")
+        
+        # Verificar senha (em produção, usar hash)
+        # Por enquanto, senha padrão é "123456" para todos
+        if senha != "123456":
+            raise HTTPException(status_code=401, detail="Senha incorreta")
+        
+        # Criar token JWT
+        token = create_access_token(medico.id, medico.crm)
+        
+        return {
+            "success": True,
+            "token": token,
+            "medico": {
+                "id": medico.id,
+                "nome": medico.nome,
+                "especialidade": medico.especialidade,
+                "crm": medico.crm
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@router.get("/api/estatisticas")
+async def get_estatisticas(
+    auth_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Retorna estatísticas do médico"""
+    try:
+        medico_id = auth_data["medico_id"]
+        
+        # Data atual
+        hoje = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        inicio_semana = hoje - timedelta(days=hoje.weekday())
+        fim_semana = inicio_semana + timedelta(days=6)
+        
+        # Consultas simuladas - em produção, usar o banco
+        stats = {
+            "agendamentos_hoje": 8,
+            "agendamentos_semana": 32,
+            "horarios_livres": 15,
+            "taxa_ocupacao": "68%"
+        }
+        
+        return stats
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar estatísticas: {str(e)}")
+
+@router.get("/api/agenda")
+async def get_agenda(
+    dias: int = 7,
+    auth_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Retorna agenda do médico"""
+    try:
+        medico_id = auth_data["medico_id"]
+        
+        data_inicio = datetime.now()
+        data_fim = data_inicio + timedelta(days=dias)
+        
+        # Usar serviço de calendário
+        agendamentos = calendario_service.listar_agendamentos_medico(
+            medico_id, data_inicio, data_fim
+        )
+        
+        return {
+            "success": True,
+            "agendamentos": agendamentos
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar agenda: {str(e)}")
+
+@router.get("/api/horarios")
+async def get_horarios_atendimento(
+    auth_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Retorna horários de atendimento do médico"""
+    try:
+        medico_id = auth_data["medico_id"]
+        
+        # Buscar horários do banco
+        horarios = db.execute("""
+            SELECT dia_semana, hora_inicio, hora_fim, ativo
+            FROM horarios_atendimento 
+            WHERE medico_id = :medico_id AND ativo = true
+            ORDER BY dia_semana, hora_inicio
+        """, {"medico_id": medico_id}).fetchall()
+        
+        # Converter para formato adequado
+        dias_semana = {
+            1: "Segunda-feira", 2: "Terça-feira", 3: "Quarta-feira",
+            4: "Quinta-feira", 5: "Sexta-feira", 6: "Sábado", 7: "Domingo"
+        }
+        
+        horarios_formatados = []
+        for h in horarios:
+            horarios_formatados.append({
+                "dia_semana": h.dia_semana,
+                "dia_nome": dias_semana.get(h.dia_semana, "Desconhecido"),
+                "hora_inicio": str(h.hora_inicio),
+                "hora_fim": str(h.hora_fim),
+                "ativo": h.ativo
+            })
+        
+        return {
+            "success": True,
+            "horarios": horarios_formatados
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar horários: {str(e)}")
+
+@router.post("/api/horarios")
+async def criar_horario_atendimento(
+    dia_semana: int = Form(...),
+    hora_inicio: str = Form(...),
+    hora_fim: str = Form(...),
+    auth_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Cria novo horário de atendimento"""
+    try:
+        medico_id = auth_data["medico_id"]
+        
+        # Inserir no banco
+        db.execute("""
+            INSERT INTO horarios_atendimento (medico_id, dia_semana, hora_inicio, hora_fim)
+            VALUES (:medico_id, :dia_semana, :hora_inicio, :hora_fim)
+        """, {
+            "medico_id": medico_id,
+            "dia_semana": dia_semana,
+            "hora_inicio": hora_inicio,
+            "hora_fim": hora_fim
+        })
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Horário adicionado com sucesso!"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao criar horário: {str(e)}")
+
+@router.get("/api/bloqueios")
+async def get_bloqueios(
+    auth_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Retorna bloqueios ativos do médico"""
+    try:
+        medico_id = auth_data["medico_id"]
+        
+        # Buscar bloqueios futuros
+        bloqueios = db.execute("""
+            SELECT data_inicio, data_fim, motivo, tipo
+            FROM bloqueios_agenda 
+            WHERE medico_id = :medico_id 
+            AND ativo = true 
+            AND data_fim >= NOW()
+            ORDER BY data_inicio
+        """, {"medico_id": medico_id}).fetchall()
+        
+        bloqueios_formatados = []
+        for b in bloqueios:
+            bloqueios_formatados.append({
+                "data_inicio": b.data_inicio.strftime("%d/%m/%Y %H:%M"),
+                "data_fim": b.data_fim.strftime("%d/%m/%Y %H:%M"),
+                "motivo": b.motivo,
+                "tipo": b.tipo
+            })
+        
+        return {
+            "success": True,
+            "bloqueios": bloqueios_formatados
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar bloqueios: {str(e)}")
+
+@router.post("/api/bloqueios")
+async def criar_bloqueio(
+    data_inicio: str = Form(...),
+    data_fim: str = Form(...),
+    motivo: str = Form(...),
+    tipo: str = Form(...),
+    auth_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Cria novo bloqueio de agenda"""
+    try:
+        medico_id = auth_data["medico_id"]
+        
+        # Converter strings para datetime
+        dt_inicio = datetime.fromisoformat(data_inicio)
+        dt_fim = datetime.fromisoformat(data_fim)
+        
+        # Inserir no banco
+        db.execute("""
+            INSERT INTO bloqueios_agenda (medico_id, data_inicio, data_fim, motivo, tipo)
+            VALUES (:medico_id, :data_inicio, :data_fim, :motivo, :tipo)
+        """, {
+            "medico_id": medico_id,
+            "data_inicio": dt_inicio,
+            "data_fim": dt_fim,
+            "motivo": motivo,
+            "tipo": tipo
+        })
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Bloqueio criado com sucesso!"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao criar bloqueio: {str(e)}")
+
+@router.get("/api/configuracoes")
+async def get_configuracoes(
+    auth_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Retorna configurações do médico"""
+    try:
+        medico_id = auth_data["medico_id"]
+        
+        # Buscar configurações
+        config = db.execute("""
+            SELECT duracao_consulta_padrao, intervalo_entre_consultas,
+                   antecedencia_minima_horas, antecedencia_maxima_dias,
+                   permite_agendamento_sabado, permite_agendamento_domingo
+            FROM configuracoes_medico 
+            WHERE medico_id = :medico_id
+        """, {"medico_id": medico_id}).fetchone()
+        
+        if config:
+            return {
+                "success": True,
+                "configuracoes": {
+                    "duracao_consulta_padrao": config.duracao_consulta_padrao,
+                    "intervalo_entre_consultas": config.intervalo_entre_consultas,
+                    "antecedencia_minima_horas": config.antecedencia_minima_horas,
+                    "antecedencia_maxima_dias": config.antecedencia_maxima_dias,
+                    "permite_agendamento_sabado": config.permite_agendamento_sabado,
+                    "permite_agendamento_domingo": config.permite_agendamento_domingo
+                }
+            }
+        else:
+            # Configurações padrão
+            return {
+                "success": True,
+                "configuracoes": {
+                    "duracao_consulta_padrao": 30,
+                    "intervalo_entre_consultas": 0,
+                    "antecedencia_minima_horas": 2,
+                    "antecedencia_maxima_dias": 30,
+                    "permite_agendamento_sabado": True,
+                    "permite_agendamento_domingo": False
+                }
+            }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar configurações: {str(e)}")
+
+@router.post("/api/configuracoes")
+async def salvar_configuracoes(
+    duracao_consulta: int = Form(...),
+    intervalo_consultas: int = Form(...),
+    antecedencia_minima: int = Form(...),
+    antecedencia_maxima: int = Form(...),
+    permite_sabado: bool = Form(False),
+    permite_domingo: bool = Form(False),
+    auth_data: dict = Depends(verify_token),
+    db: Session = Depends(get_db)
+):
+    """Salva configurações do médico"""
+    try:
+        medico_id = auth_data["medico_id"]
+        
+        # Inserir ou atualizar configurações
+        db.execute("""
+            INSERT INTO configuracoes_medico (
+                medico_id, duracao_consulta_padrao, intervalo_entre_consultas,
+                antecedencia_minima_horas, antecedencia_maxima_dias,
+                permite_agendamento_sabado, permite_agendamento_domingo
+            ) VALUES (
+                :medico_id, :duracao, :intervalo, :min_ant, :max_ant, :sabado, :domingo
+            )
+            ON CONFLICT (medico_id) DO UPDATE SET
+                duracao_consulta_padrao = :duracao,
+                intervalo_entre_consultas = :intervalo,
+                antecedencia_minima_horas = :min_ant,
+                antecedencia_maxima_dias = :max_ant,
+                permite_agendamento_sabado = :sabado,
+                permite_agendamento_domingo = :domingo
+        """, {
+            "medico_id": medico_id,
+            "duracao": duracao_consulta,
+            "intervalo": intervalo_consultas,
+            "min_ant": antecedencia_minima,
+            "max_ant": antecedencia_maxima,
+            "sabado": permite_sabado,
+            "domingo": permite_domingo
+        })
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": "Configurações salvas com sucesso!"
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar configurações: {str(e)}")

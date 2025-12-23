@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financeiro - Horário Inteligente</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600">
+                    <i class="fas fa-chart-line text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Painel Financeiro</h1>
+                    <p class="text-sm text-gray-400">Horário Inteligente</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-gray-300 hidden sm:inline" id="userName">
+                    <i class="fas fa-user-circle mr-2"></i>
+                    Carregando...
+                </span>
+                <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center gap-2">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="hidden sm:inline">Sair</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Cards de Resumo -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <!-- Receita Mensal -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-dollar-sign text-3xl text-green-500"></i>
+                    <span class="text-2xl font-bold text-white" id="receitaMensal">R$ 0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Receita Mensal Estimada</p>
+            </div>
+
+            <!-- Clientes Ativos -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-building text-3xl text-blue-500"></i>
+                    <span class="text-2xl font-bold text-white" id="clientesAtivos">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Clientes Ativos</p>
+            </div>
+
+            <!-- Custos Pendentes -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-file-invoice-dollar text-3xl text-yellow-500"></i>
+                    <span class="text-2xl font-bold text-white" id="custosPendentes">R$ 0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Custos Pendentes</p>
+            </div>
+
+            <!-- Comissões a Pagar -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-handshake text-3xl text-purple-500"></i>
+                    <span class="text-2xl font-bold text-white" id="comissoesPendentes">R$ 0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Comissões Parceiros</p>
+            </div>
+        </div>
+
+        <!-- Seções em Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Custos por Categoria -->
+            <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
+                <h2 class="text-xl font-bold text-white mb-4">
+                    <i class="fas fa-chart-pie mr-2 text-yellow-500"></i>
+                    Custos por Categoria
+                </h2>
+                <div id="custosCategoria" class="space-y-3">
+                    <p class="text-gray-500 text-center py-4">Carregando...</p>
+                </div>
+            </div>
+
+            <!-- Parceiros Comerciais -->
+            <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
+                <h2 class="text-xl font-bold text-white mb-4">
+                    <i class="fas fa-users mr-2 text-purple-500"></i>
+                    Parceiros Comerciais
+                </h2>
+                <div id="parceirosLista" class="space-y-3">
+                    <p class="text-gray-500 text-center py-4">Carregando...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Custos Recentes -->
+        <div class="bg-gray-900 rounded-lg border border-gray-800 p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white">
+                    <i class="fas fa-receipt mr-2 text-green-500"></i>
+                    Custos Operacionais Recentes
+                </h2>
+                <button onclick="abrirModalCusto()" class="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-emerald-700 transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    Novo Custo
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-800">
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Descrição</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Categoria</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Valor</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Vencimento</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="custosTable">
+                        <tr>
+                            <td colspan="6" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Carregando custos...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Clientes e Faturamento -->
+        <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
+            <h2 class="text-xl font-bold text-white mb-6">
+                <i class="fas fa-building mr-2 text-blue-500"></i>
+                Clientes e Faturamento
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-800">
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Cliente</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Plano</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Médicos</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Agendamentos/Mês</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientesTable">
+                        <tr>
+                            <td colspan="5" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Carregando clientes...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Novo Custo -->
+    <div id="modalCusto" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4 border border-gray-700">
+            <h3 class="text-xl font-bold text-white mb-4">
+                <i class="fas fa-plus-circle mr-2 text-green-500"></i>
+                Registrar Novo Custo
+            </h3>
+            <form id="formCusto" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Descrição</label>
+                    <input type="text" id="custoDescricao" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Categoria</label>
+                        <select id="custoCategoria" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">Selecione...</option>
+                            <option value="infraestrutura">Infraestrutura</option>
+                            <option value="apis">APIs</option>
+                            <option value="comunicacao">Comunicação</option>
+                            <option value="servicos">Serviços</option>
+                            <option value="marketing">Marketing</option>
+                            <option value="pessoal">Pessoal</option>
+                            <option value="impostos">Impostos</option>
+                            <option value="outros">Outros</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Valor (R$)</label>
+                        <input type="number" step="0.01" id="custoValor" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Vencimento</label>
+                        <input type="date" id="custoVencimento" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Recorrência</label>
+                        <select id="custoRecorrencia" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="unico">Único</option>
+                            <option value="mensal">Mensal</option>
+                            <option value="anual">Anual</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Observações</label>
+                    <textarea id="custoObservacoes" rows="2" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"></textarea>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="fecharModalCusto()" class="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let userToken = null;
+        let userData = null;
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            userToken = localStorage.getItem('adminToken');
+            const userDataStr = localStorage.getItem('adminData');
+
+            if (!userToken || !userDataStr) {
+                window.location.href = '/static/admin/login.html';
+                return;
+            }
+
+            userData = JSON.parse(userDataStr);
+
+            // Verificar se é financeiro ou admin
+            if (userData.perfil !== 'financeiro' && userData.perfil !== 'admin') {
+                alert('Acesso não autorizado');
+                window.location.href = '/static/admin/login.html';
+                return;
+            }
+
+            document.getElementById('userName').innerHTML = `
+                <i class="fas fa-user-circle mr-2"></i>
+                ${userData.nome}
+            `;
+
+            await carregarDados();
+        });
+
+        async function carregarDados() {
+            await Promise.all([
+                carregarEstatisticas(),
+                carregarCustos(),
+                carregarCustosPorCategoria(),
+                carregarParceiros(),
+                carregarClientes()
+            ]);
+        }
+
+        async function carregarEstatisticas() {
+            try {
+                // Stats gerais
+                const statsResp = await fetch('/api/admin/dashboard/stats', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+                if (statsResp.ok) {
+                    const stats = await statsResp.json();
+                    document.getElementById('clientesAtivos').textContent = stats.total_clientes || 0;
+                    // Estimativa de receita (exemplo: R$297/cliente)
+                    const receita = (stats.total_clientes || 0) * 297;
+                    document.getElementById('receitaMensal').textContent = `R$ ${receita.toLocaleString('pt-BR')}`;
+                }
+
+                // Custos pendentes
+                const custosResp = await fetch('/api/interno/custos?status=pendente', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+                if (custosResp.ok) {
+                    const custos = await custosResp.json();
+                    const totalPendente = custos.reduce((sum, c) => sum + parseFloat(c.valor), 0);
+                    document.getElementById('custosPendentes').textContent = `R$ ${totalPendente.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+
+        async function carregarCustos() {
+            try {
+                const response = await fetch('/api/interno/custos?limite=10', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                const tbody = document.getElementById('custosTable');
+
+                if (!response.ok) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500">Nenhum custo registrado</td></tr>`;
+                    return;
+                }
+
+                const custos = await response.json();
+
+                if (custos.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-500"><i class="fas fa-inbox text-3xl mb-2"></i><p>Nenhum custo registrado</p></td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = custos.map(custo => `
+                    <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition">
+                        <td class="py-3 px-4 text-white">${custo.descricao}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded text-sm capitalize">${custo.categoria}</span>
+                        </td>
+                        <td class="py-3 px-4 text-green-400 font-medium">R$ ${parseFloat(custo.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+                        <td class="py-3 px-4 text-gray-300">${custo.data_vencimento ? new Date(custo.data_vencimento).toLocaleDateString('pt-BR') : '-'}</td>
+                        <td class="py-3 px-4">
+                            ${getStatusBadge(custo.status)}
+                        </td>
+                        <td class="py-3 px-4">
+                            ${custo.status === 'pendente' ? `
+                                <button onclick="marcarPago(${custo.id})" class="text-green-400 hover:text-green-300 transition" title="Marcar como pago">
+                                    <i class="fas fa-check-circle"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar custos:', error);
+            }
+        }
+
+        async function carregarCustosPorCategoria() {
+            try {
+                const response = await fetch('/api/interno/custos/resumo', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                const container = document.getElementById('custosCategoria');
+
+                if (!response.ok) {
+                    container.innerHTML = '<p class="text-gray-500 text-center">Sem dados</p>';
+                    return;
+                }
+
+                const data = await response.json();
+                const categorias = data.por_categoria || [];
+
+                if (categorias.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center">Nenhum custo registrado</p>';
+                    return;
+                }
+
+                const cores = {
+                    'infraestrutura': 'blue',
+                    'apis': 'purple',
+                    'comunicacao': 'green',
+                    'servicos': 'yellow',
+                    'marketing': 'pink',
+                    'pessoal': 'orange',
+                    'impostos': 'red',
+                    'outros': 'gray'
+                };
+
+                container.innerHTML = categorias.map(cat => `
+                    <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-${cores[cat.categoria] || 'gray'}-500"></div>
+                            <span class="text-gray-300 capitalize">${cat.categoria}</span>
+                        </div>
+                        <span class="text-white font-medium">R$ ${parseFloat(cat.total).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar resumo:', error);
+            }
+        }
+
+        async function carregarParceiros() {
+            try {
+                const response = await fetch('/api/interno/parceiros', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                const container = document.getElementById('parceirosLista');
+
+                if (!response.ok) {
+                    container.innerHTML = '<p class="text-gray-500 text-center">Sem parceiros cadastrados</p>';
+                    return;
+                }
+
+                const parceiros = await response.json();
+
+                if (parceiros.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center">Nenhum parceiro cadastrado</p>';
+                    return;
+                }
+
+                container.innerHTML = parceiros.map(p => `
+                    <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                        <div>
+                            <p class="text-white font-medium">${p.nome}</p>
+                            <p class="text-gray-400 text-sm">${p.tipo} - ${p.comissao_percentual}%</p>
+                        </div>
+                        <span class="px-2 py-1 ${p.ativo ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'} rounded text-sm">
+                            ${p.ativo ? 'Ativo' : 'Inativo'}
+                        </span>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar parceiros:', error);
+            }
+        }
+
+        async function carregarClientes() {
+            try {
+                const response = await fetch('/api/admin/clientes', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                const tbody = document.getElementById('clientesTable');
+
+                if (!response.ok) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-gray-500">Erro ao carregar</td></tr>`;
+                    return;
+                }
+
+                const clientes = await response.json();
+
+                if (clientes.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-gray-500">Nenhum cliente cadastrado</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = clientes.map(cliente => `
+                    <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition">
+                        <td class="py-3 px-4 text-white font-medium">${cliente.nome}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-sm capitalize">${cliente.plano || 'básico'}</span>
+                        </td>
+                        <td class="py-3 px-4 text-gray-300">-</td>
+                        <td class="py-3 px-4 text-gray-300">-</td>
+                        <td class="py-3 px-4">
+                            ${cliente.ativo
+                                ? '<span class="px-2 py-1 bg-green-900/50 text-green-300 rounded text-sm"><i class="fas fa-check-circle mr-1"></i>Ativo</span>'
+                                : '<span class="px-2 py-1 bg-red-900/50 text-red-300 rounded text-sm"><i class="fas fa-times-circle mr-1"></i>Inativo</span>'
+                            }
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+            }
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pendente': '<span class="px-2 py-1 bg-yellow-900/50 text-yellow-300 rounded text-sm"><i class="fas fa-clock mr-1"></i>Pendente</span>',
+                'pago': '<span class="px-2 py-1 bg-green-900/50 text-green-300 rounded text-sm"><i class="fas fa-check mr-1"></i>Pago</span>',
+                'atrasado': '<span class="px-2 py-1 bg-red-900/50 text-red-300 rounded text-sm"><i class="fas fa-exclamation mr-1"></i>Atrasado</span>',
+                'cancelado': '<span class="px-2 py-1 bg-gray-700 text-gray-400 rounded text-sm"><i class="fas fa-ban mr-1"></i>Cancelado</span>'
+            };
+            return badges[status] || badges['pendente'];
+        }
+
+        async function marcarPago(custoId) {
+            if (!confirm('Marcar este custo como pago?')) return;
+
+            try {
+                const response = await fetch(`/api/interno/custos/${custoId}/pagar`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify({ data_pagamento: new Date().toISOString().split('T')[0] })
+                });
+
+                if (response.ok) {
+                    await carregarCustos();
+                    await carregarEstatisticas();
+                } else {
+                    alert('Erro ao marcar como pago');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao marcar como pago');
+            }
+        }
+
+        function abrirModalCusto() {
+            document.getElementById('modalCusto').classList.remove('hidden');
+            document.getElementById('modalCusto').classList.add('flex');
+        }
+
+        function fecharModalCusto() {
+            document.getElementById('modalCusto').classList.add('hidden');
+            document.getElementById('modalCusto').classList.remove('flex');
+            document.getElementById('formCusto').reset();
+        }
+
+        document.getElementById('formCusto').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const dados = {
+                descricao: document.getElementById('custoDescricao').value,
+                categoria: document.getElementById('custoCategoria').value,
+                valor: parseFloat(document.getElementById('custoValor').value),
+                data_vencimento: document.getElementById('custoVencimento').value,
+                recorrencia: document.getElementById('custoRecorrencia').value,
+                observacoes: document.getElementById('custoObservacoes').value || null
+            };
+
+            try {
+                const response = await fetch('/api/interno/custos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                if (response.ok) {
+                    fecharModalCusto();
+                    await carregarCustos();
+                    await carregarEstatisticas();
+                    await carregarCustosPorCategoria();
+                } else {
+                    const error = await response.json();
+                    alert(error.detail || 'Erro ao salvar custo');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao salvar custo');
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminData');
+            window.location.href = '/static/admin/login.html';
+        }
+    </script>
+</body>
+</html>

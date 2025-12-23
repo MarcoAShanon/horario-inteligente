@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Horário Inteligente</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Sistema de Agendamento e Gestão de Consultas para Clínicas">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Horário Inteligente">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="/static/branding.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 w-full max-w-md mx-auto">
+        <!-- Logo e Título (carregados dinamicamente) -->
+        <div class="text-center mb-6 sm:mb-8">
+            <div class="logo-container logo-image-placeholder inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full mb-3 sm:mb-4" style="background-color: #3b82f6;">
+                <i class="logo-icon fa-heartbeat text-white text-xl sm:text-2xl"></i>
+            </div>
+            <h1 class="clinica-nome text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Carregando...</h1>
+            <p class="text-sm sm:text-base text-gray-600">Sistema de Agendamento para Clínicas</p>
+        </div>
+
+        <!-- Mensagem de erro -->
+        <div id="errorMessage" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span id="errorText"></span>
+            </div>
+        </div>
+
+        <!-- Mensagem de email não verificado -->
+        <div id="emailNaoVerificado" class="hidden bg-yellow-50 border border-yellow-400 text-yellow-800 px-4 py-4 rounded-lg mb-4">
+            <div class="flex items-start mb-3">
+                <i class="fas fa-envelope-circle-check mr-2 mt-1 text-yellow-600"></i>
+                <div>
+                    <p class="font-semibold">Email ainda não verificado</p>
+                    <p class="text-sm mt-1">Verifique sua caixa de entrada e spam para o email de confirmação.</p>
+                </div>
+            </div>
+            <button onclick="reenviarVerificacao()" id="btnReenviar" class="w-full bg-yellow-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-yellow-600 transition">
+                <i class="fas fa-paper-plane mr-1"></i>Reenviar Email de Verificação
+            </button>
+        </div>
+
+        <!-- Formulário de Login -->
+        <form id="loginForm" class="space-y-4 sm:space-y-6">
+            <div>
+                <label for="email" class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-envelope mr-1 sm:mr-2 text-gray-500"></i>
+                    Email
+                </label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    class="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="seu@email.com"
+                    required
+                    autocomplete="email"
+                >
+            </div>
+
+            <div>
+                <label for="password" class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                    <i class="fas fa-lock mr-1 sm:mr-2 text-gray-500"></i>
+                    Senha
+                </label>
+                <div class="relative">
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        class="w-full px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="••••••••"
+                        required
+                        autocomplete="current-password"
+                    >
+                    <button
+                        type="button"
+                        onclick="togglePassword()"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 p-1"
+                    >
+                        <i id="toggleIcon" class="fas fa-eye text-sm"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button
+                type="submit"
+                id="submitBtn"
+                class="w-full bg-blue-600 text-white py-2 sm:py-3 text-sm sm:text-base rounded-lg font-semibold hover:bg-blue-700 transition duration-200 flex items-center justify-center"
+            >
+                <i class="fas fa-sign-in-alt mr-2"></i>
+                <span id="submitText">Entrar</span>
+            </button>
+
+            <!-- Links Úteis -->
+            <div class="mt-4 text-center text-xs sm:text-sm">
+                <a href="/static/esqueci-senha.html" class="text-blue-600 hover:text-blue-800 hover:underline">
+                    <i class="fas fa-key mr-1"></i>Esqueci minha senha
+                </a>
+            </div>
+        </form>
+
+        <!-- Informações de Acesso -->
+        <div class="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
+            <p class="text-xs sm:text-sm text-gray-600 text-center mb-2">
+                <i class="fas fa-info-circle mr-1"></i>
+                Credenciais de teste:
+            </p>
+            <div class="bg-gray-50 rounded-lg p-2 sm:p-3 text-xs sm:text-sm">
+                <p class="text-gray-700 break-all"><strong>Email:</strong> admin@prosaude.com</p>
+                <p class="text-gray-700"><strong>Senha:</strong> admin123</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar se já está logado
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                // Verificar se o token é válido
+                verificarToken(token);
+            }
+        });
+
+        async function verificarToken(token) {
+            try {
+                const response = await fetch('/api/auth/verify-token', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    // Token válido, redirecionar para o calendário
+                    window.location.href = '/static/calendario-unificado.html';
+                } else {
+                    // Token inválido, limpar localStorage
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userData');
+                }
+            } catch (error) {
+                console.error('Erro ao verificar token:', error);
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userData');
+            }
+        }
+
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('toggleIcon');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        let emailParaReenvio = '';
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            const emailNaoVerificado = document.getElementById('emailNaoVerificado');
+
+            // Esconder alerta de email não verificado
+            emailNaoVerificado.classList.add('hidden');
+
+            errorText.textContent = message;
+            errorDiv.classList.remove('hidden');
+
+            // Esconder após 5 segundos
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        function showEmailNaoVerificado() {
+            const errorDiv = document.getElementById('errorMessage');
+            const emailNaoVerificado = document.getElementById('emailNaoVerificado');
+
+            // Esconder erro comum
+            errorDiv.classList.add('hidden');
+
+            // Mostrar alerta de email não verificado
+            emailNaoVerificado.classList.remove('hidden');
+        }
+
+        async function reenviarVerificacao() {
+            if (!emailParaReenvio) {
+                emailParaReenvio = document.getElementById('email').value;
+            }
+
+            if (!emailParaReenvio) {
+                showError('Digite seu email para reenviar a verificação.');
+                return;
+            }
+
+            const btn = document.getElementById('btnReenviar');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Enviando...';
+
+            try {
+                const response = await fetch('/api/auth/resend-verification', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: emailParaReenvio })
+                });
+
+                const result = await response.json();
+
+                if (result.sucesso) {
+                    btn.innerHTML = '<i class="fas fa-check mr-1"></i>Email Enviado!';
+                    btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                    btn.classList.add('bg-green-500');
+
+                    setTimeout(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Reenviar Email de Verificação';
+                        btn.classList.remove('bg-green-500');
+                        btn.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+                    }, 3000);
+                } else {
+                    showError(result.detail || 'Erro ao reenviar email.');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Reenviar Email de Verificação';
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showError('Erro de conexão. Tente novamente.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Reenviar Email de Verificação';
+            }
+        }
+
+        function setLoading(loading) {
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+
+            if (loading) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+                submitText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Entrando...';
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+                submitText.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Entrar';
+            }
+        }
+
+        // Handler do formulário
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            setLoading(true);
+
+            try {
+                const formData = new FormData();
+                formData.append('username', email);
+                formData.append('password', password);
+
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Login bem-sucedido
+                    localStorage.setItem('authToken', data.access_token);
+                    localStorage.setItem('userData', JSON.stringify(data.user));
+
+                    // Redirecionar para o calendário
+                    window.location.href = '/static/calendario-unificado.html';
+                } else if (response.status === 403) {
+                    // Email não verificado
+                    emailParaReenvio = email;
+                    showEmailNaoVerificado();
+                    setLoading(false);
+                } else {
+                    // Erro no login
+                    showError(data.detail || 'Email ou senha incorretos');
+                    setLoading(false);
+                }
+            } catch (error) {
+                console.error('Erro ao fazer login:', error);
+                showError('Erro ao conectar com o servidor. Tente novamente.');
+                setLoading(false);
+            }
+        });
+
+        // Permitir Enter para submeter
+        document.getElementById('email').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('password').focus();
+            }
+        });
+    </script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(registration => {
+                        console.log('✅ PWA: Service Worker registrado com sucesso!', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ PWA: Falha ao registrar Service Worker:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

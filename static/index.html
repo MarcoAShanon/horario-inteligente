@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistema inteligente de agendamento para clínicas via WhatsApp. Automatize seus agendamentos com IA e reduza no-shows em até 80%.">
+    <meta name="keywords" content="agendamento de saúde, WhatsApp, IA, clínica, consultório, automação, profissionais de saúde">
+    <meta name="author" content="Horário Inteligente">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Horário Inteligente - Agendamento de Saúde via WhatsApp com IA">
+    <meta property="og:description" content="Automatize seus agendamentos com IA e reduza no-shows em até 80%">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://horariointeligente.com.br">
+
+    <title>Horário Inteligente - Agendamento de Saúde via WhatsApp com IA</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hover-scale {
+            transition: transform 0.3s ease;
+        }
+        .hover-scale:hover {
+            transform: scale(1.05);
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm fixed w-full top-0 z-50">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <span class="text-2xl text-gray-800 tracking-tight" style="font-weight: 500;">Horário <span class="font-semibold text-blue-600">inteligente</span></span>
+                </div>
+
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="#funcionalidades" class="text-gray-600 hover:text-blue-600 transition">Funcionalidades</a>
+                    <a href="#como-funciona" class="text-gray-600 hover:text-blue-600 transition">Como Funciona</a>
+                    <a href="#precos" class="text-gray-600 hover:text-blue-600 transition">Preços</a>
+                    <a href="#contato" class="text-gray-600 hover:text-blue-600 transition">Contato</a>
+                    <!-- BOTÃO LOGIN DESABILITADO
+                    <a href="/static/login.html" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                        Entrar
+                    </a>
+                    -->
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-btn" class="md:hidden text-gray-600">
+                    <i class="fas fa-bars text-2xl"></i>
+                </button>
+            </div>
+
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden md:hidden mt-4 pb-4">
+                <a href="#funcionalidades" class="block py-2 text-gray-600 hover:text-blue-600">Funcionalidades</a>
+                <a href="#como-funciona" class="block py-2 text-gray-600 hover:text-blue-600">Como Funciona</a>
+                <a href="#precos" class="block py-2 text-gray-600 hover:text-blue-600">Preços</a>
+                <a href="#contato" class="block py-2 text-gray-600 hover:text-blue-600">Contato</a>
+                <!-- BOTÃO LOGIN DESABILITADO
+                <a href="/static/login.html" class="block mt-2 bg-blue-600 text-white px-6 py-2 rounded-lg text-center hover:bg-blue-700">
+                    Entrar
+                </a>
+                -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg text-white pt-32 pb-20">
+        <div class="container mx-auto px-4">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h1 class="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+                        Transforme seu WhatsApp em uma <span class="text-yellow-300">Secretária Virtual</span>
+                    </h1>
+                    <p class="text-xl mb-8 text-blue-100">
+                        Agendamentos automáticos 24/7 com inteligência artificial.
+                        Reduza no-shows em até 80% e libere sua equipe para o que realmente importa.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="#contato" class="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition text-center">
+                            <i class="fas fa-rocket mr-2"></i>Começar Agora
+                        </a>
+                        <a href="#como-funciona" class="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-blue-600 transition text-center">
+                            <i class="fas fa-play-circle mr-2"></i>Ver Como Funciona
+                        </a>
+                    </div>
+                    <div class="mt-8 flex items-center gap-6 text-sm flex-wrap">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-check-circle text-green-300"></i>
+                            <span>Sem contrato de fidelidade</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-check-circle text-green-300"></i>
+                            <span>Suporte dedicado</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hidden md:block">
+                    <div class="bg-white rounded-2xl shadow-2xl p-8 animate-float">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center">
+                                <i class="fab fa-whatsapp text-white text-2xl"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-800">Maria Silva</p>
+                                <p class="text-sm text-gray-500">Paciente</p>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="bg-gray-100 rounded-lg p-4 text-gray-800">
+                                Olá! Gostaria de agendar uma consulta
+                            </div>
+                            <div class="bg-blue-600 text-white rounded-lg p-4 ml-8">
+                                Olá Maria! 😊 Claro, será um prazer ajudá-la! Para qual dia você gostaria de agendar?
+                            </div>
+                            <div class="bg-gray-100 rounded-lg p-4 text-gray-800">
+                                Amanhã às 14h se possível
+                            </div>
+                            <div class="bg-blue-600 text-white rounded-lg p-4 ml-8">
+                                ✅ Perfeito! Consulta confirmada para 08/12 às 14:00 com Dr. Marco. Te enviaremos lembretes. Até lá!
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="bg-white py-12 -mt-8">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-blue-600 mb-2">Até 80%</div>
+                    <div class="text-gray-600">Redução de Faltas</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-blue-600 mb-2">24/7</div>
+                    <div class="text-gray-600">Atendimento Automático</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-blue-600 mb-2">Total</div>
+                    <div class="text-gray-600">Suporte Completo</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-4xl font-bold text-blue-600 mb-2">100%</div>
+                    <div class="text-gray-600">Satisfação Garantida</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="funcionalidades" class="py-20 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                    Tudo que você precisa em um só lugar
+                </h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Sistema completo de agendamento com recursos que vão transformar a gestão da sua clínica
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="bg-white p-8 rounded-xl shadow-lg hover-scale">
+                    <div class="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-robot text-3xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">IA Conversacional</h3>
+                    <p class="text-gray-600">
+                        Assistente virtual inteligente que entende linguagem natural e agenda consultas automaticamente com precisão profissional.
+                    </p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="bg-white p-8 rounded-xl shadow-lg hover-scale">
+                    <div class="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fab fa-whatsapp text-3xl text-green-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">WhatsApp Integrado</h3>
+                    <p class="text-gray-600">
+                        Seus pacientes agendam diretamente pelo WhatsApp, sem precisar baixar apps ou criar contas.
+                    </p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="bg-white p-8 rounded-xl shadow-lg hover-scale">
+                    <div class="w-16 h-16 bg-purple-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-bell text-3xl text-purple-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Lembretes Automáticos</h3>
+                    <p class="text-gray-600">
+                        Sistema envia lembretes 24h, 3h e 1h antes da consulta. Reduza faltas em até 80%.
+                    </p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="bg-white p-8 rounded-xl shadow-lg hover-scale">
+                    <div class="w-16 h-16 bg-red-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-calendar-alt text-3xl text-red-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Calendário Inteligente</h3>
+                    <p class="text-gray-600">
+                        Dashboard completo com visualização de agenda, gestão de horários e relatórios detalhados.
+                    </p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="bg-white p-8 rounded-xl shadow-lg hover-scale">
+                    <div class="w-16 h-16 bg-yellow-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-mobile-alt text-3xl text-yellow-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">App Instalável (PWA)</h3>
+                    <p class="text-gray-600">
+                        Instale como app no celular ou computador. Funciona offline e sincroniza automaticamente.
+                    </p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="bg-white p-8 rounded-xl shadow-lg hover-scale">
+                    <div class="w-16 h-16 bg-indigo-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-users text-3xl text-indigo-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Multi-Profissional</h3>
+                    <p class="text-gray-600">
+                        Perfeito para clínicas com vários profissionais. Cada um com sua agenda independente e personalizada.
+                    </p>
+                </div>
+
+                <!-- Feature 7 -->
+                <div class="bg-white p-8 rounded-xl shadow-lg hover-scale">
+                    <div class="w-16 h-16 bg-pink-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-microphone text-3xl text-pink-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Áudio Inteligente</h3>
+                    <p class="text-gray-600">
+                        Pacientes podem enviar áudios e receber respostas em áudio. Comunicação natural e acessível para todos.
+                    </p>
+                </div>
+
+                <!-- Feature 8 -->
+                <div class="bg-white p-8 rounded-xl shadow-lg hover-scale">
+                    <div class="w-16 h-16 bg-teal-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-redo-alt text-3xl text-teal-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Reagendamento Fácil</h3>
+                    <p class="text-gray-600">
+                        Pacientes podem remarcar consultas diretamente pelo WhatsApp de forma natural e intuitiva.
+                    </p>
+                </div>
+
+                <!-- Feature 9 -->
+                <div class="bg-white p-8 rounded-xl shadow-lg hover-scale">
+                    <div class="w-16 h-16 bg-orange-100 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-lock text-3xl text-orange-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Segurança Total</h3>
+                    <p class="text-gray-600">
+                        HTTPS, criptografia de dados, conformidade LGPD e backup automático. Seus dados 100% seguros.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="como-funciona" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                    Como Funciona?
+                </h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Nossa equipe cuida de tudo para você começar a operar rapidamente
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-blue-600 text-white rounded-full flex items-center justify-center text-3xl font-bold mx-auto mb-6">
+                        1
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Entre em Contato</h3>
+                    <p class="text-gray-600">
+                        Fale conosco para conhecer o sistema e escolher seu plano ideal.
+                    </p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-blue-600 text-white rounded-full flex items-center justify-center text-3xl font-bold mx-auto mb-6">
+                        2
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Configuração Completa</h3>
+                    <p class="text-gray-600">
+                        Nossa equipe configura tudo: agenda, WhatsApp e personalização.
+                    </p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-blue-600 text-white rounded-full flex items-center justify-center text-3xl font-bold mx-auto mb-6">
+                        3
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Pronto para Usar</h3>
+                    <p class="text-gray-600">
+                        Sistema simples e intuitivo. Qualquer dúvida, nosso suporte está disponível.
+                    </p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-green-600 text-white rounded-full flex items-center justify-center text-3xl font-bold mx-auto mb-6">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Comece a Operar!</h3>
+                    <p class="text-gray-600">
+                        Sistema funcionando 24/7 com nosso suporte contínuo.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Control Section - Você no Controle -->
+    <section class="py-20 bg-gradient-to-br from-blue-50 to-purple-50">
+        <div class="container mx-auto px-4">
+            <div class="max-w-5xl mx-auto">
+                <div class="text-center mb-12">
+                    <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-full mb-6">
+                        <i class="fas fa-user-cog text-white text-3xl"></i>
+                    </div>
+                    <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                        Você no Controle Total
+                    </h2>
+                    <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                        O sistema é seu <strong>assistente inteligente</strong>, não seu chefe.
+                        Você define todas as regras, a IA apenas executa.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-xl p-8 md:p-12">
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <!-- Coluna: O que VOCÊ controla -->
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                                <span class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-crown text-green-600"></i>
+                                </span>
+                                Você decide tudo
+                            </h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-start gap-3">
+                                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                    <div>
+                                        <strong class="text-gray-800">Seus horários de atendimento</strong>
+                                        <p class="text-gray-600 text-sm">Define dias, horários e duração das consultas</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                    <div>
+                                        <strong class="text-gray-800">Bloqueios e exceções</strong>
+                                        <p class="text-gray-600 text-sm">Férias, feriados, compromissos pessoais</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                    <div>
+                                        <strong class="text-gray-800">Tipos de consulta</strong>
+                                        <p class="text-gray-600 text-sm">Retorno, primeira vez, procedimentos específicos</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                    <div>
+                                        <strong class="text-gray-800">Convênios aceitos</strong>
+                                        <p class="text-gray-600 text-sm">Particular, planos de saúde, valores</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                                    <div>
+                                        <strong class="text-gray-800">Cancelamentos e reagendamentos</strong>
+                                        <p class="text-gray-600 text-sm">Suas regras, seu critério</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Coluna: O que a IA FAZ -->
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                                <span class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-robot text-blue-600"></i>
+                                </span>
+                                A IA cuida do resto
+                            </h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-start gap-3">
+                                    <i class="fas fa-cog text-blue-500 mt-1"></i>
+                                    <div>
+                                        <strong class="text-gray-800">Agenda conforme suas regras</strong>
+                                        <p class="text-gray-600 text-sm">Só oferece horários que você liberou</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <i class="fas fa-cog text-blue-500 mt-1"></i>
+                                    <div>
+                                        <strong class="text-gray-800">Responde sobre convênios</strong>
+                                        <p class="text-gray-600 text-sm">Informa exatamente o que você cadastrou</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <i class="fas fa-cog text-blue-500 mt-1"></i>
+                                    <div>
+                                        <strong class="text-gray-800">Envia lembretes</strong>
+                                        <p class="text-gray-600 text-sm">Reduz faltas sem você precisar ligar</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <i class="fas fa-cog text-blue-500 mt-1"></i>
+                                    <div>
+                                        <strong class="text-gray-800">Gerencia reagendamentos</strong>
+                                        <p class="text-gray-600 text-sm">Seguindo suas políticas definidas</p>
+                                    </div>
+                                </li>
+                                <li class="flex items-start gap-3">
+                                    <i class="fas fa-cog text-blue-500 mt-1"></i>
+                                    <div>
+                                        <strong class="text-gray-800">Atende 24/7</strong>
+                                        <p class="text-gray-600 text-sm">Enquanto você descansa ou atende</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Destaque final -->
+                    <div class="mt-10 pt-8 border-t border-gray-200">
+                        <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white text-center">
+                            <p class="text-lg md:text-xl font-medium">
+                                <i class="fas fa-quote-left opacity-50 mr-2"></i>
+                                Pense na IA como uma secretária super eficiente que nunca esquece suas instruções,
+                                está sempre disponível, mas <strong>sempre segue suas ordens</strong>.
+                                <i class="fas fa-quote-right opacity-50 ml-2"></i>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ajuste a qualquer momento -->
+                <div class="mt-8 text-center">
+                    <p class="text-gray-600">
+                        <i class="fas fa-sync-alt text-blue-600 mr-2"></i>
+                        <strong>Mudou de ideia?</strong> Altere suas configurações a qualquer momento pelo painel ou peça ao suporte.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="precos" class="py-20 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                    Planos que cabem no seu bolso
+                </h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Sem surpresas, sem taxas escondidas. Cancele quando quiser.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                <!-- Individual Plan -->
+                <div class="bg-white rounded-2xl shadow-lg p-8 border-2 border-gray-200">
+                    <div class="text-center mb-6">
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Individual</h3>
+                        <p class="text-gray-600">Perfeito para profissionais liberais</p>
+                    </div>
+                    <div class="text-center mb-6">
+                        <div class="text-5xl font-bold text-gray-800 mb-2">
+                            R$ 150
+                            <span class="text-xl text-gray-600 font-normal">/mês</span>
+                        </div>
+                        <p class="text-sm text-gray-500">1 profissional</p>
+                        <p class="text-xs text-blue-600 mt-2">+ R$ 150 de ativação (única vez)</p>
+                    </div>
+                    <ul class="space-y-4 mb-8">
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-600"></i>
+                            <span class="text-gray-600">Agendamentos ilimitados</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-600"></i>
+                            <span class="text-gray-600">WhatsApp com IA 24/7</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-600"></i>
+                            <span class="text-gray-600">Lembretes automáticos</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-600"></i>
+                            <span class="text-gray-600">Dashboard completo</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-600"></i>
+                            <span class="text-gray-600">App instalável (PWA)</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-600"></i>
+                            <span class="text-gray-600">Configuração completa</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-600"></i>
+                            <span class="text-gray-600">Suporte incluso</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-green-600"></i>
+                            <span class="text-gray-600">Suporte contínuo</span>
+                        </li>
+                    </ul>
+                    <a href="#contato" class="block text-center bg-gray-800 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition">
+                        Começar Agora
+                    </a>
+                </div>
+
+                <!-- Clinic Plan (Featured) -->
+                <div class="bg-blue-600 text-white rounded-2xl shadow-2xl p-8 border-4 border-blue-700 transform md:scale-105 relative">
+                    <div class="absolute top-0 right-0 bg-yellow-400 text-gray-800 px-4 py-1 rounded-bl-lg rounded-tr-lg text-sm font-bold">
+                        MAIS POPULAR
+                    </div>
+                    <div class="text-center mb-6">
+                        <h3 class="text-2xl font-bold mb-2">Clínica</h3>
+                        <p class="text-blue-100">Para consultórios compartilhados</p>
+                    </div>
+                    <div class="text-center mb-6">
+                        <div class="text-5xl font-bold mb-2">
+                            R$ 200
+                            <span class="text-xl font-normal">/mês</span>
+                        </div>
+                        <p class="text-sm text-blue-100">2 profissionais incluídos</p>
+                        <p class="text-xs text-yellow-300 mt-2">+ R$ 200 de ativação (única vez)</p>
+                        <p class="text-xs text-yellow-300 mt-1">+ R$ 50/mês por profissional adicional</p>
+                    </div>
+                    <ul class="space-y-4 mb-8">
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-yellow-300"></i>
+                            <span>Até 5 profissionais</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-yellow-300"></i>
+                            <span>Todas as funcionalidades</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-yellow-300"></i>
+                            <span>Calendário unificado</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-yellow-300"></i>
+                            <span>Gestão completa da equipe</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-yellow-300"></i>
+                            <span>Relatórios avançados</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-yellow-300"></i>
+                            <span>Configuração personalizada</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-yellow-300"></i>
+                            <span>Suporte para toda equipe</span>
+                        </li>
+                        <li class="flex items-center gap-3">
+                            <i class="fas fa-check text-yellow-300"></i>
+                            <span>Suporte prioritário</span>
+                        </li>
+                    </ul>
+                    <a href="#contato" class="block text-center bg-white text-blue-600 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
+                        Começar Agora
+                    </a>
+                </div>
+            </div>
+
+            <div class="text-center mt-12">
+                <p class="text-gray-600">
+                    <i class="fas fa-shield-alt text-green-600 mr-2"></i>
+                    Cancele quando quiser • Sem compromisso • Seus dados protegidos
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                    Por que escolher o Horário Inteligente?
+                </h2>
+                <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                    Diferenciais que fazem a diferença no seu dia a dia
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                <div class="bg-gray-50 p-8 rounded-xl text-center">
+                    <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-clock text-3xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Atendimento 24/7</h3>
+                    <p class="text-gray-600">
+                        Seu consultório nunca fecha. Pacientes podem agendar a qualquer hora, mesmo de madrugada ou nos finais de semana.
+                    </p>
+                </div>
+
+                <div class="bg-gray-50 p-8 rounded-xl text-center">
+                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-user-check text-3xl text-green-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Menos Faltas</h3>
+                    <p class="text-gray-600">
+                        Lembretes automáticos em 3 momentos estratégicos reduzem drasticamente os no-shows e otimizam sua agenda.
+                    </p>
+                </div>
+
+                <div class="bg-gray-50 p-8 rounded-xl text-center">
+                    <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fab fa-whatsapp text-3xl text-purple-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Onde o Paciente Está</h3>
+                    <p class="text-gray-600">
+                        WhatsApp é o app mais usado no Brasil. Seus pacientes não precisam baixar nada novo para agendar.
+                    </p>
+                </div>
+
+                <div class="bg-gray-50 p-8 rounded-xl text-center">
+                    <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-hand-holding-heart text-3xl text-yellow-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Suporte Humanizado</h3>
+                    <p class="text-gray-600">
+                        Nossa equipe está sempre disponível para ajudar. Você nunca fica sozinho com dúvidas ou problemas.
+                    </p>
+                </div>
+
+                <div class="bg-gray-50 p-8 rounded-xl text-center">
+                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-file-contract text-3xl text-red-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Sem Fidelidade</h3>
+                    <p class="text-gray-600">
+                        Cancele quando quiser, sem multas ou burocracia. Confiamos na qualidade do nosso serviço.
+                    </p>
+                </div>
+
+                <div class="bg-gray-50 p-8 rounded-xl text-center">
+                    <div class="w-16 h-16 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-shield-alt text-3xl text-teal-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">Garantia de 7 Dias</h3>
+                    <p class="text-gray-600">
+                        Teste sem compromisso. Se não gostar nos primeiros 7 dias, devolvemos 100% do seu dinheiro.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="py-20 bg-gray-50">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                    Perguntas Frequentes
+                </h2>
+            </div>
+
+            <div class="max-w-3xl mx-auto space-y-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">
+                        <i class="fas fa-question-circle text-blue-600 mr-2"></i>
+                        Preciso de WhatsApp Business?
+                    </h3>
+                    <p class="text-gray-600">
+                        Sim, recomendamos usar WhatsApp Business para ter funcionalidades profissionais. Mas o sistema também funciona com WhatsApp comum.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">
+                        <i class="fas fa-question-circle text-blue-600 mr-2"></i>
+                        Como funciona a IA de agendamento?
+                    </h3>
+                    <p class="text-gray-600">
+                        Utilizamos inteligência artificial de última geração. Ela entende linguagem natural, faz perguntas inteligentes e agenda consultas automaticamente verificando disponibilidade em tempo real.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6 border-2 border-blue-200">
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">
+                        <i class="fas fa-question-circle text-blue-600 mr-2"></i>
+                        Vou perder o controle da minha agenda?
+                    </h3>
+                    <p class="text-gray-600">
+                        <strong>De jeito nenhum!</strong> Você tem controle total sobre sua agenda. A IA é apenas uma assistente que segue <em>suas regras</em>: seus horários, seus dias de atendimento, seus bloqueios, seus convênios. Ela só agenda nos horários que você liberou e você pode alterar qualquer configuração a qualquer momento. Pense nela como uma secretária super eficiente que nunca esquece suas instruções.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">
+                        <i class="fas fa-question-circle text-blue-600 mr-2"></i>
+                        Posso cancelar a qualquer momento?
+                    </h3>
+                    <p class="text-gray-600">
+                        Sim! Não temos contrato de fidelidade. Você pode cancelar quando quiser, sem multas ou taxas adicionais. Seus dados ficam disponíveis por 30 dias após o cancelamento.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">
+                        <i class="fas fa-question-circle text-blue-600 mr-2"></i>
+                        Meus dados estão seguros?
+                    </h3>
+                    <p class="text-gray-600">
+                        Absolutamente! Utilizamos criptografia SSL/TLS, servidores seguros, backup automático e estamos em conformidade com a LGPD. Seus dados nunca são compartilhados com terceiros.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">
+                        <i class="fas fa-question-circle text-blue-600 mr-2"></i>
+                        Posso usar meu número de WhatsApp atual?
+                    </h3>
+                    <p class="text-gray-600">
+                        Sim! Se você já possui um número de WhatsApp dedicado para atendimento, esse é o cenário ideal — todos os seus contatos e histórico de conversas já estão vinculados a ele. Não recomendamos a utilização do seu número pessoal, para evitar que a IA interaja com seus contatos pessoais. Caso prefira, podemos fornecer um número virtual dedicado exclusivamente para os agendamentos dos seus pacientes/clientes. Informações sobre o valor mensal do número dedicado sob consulta.
+                    </p>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-3">
+                        <i class="fas fa-question-circle text-blue-600 mr-2"></i>
+                        Tem limite de agendamentos?
+                    </h3>
+                    <p class="text-gray-600">
+                        Não! Todos os planos incluem agendamentos ilimitados. Você paga apenas pela quantidade de profissionais, independente do volume de consultas.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="gradient-bg text-white py-20">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-4xl md:text-5xl font-bold mb-6">
+                Pronto para transformar sua clínica?
+            </h2>
+            <p class="text-xl mb-8 text-blue-100 max-w-2xl mx-auto">
+                Automatize seus agendamentos com tecnologia de ponta
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="#contato" class="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition">
+                    <i class="fas fa-rocket mr-2"></i>Começar Agora
+                </a>
+                <a href="https://wa.me/5524988493257?text=Olá!%20Quero%20conhecer%20o%20Horário%20Inteligente" target="_blank" class="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-blue-600 transition">
+                    <i class="fab fa-whatsapp mr-2"></i>Falar com Vendas
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contato" class="py-20 bg-white">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center mb-12">
+                    <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                        Entre em Contato
+                    </h2>
+                    <p class="text-xl text-gray-600">
+                        Tire suas dúvidas ou agende uma demonstração gratuita
+                    </p>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-12">
+                    <!-- Contact Form -->
+                    <div>
+                        <form id="contact-form" class="space-y-6">
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">Nome Completo</label>
+                                <input type="text" id="nome" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600">
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">Email</label>
+                                <input type="email" id="email" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600">
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">Telefone (WhatsApp)</label>
+                                <input type="tel" id="telefone" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600">
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">Especialidade</label>
+                                <input type="text" id="especialidade" placeholder="Ex: Dermatologia, Odontologia..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600">
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">Mensagem</label>
+                                <textarea id="mensagem" rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-600"></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-paper-plane mr-2"></i>Enviar Mensagem
+                            </button>
+                        </form>
+
+                        <div id="form-success" class="hidden mt-4 p-4 bg-green-100 text-green-700 rounded-lg">
+                            <i class="fas fa-check-circle mr-2"></i>Mensagem enviada com sucesso! Entraremos em contato em breve.
+                        </div>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="space-y-8">
+                        <div class="bg-gray-50 p-6 rounded-lg">
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-envelope text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-gray-800 mb-2">Email</h3>
+                                    <p class="text-gray-600">contato@horariointeligente.com.br</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 p-6 rounded-lg">
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <i class="fab fa-whatsapp text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-gray-800 mb-2">WhatsApp</h3>
+                                    <p class="text-gray-600">(24) 98849-3257</p>
+                                    <a href="https://wa.me/5524988493257" target="_blank" class="text-blue-600 hover:underline">Iniciar conversa</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 p-6 rounded-lg">
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-clock text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-gray-800 mb-2">Horário de Atendimento</h3>
+                                    <p class="text-gray-600">Segunda a Sexta: 9h às 18h</p>
+                                    <p class="text-gray-600">Sábado: 9h às 13h</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-6 rounded-lg text-white">
+                            <h3 class="font-bold text-xl mb-2">
+                                <i class="fas fa-headset mr-2"></i>Suporte Personalizado
+                            </h3>
+                            <p class="mb-4">Nossa equipe configura tudo para você. Suporte sempre disponível.</p>
+                            <a href="https://wa.me/5524988493257?text=Olá!%20Quero%20conhecer%20o%20Horário%20Inteligente" target="_blank" class="inline-block bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
+                                Falar com Especialista
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300 py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center mb-4">
+                        <span class="text-2xl text-white tracking-tight" style="font-weight: 500;">Horário <span style="color: #DBEAFE; font-weight: 600;">inteligente</span></span>
+                    </div>
+                    <p class="text-gray-400 mb-4">
+                        Automatize seus agendamentos com inteligência artificial e foque no que realmente importa: seus pacientes.
+                    </p>
+                    <div class="flex gap-4">
+                        <a href="https://www.facebook.com/horariointeligente/" target="_blank" rel="noopener noreferrer" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="https://www.instagram.com/horariointeligente/" target="_blank" rel="noopener noreferrer" class="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-blue-600 transition">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-white font-bold text-lg mb-4">Produto</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#funcionalidades" class="hover:text-blue-500 transition">Funcionalidades</a></li>
+                        <li><a href="#precos" class="hover:text-blue-500 transition">Preços</a></li>
+                        <!-- LINKS LOGIN DESABILITADOS
+                        <li><a href="/static/login.html" class="hover:text-blue-500 transition">Login</a></li>
+                        <li><a href="/static/registro.html" class="hover:text-blue-500 transition">Criar Conta</a></li>
+                        -->
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-white font-bold text-lg mb-4">Empresa</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-blue-500 transition">Sobre Nós</a></li>
+                        <li><a href="#contato" class="hover:text-blue-500 transition">Contato</a></li>
+                        <li><a href="#" class="hover:text-blue-500 transition">Blog</a></li>
+                        <li><a href="#" class="hover:text-blue-500 transition">Carreiras</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-white font-bold text-lg mb-4">Legal</h3>
+                    <ul class="space-y-2">
+                        <li><a href="/static/termos-de-uso.html" class="hover:text-blue-500 transition">Termos de Uso</a></li>
+                        <li><a href="/static/politica-privacidade.html" class="hover:text-blue-500 transition">Política de Privacidade</a></li>
+                        <li><a href="/static/politica-privacidade.html#secao7" class="hover:text-blue-500 transition">LGPD</a></li>
+                        <li><a href="/static/politica-privacidade.html#secao8" class="hover:text-blue-500 transition">Cookies</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-800 pt-8 text-center">
+                <p class="text-gray-400">
+                    &copy; 2025 Horário Inteligente. Todos os direitos reservados.
+                    <br class="md:hidden">
+                    <span class="hidden md:inline">|</span>
+                    Desenvolvido com <i class="fas fa-heart text-red-500"></i> para profissionais de saúde
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Smooth Scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    // Close mobile menu if open
+                    mobileMenu.classList.add('hidden');
+                }
+            });
+        });
+
+        // Contact Form
+        const contactForm = document.getElementById('contact-form');
+        const formSuccess = document.getElementById('form-success');
+
+        contactForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = contactForm.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
+            submitBtn.disabled = true;
+
+            const formData = {
+                nome: document.getElementById('nome').value,
+                email: document.getElementById('email').value,
+                telefone: document.getElementById('telefone').value,
+                especialidade: document.getElementById('especialidade').value,
+                mensagem: document.getElementById('mensagem').value
+            };
+
+            try {
+                const response = await fetch('/api/contato', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    formSuccess.classList.remove('hidden');
+                    contactForm.reset();
+
+                    setTimeout(() => {
+                        formSuccess.classList.add('hidden');
+                    }, 5000);
+                } else {
+                    const error = await response.json();
+                    alert('Erro ao enviar mensagem: ' + (error.detail || 'Tente novamente.'));
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao enviar mensagem. Verifique sua conexão e tente novamente.');
+            } finally {
+                submitBtn.innerHTML = originalBtnText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Sticky Navigation
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('shadow-lg');
+            } else {
+                nav.classList.remove('shadow-lg');
+            }
+        });
+
+        // Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
+            });
+        }
+    </script>
+</body>
+</html>

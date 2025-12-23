@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code - Horário Inteligente WhatsApp</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 600px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        #qrcode-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        #qrcode-image {
+            max-width: 400px;
+            width: 100%;
+            height: auto;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .instructions {
+            text-align: left;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .instructions ol {
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 10px 0;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Horário Inteligente</h1>
+        <p class="subtitle">Conectar WhatsApp - Instância ProSaude</p>
+
+        <div class="status loading" id="status">
+            Carregando QR Code...
+        </div>
+
+        <div id="qrcode-container" style="display: none;">
+            <img id="qrcode-image" alt="QR Code WhatsApp">
+        </div>
+
+        <button onclick="refreshQRCode()" id="refresh-btn">🔄 Atualizar QR Code</button>
+
+        <div class="instructions">
+            <h3>📱 Como Conectar:</h3>
+            <ol>
+                <li>Abra o <strong>WhatsApp</strong> no seu celular</li>
+                <li>Toque em <strong>Mais opções</strong> (⋮) ou <strong>Configurações</strong></li>
+                <li>Selecione <strong>Aparelhos conectados</strong></li>
+                <li>Toque em <strong>Conectar um aparelho</strong></li>
+                <li><strong>Escaneie o QR Code</strong> acima</li>
+            </ol>
+        </div>
+
+        <div class="info">
+            <strong>ℹ️ Informações:</strong><br>
+            📞 <strong>Número de teste:</strong> 5524988493257<br>
+            🏥 <strong>Instância:</strong> ProSaude<br>
+            📡 <strong>API:</strong> Evolution API v1.7.4<br>
+            ✅ <strong>Status:</strong> <span id="connection-status">Desconectado</span>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://72.62.14.175:8080';
+        const API_KEY = 'evolution-api-prosaude-123';
+        const INSTANCE = 'ProSaude';
+
+        async function getQRCode() {
+            try {
+                const response = await fetch(`${API_URL}/instance/connect/${INSTANCE}`, {
+                    headers: {
+                        'apikey': API_KEY
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.base64) {
+                    document.getElementById('qrcode-image').src = data.base64;
+                    document.getElementById('qrcode-container').style.display = 'inline-block';
+                    document.getElementById('status').className = 'status loading';
+                    document.getElementById('status').textContent = '✅ QR Code gerado! Escaneie com WhatsApp';
+
+                    // Verificar status de conexão
+                    checkConnectionStatus();
+                } else {
+                    throw new Error('QR Code não disponível');
+                }
+            } catch (error) {
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').textContent = '❌ Erro ao gerar QR Code: ' + error.message;
+                console.error('Erro:', error);
+            }
+        }
+
+        async function checkConnectionStatus() {
+            try {
+                const response = await fetch(`${API_URL}/instance/connectionState/${INSTANCE}`, {
+                    headers: {
+                        'apikey': API_KEY
+                    }
+                });
+
+                const data = await response.json();
+                const state = data.instance?.state || 'unknown';
+
+                document.getElementById('connection-status').textContent = state;
+
+                if (state === 'open') {
+                    document.getElementById('status').className = 'status connected';
+                    document.getElementById('status').textContent = '✅ WhatsApp Conectado! Pode fechar esta página.';
+                    document.getElementById('qrcode-container').style.display = 'none';
+                } else if (state === 'close') {
+                    // Continuar tentando
+                    setTimeout(checkConnectionStatus, 3000);
+                }
+            } catch (error) {
+                console.error('Erro ao verificar status:', error);
+                setTimeout(checkConnectionStatus, 5000);
+            }
+        }
+
+        function refreshQRCode() {
+            document.getElementById('status').className = 'status loading';
+            document.getElementById('status').textContent = 'Gerando novo QR Code...';
+            document.getElementById('qrcode-container').style.display = 'none';
+            getQRCode();
+        }
+
+        // Carregar QR Code ao abrir a página
+        window.onload = function() {
+            getQRCode();
+            // Atualizar QR Code a cada 30 segundos (códigos expiram)
+            setInterval(refreshQRCode, 30000);
+        };
+    </script>
+</body>
+</html>

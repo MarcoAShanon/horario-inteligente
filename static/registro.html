@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-blue-500 to-purple-600 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl p-6 md:p-8">
+        <!-- Header -->
+        <div class="text-center mb-6">
+            <i class="fas fa-user-plus text-5xl text-blue-600 mb-3"></i>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">Criar Conta</h1>
+            <p class="text-gray-600 mt-2">Cadastre-se no Horário Inteligente</p>
+        </div>
+
+        <!-- Form -->
+        <form id="formRegistro" class="space-y-4">
+            <!-- Tipo de Usuário -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Conta</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="selecionarTipo('medico')" id="btnMedico" class="tipo-btn p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 transition">
+                        <i class="fas fa-user-md text-3xl text-blue-600"></i>
+                        <p class="mt-2 font-semibold">Profissional</p>
+                    </button>
+                    <button type="button" onclick="selecionarTipo('secretaria')" id="btnSecretaria" class="tipo-btn p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 transition">
+                        <i class="fas fa-user-tie text-3xl text-purple-600"></i>
+                        <p class="mt-2 font-semibold">Secretária</p>
+                    </button>
+                </div>
+                <input type="hidden" id="tipo" name="tipo" required>
+            </div>
+
+            <!-- Dados Básicos -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
+                    <input type="text" id="nome" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                    <input type="email" id="email" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Senha * (mín. 6 caracteres)</label>
+                    <input type="password" id="senha" minlength="6" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Confirmar Senha *</label>
+                    <input type="password" id="confirmarSenha" minlength="6" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                    <input type="tel" id="telefone" placeholder="(00) 00000-0000" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tel. Particular</label>
+                    <input type="tel" id="telefone_particular" placeholder="(00) 00000-0000" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+
+            <!-- Campos para Profissional (hidden por padrão) -->
+            <div id="camposMedico" class="hidden space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">CRM *</label>
+                        <input type="text" id="crm" placeholder="CRM-UF 12345" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Especialidade *</label>
+                        <input type="text" id="especialidade" placeholder="Ex: Cardiologista" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Valor Consulta Particular (R$)</label>
+                    <input type="number" id="valor_consulta_particular" step="0.01" min="0" placeholder="0.00" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Biografia/Sobre</label>
+                    <textarea id="biografia" rows="3" placeholder="Conte um pouco sobre você e sua experiência..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="flex flex-col space-y-3 pt-4">
+                <button type="submit" id="btnSubmit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50">
+                    Criar Conta
+                </button>
+                <a href="/static/login.html" class="text-center text-sm text-gray-600 hover:text-blue-600">
+                    Já tem uma conta? <strong>Fazer Login</strong>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let tipoSelecionado = null;
+
+        function selecionarTipo(tipo) {
+            tipoSelecionado = tipo;
+            document.getElementById('tipo').value = tipo;
+
+            // Atualizar visual dos botões
+            document.querySelectorAll('.tipo-btn').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'bg-blue-50');
+            });
+
+            if (tipo === 'medico') {
+                document.getElementById('btnMedico').classList.add('border-blue-500', 'bg-blue-50');
+                document.getElementById('camposMedico').classList.remove('hidden');
+                document.getElementById('crm').required = true;
+                document.getElementById('especialidade').required = true;
+            } else {
+                document.getElementById('btnSecretaria').classList.add('border-blue-500', 'bg-blue-50');
+                document.getElementById('camposMedico').classList.add('hidden');
+                document.getElementById('crm').required = false;
+                document.getElementById('especialidade').required = false;
+            }
+        }
+
+        document.getElementById('formRegistro').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validações
+            if (!tipoSelecionado) {
+                alert('Por favor, selecione o tipo de conta');
+                return;
+            }
+
+            const senha = document.getElementById('senha').value;
+            const confirmarSenha = document.getElementById('confirmarSenha').value;
+
+            if (senha !== confirmarSenha) {
+                alert('As senhas não coincidem!');
+                return;
+            }
+
+            // Montar dados
+            const dados = {
+                tipo: tipoSelecionado,
+                nome: document.getElementById('nome').value,
+                email: document.getElementById('email').value,
+                senha: senha,
+                telefone: document.getElementById('telefone').value || null,
+                telefone_particular: document.getElementById('telefone_particular').value || null
+            };
+
+            if (tipoSelecionado === 'medico') {
+                dados.crm = document.getElementById('crm').value;
+                dados.especialidade = document.getElementById('especialidade').value;
+                dados.valor_consulta_particular = parseFloat(document.getElementById('valor_consulta_particular').value) || null;
+                dados.biografia = document.getElementById('biografia').value || null;
+            }
+
+            // Desabilitar botão
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Criando conta...';
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.sucesso) {
+                    // Redirecionar para página de sucesso com email
+                    window.location.href = `/static/cadastro-sucesso.html?email=${encodeURIComponent(dados.email)}`;
+                } else {
+                    alert('❌ Erro: ' + (result.detail || result.mensagem || 'Erro ao criar cadastro'));
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = 'Criar Conta';
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('❌ Erro ao criar cadastro. Tente novamente.');
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = 'Criar Conta';
+            }
+        });
+    </script>
+
+    <!-- Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
+            });
+        }
+    </script>
+</body>
+</html>

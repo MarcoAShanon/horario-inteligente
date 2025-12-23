@@ -1,0 +1,53 @@
+"""
+Modelos do Sistema de Agendamento Médico SaaS
+Desenvolvido por Marco
+"""
+
+from app.models.base import BaseModel, Base
+
+# Models de Planos (importar antes de Cliente por dependência)
+from app.models.plano import Plano
+from app.models.assinatura import Assinatura
+
+# Models principais
+from app.models.cliente import Cliente
+from app.models.medico import Medico
+from app.models.paciente import Paciente
+from app.models.agendamento import Agendamento
+from app.models.convenio import Convenio
+from app.models.configuracao import Configuracao
+
+from app.models.calendario import HorarioAtendimento, BloqueioAgenda
+from app.models.configuracoes import ConfiguracoesMedico, BloqueioAgenda as BloqueioAgendaNovo, HorarioEspecial
+
+# Novos models para gestão interna
+from app.models.usuario_interno import UsuarioInterno
+from app.models.parceiro_comercial import ParceiroComercial
+from app.models.cliente_parceiro import ClienteParceiro
+from app.models.custo_operacional import CustoOperacional
+from app.models.log_auditoria import LogAuditoria
+
+__all__ = [
+    "Base",
+    "BaseModel",
+    "Cliente",
+    "Medico",
+    "Paciente",
+    "Agendamento",
+    "Convenio",
+    "Configuracao",
+    "HorarioAtendimento",
+    "BloqueioAgenda",
+    "ConfiguracoesMedico",
+    "BloqueioAgendaNovo",
+    "HorarioEspecial",
+    # Novos models
+    "UsuarioInterno",
+    "ParceiroComercial",
+    "ClienteParceiro",
+    "CustoOperacional",
+    "LogAuditoria",
+    # Models de Planos e Assinaturas
+    "Plano",
+    "Assinatura"
+]

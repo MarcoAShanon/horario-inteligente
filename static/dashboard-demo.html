@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Demo - Horário Inteligente</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Intro.js para tour guiado -->
+    <link rel="stylesheet" href="https://unpkg.com/intro.js/minified/introjs.min.css">
+    <script src="https://unpkg.com/intro.js/minified/intro.min.js"></script>
+
+    <style>
+        body { background: #f8fafc; }
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+        }
+        /* Custom Intro.js styling */
+        .introjs-tooltip {
+            max-width: 400px;
+            padding-top: 35px !important;
+        }
+        .introjs-tooltiptext {
+            font-size: 14px;
+        }
+        .introjs-skipbutton {
+            position: absolute !important;
+            top: 10px !important;
+            right: 10px !important;
+            color: #666 !important;
+            font-size: 14px !important;
+            padding: 4px 8px !important;
+        }
+        .introjs-skipbutton:hover {
+            color: #333 !important;
+        }
+        .demo-badge {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .introjs-helperLayer {
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        /* Chat Simulator Styles */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+            max-height: 70vh;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            background: #e5ddd5;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4ccc4' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+        .chat-bubble {
+            max-width: 80%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            position: relative;
+            word-wrap: break-word;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+        .chat-bubble.user {
+            background: #dcf8c6;
+            margin-left: auto;
+            border-bottom-right-radius: 0;
+        }
+        .chat-bubble.bot {
+            background: white;
+            margin-right: auto;
+            border-bottom-left-radius: 0;
+        }
+        .chat-bubble .time {
+            font-size: 11px;
+            color: #667781;
+            margin-top: 4px;
+            text-align: right;
+        }
+        .chat-bubble.bot .time {
+            text-align: left;
+        }
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 8px;
+            width: fit-content;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #90949c;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+        .suggestion-chip {
+            display: inline-block;
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #128C7E;
+            color: #128C7E;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 4px;
+        }
+        .suggestion-chip:hover {
+            background: #128C7E;
+            color: white;
+        }
+        .chat-input-container {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+            background: #f0f2f5;
+            border-top: 1px solid #e0e0e0;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 24px;
+            background: white;
+            font-size: 15px;
+            outline: none;
+        }
+        .chat-send-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #128C7E;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+        .chat-send-btn:hover {
+            background: #075E54;
+        }
+        .chat-send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .chat-header {
+            background: #128C7E;
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .chat-header .avatar {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chat-header .avatar i {
+            color: #128C7E;
+            font-size: 20px;
+        }
+        .chat-header .info h4 {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .chat-header .info p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Demo Banner -->
+    <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 px-4 text-center text-sm">
+        <span class="demo-badge inline-flex items-center gap-2">
+            <i class="fas fa-flask"></i>
+            <span>Ambiente de Demonstração</span>
+        </span>
+        <span class="mx-3">|</span>
+        <button onclick="iniciarTour()" class="underline hover:no-underline">
+            <i class="fas fa-route mr-1"></i>
+            Fazer tour guiado
+        </button>
+        <span class="mx-3">|</span>
+        <a href="https://horariointeligente.com.br/#contato" class="underline hover:no-underline">
+            <i class="fab fa-whatsapp mr-1"></i>
+            Contratar agora
+        </a>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b" data-intro="Este é o cabeçalho do sistema. Aqui você encontra o menu principal e informações do usuário logado." data-step="1">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                    <i class="fas fa-calendar-check text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-gray-800">Clínica Demonstração</h1>
+                    <p class="text-xs text-gray-500">Horário Inteligente</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button class="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg" data-intro="Central de notificações: lembretes, confirmações e alertas importantes." data-step="2">
+                    <i class="fas fa-bell text-xl"></i>
+                    <span class="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
+                </button>
+                <div class="flex items-center gap-2 text-gray-700">
+                    <div class="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
+                        <i class="fas fa-user-md text-purple-600"></i>
+                    </div>
+                    <span class="hidden sm:inline font-medium" id="userName">Dr. Carlos Silva</span>
+                </div>
+                <button onclick="voltarDemo()" class="text-gray-500 hover:text-gray-700 p-2" title="Sair">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" data-intro="Cards de estatísticas rápidas. Visualize métricas importantes do seu dia em um relance." data-step="3">
+            <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-2xl font-bold text-gray-800" id="consultasHoje">8</p>
+                        <p class="text-sm text-gray-500">Consultas Hoje</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                        <i class="fas fa-calendar-day text-blue-500 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-2xl font-bold text-gray-800" id="pacientesTotal">20</p>
+                        <p class="text-sm text-gray-500">Pacientes</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                        <i class="fas fa-users text-green-500 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-2xl font-bold text-gray-800" id="confirmados">5</p>
+                        <p class="text-sm text-gray-500">Confirmados</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                        <i class="fas fa-check-circle text-purple-500 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card bg-white rounded-xl p-4 shadow-sm border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-2xl font-bold text-gray-800" id="pendentes">3</p>
+                        <p class="text-sm text-gray-500">Pendentes</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center">
+                        <i class="fas fa-clock text-yellow-500 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Agenda do Dia -->
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border" data-intro="Agenda do dia: visualize todas as consultas agendadas, com status de confirmação e informações do paciente." data-step="4">
+                <div class="p-4 border-b flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-gray-800">
+                        <i class="fas fa-calendar-alt mr-2 text-purple-500"></i>
+                        Agenda de Hoje
+                    </h2>
+                    <button onclick="abrirAgendamento()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition text-sm flex items-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        Novo Agendamento
+                    </button>
+                </div>
+                <div class="p-4 space-y-3" id="agendaHoje">
+                    <!-- Agendamentos serão carregados aqui -->
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Ações Rápidas -->
+                <div class="bg-white rounded-xl shadow-sm border p-4" data-intro="Ações rápidas: acesse as funcionalidades mais utilizadas com um clique." data-step="5">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">
+                        <i class="fas fa-bolt mr-2 text-yellow-500"></i>
+                        Ações Rápidas
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="abrirAgendamento()" class="flex flex-col items-center gap-2 p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition">
+                            <i class="fas fa-calendar-plus text-purple-600 text-xl"></i>
+                            <span class="text-xs text-gray-700">Agendar</span>
+                        </button>
+                        <button onclick="abrirWhatsApp()" class="flex flex-col items-center gap-2 p-3 bg-emerald-50 rounded-lg hover:bg-emerald-100 transition">
+                            <i class="fab fa-whatsapp text-emerald-600 text-xl"></i>
+                            <span class="text-xs text-gray-700">WhatsApp</span>
+                        </button>
+                        <button onclick="abrirRelatorios()" class="flex flex-col items-center gap-2 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition">
+                            <i class="fas fa-chart-bar text-blue-600 text-xl"></i>
+                            <span class="text-xs text-gray-700">Relatórios</span>
+                        </button>
+                        <button onclick="abrirCalendario()" class="flex flex-col items-center gap-2 p-3 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition">
+                            <i class="fas fa-calendar text-indigo-600 text-xl"></i>
+                            <span class="text-xs text-gray-700">Calendário</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Simulador Secretária IA -->
+                <div class="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-sm p-4 text-white" data-intro="Simulador de Atendimento: experimente como seus pacientes serão atendidos pela nossa IA via WhatsApp." data-step="6">
+                    <h3 class="text-lg font-bold mb-2">
+                        <i class="fas fa-headset mr-2"></i>
+                        Teste a Secretária IA
+                    </h3>
+                    <p class="text-sm text-purple-100 mb-4">
+                        Simule uma conversa como se fosse seu paciente e veja na prática como funciona o agendamento inteligente via WhatsApp!
+                    </p>
+                    <button onclick="abrirAssistente()" class="w-full bg-white text-purple-600 px-4 py-2 rounded-lg hover:bg-purple-50 transition font-medium">
+                        <i class="fab fa-whatsapp mr-2"></i>
+                        Iniciar Simulação
+                    </button>
+                </div>
+
+                <!-- WhatsApp Status -->
+                <div class="bg-white rounded-xl shadow-sm border p-4" data-intro="Integração WhatsApp: envie lembretes automáticos e comunique-se com pacientes diretamente pelo sistema." data-step="7">
+                    <h3 class="text-lg font-bold text-gray-800 mb-3">
+                        <i class="fab fa-whatsapp mr-2 text-green-500"></i>
+                        WhatsApp
+                    </h3>
+                    <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                            <span class="text-sm text-green-700">Conectado</span>
+                        </div>
+                        <span class="text-xs text-green-600">Lembretes ativos</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">
+                        <i class="fas fa-bell mr-1"></i>
+                        3 lembretes enviados hoje
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Funcionalidades Extras -->
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4" data-intro="Mais funcionalidades: explore o calendário completo, configurações e integrações." data-step="8">
+            <button onclick="abrirCalendario()" class="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition text-left group">
+                <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center mb-4 group-hover:bg-blue-200 transition">
+                    <i class="fas fa-calendar text-blue-600 text-xl"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-1">Calendário Completo</h3>
+                <p class="text-sm text-gray-500">Visualização mensal, semanal e diária com drag & drop</p>
+            </button>
+
+            <button onclick="abrirConfiguracoes()" class="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition text-left group">
+                <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center mb-4 group-hover:bg-gray-200 transition">
+                    <i class="fas fa-cog text-gray-600 text-xl"></i>
+                </div>
+                <h3 class="font-bold text-gray-800 mb-1">Configurações</h3>
+                <p class="text-sm text-gray-500">Horários de atendimento, convênios e preferências</p>
+            </button>
+        </div>
+    </main>
+
+    <!-- Modal Novo Agendamento -->
+    <div id="modalAgendamento" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">
+                    <i class="fas fa-calendar-plus mr-2 text-purple-500"></i>
+                    Novo Agendamento
+                </h3>
+                <button onclick="fecharModal('modalAgendamento')" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="formAgendamento" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Paciente</label>
+                    <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option>Selecione um paciente...</option>
+                        <option>Maria Santos</option>
+                        <option>João Oliveira</option>
+                        <option>Ana Paula Costa</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Data</label>
+                        <input type="date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Horário</label>
+                        <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <option>08:00</option>
+                            <option>08:30</option>
+                            <option>09:00</option>
+                            <option>09:30</option>
+                            <option>10:00</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Atendimento</label>
+                    <select class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        <option>Primeira Consulta</option>
+                        <option>Retorno</option>
+                        <option>Consulta</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="fecharModal('modalAgendamento')" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="salvarAgendamento()" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                        Agendar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Info Demo -->
+    <div id="modalInfo" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl text-center">
+            <div class="w-16 h-16 mx-auto rounded-full bg-purple-100 flex items-center justify-center mb-4">
+                <i class="fas fa-info-circle text-purple-500 text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2" id="modalInfoTitulo">Funcionalidade Demo</h3>
+            <p class="text-gray-600 mb-6" id="modalInfoTexto">Esta é uma demonstração. No sistema completo, você terá acesso a todas as funcionalidades.</p>
+            <div class="flex gap-3">
+                <button onclick="fecharModal('modalInfo')" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                    Entendi
+                </button>
+                <a href="https://horariointeligente.com.br/#contato" class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition inline-flex items-center justify-center gap-2">
+                    <i class="fab fa-whatsapp"></i>
+                    Contratar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Chat Simulator -->
+    <div id="modalChat" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl w-full max-w-lg mx-4 shadow-2xl overflow-hidden">
+            <!-- Chat Header -->
+            <div class="chat-header">
+                <button onclick="fecharModal('modalChat')" class="text-white hover:bg-white/20 p-2 rounded-full transition -ml-1">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div class="avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="info flex-1">
+                    <h4>Clínica Dr. Carlos Silva</h4>
+                    <p id="chatStatus">online</p>
+                </div>
+                <button onclick="reiniciarChat()" class="text-white hover:bg-white/20 p-2 rounded-full transition" title="Reiniciar conversa">
+                    <i class="fas fa-redo"></i>
+                </button>
+            </div>
+
+            <!-- Chat Container -->
+            <div class="chat-container">
+                <!-- Messages Area -->
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Mensagem de boas-vindas -->
+                    <div class="chat-bubble bot">
+                        <p>Olá! 👋 Seja bem-vindo(a) à Clínica Dr. Carlos Silva!</p>
+                        <p class="mt-2">Sou a assistente virtual e estou aqui para ajudar você a agendar sua consulta.</p>
+                        <p class="mt-2">Como posso ajudar?</p>
+                        <div class="time">agora</div>
+                    </div>
+
+                    <!-- Sugestões iniciais -->
+                    <div id="suggestions" class="text-center py-4">
+                        <p class="text-sm text-gray-600 mb-3">Toque em uma opção ou digite sua mensagem:</p>
+                        <div class="flex flex-wrap justify-center gap-2">
+                            <button class="suggestion-chip" onclick="enviarSugestao('Olá, gostaria de agendar uma consulta')">
+                                📅 Agendar consulta
+                            </button>
+                            <button class="suggestion-chip" onclick="enviarSugestao('Quais especialidades vocês atendem?')">
+                                🏥 Ver especialidades
+                            </button>
+                            <button class="suggestion-chip" onclick="enviarSugestao('Quais convênios são aceitos?')">
+                                💳 Convênios aceitos
+                            </button>
+                            <button class="suggestion-chip" onclick="enviarSugestao('Qual o horário de funcionamento?')">
+                                🕐 Horários
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="chat-input-container">
+                    <input
+                        type="text"
+                        id="chatInput"
+                        class="chat-input"
+                        placeholder="Digite sua mensagem..."
+                        onkeypress="if(event.key === 'Enter') enviarMensagem()"
+                    >
+                    <button class="chat-send-btn" onclick="enviarMensagem()" id="btnEnviar">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer info -->
+            <div class="bg-gray-100 px-4 py-2 text-center">
+                <p class="text-xs text-gray-500">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Este é um simulador. No sistema real, a conversa ocorre via WhatsApp.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tour Completo Button -->
+    <button onclick="iniciarTour()" class="fixed bottom-6 right-6 w-14 h-14 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition flex items-center justify-center z-40" title="Iniciar tour guiado">
+        <i class="fas fa-question text-xl"></i>
+    </button>
+
+    <script>
+        // Verificar autenticação
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            const medico = localStorage.getItem('medico');
+
+            if (!token) {
+                window.location.href = '/static/demo/index.html';
+                return;
+            }
+
+            // Sincronizar token para authToken (compatibilidade com calendário)
+            if (!localStorage.getItem('authToken') && token) {
+                localStorage.setItem('authToken', token);
+            }
+
+            if (medico) {
+                const medicoData = JSON.parse(medico);
+                document.getElementById('userName').textContent = medicoData.nome || 'Dr. Carlos Silva';
+            }
+
+            carregarAgendaHoje();
+
+            // Iniciar tour automaticamente na primeira visita
+            const tourDone = localStorage.getItem('demo_tour_done');
+            if (tourDone !== 'true') {
+                setTimeout(() => {
+                    iniciarTour();
+                }, 1000);
+            }
+        });
+
+        function carregarAgendaHoje() {
+            const agendamentos = [
+                { hora: '08:00', paciente: 'Maria Santos', tipo: 'Consulta', status: 'confirmado' },
+                { hora: '08:30', paciente: 'João Oliveira', tipo: 'Retorno', status: 'confirmado' },
+                { hora: '09:00', paciente: 'Ana Paula Costa', tipo: 'Primeira Consulta', status: 'pendente' },
+                { hora: '09:30', paciente: 'Pedro Almeida', tipo: 'Consulta', status: 'confirmado' },
+                { hora: '10:00', paciente: 'Carla Fernandes', tipo: 'Retorno', status: 'pendente' },
+                { hora: '10:30', paciente: 'Lucas Souza', tipo: 'Consulta', status: 'confirmado' },
+                { hora: '14:00', paciente: 'Fernanda Lima', tipo: 'Consulta', status: 'confirmado' },
+                { hora: '14:30', paciente: 'Ricardo Pereira', tipo: 'Primeira Consulta', status: 'pendente' }
+            ];
+
+            const container = document.getElementById('agendaHoje');
+            container.innerHTML = agendamentos.map(ag => `
+                <div class="flex items-center gap-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer">
+                    <div class="text-center min-w-[60px]">
+                        <p class="text-lg font-bold text-gray-800">${ag.hora}</p>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-800">${ag.paciente}</p>
+                        <p class="text-sm text-gray-500">${ag.tipo}</p>
+                    </div>
+                    <div>
+                        ${ag.status === 'confirmado'
+                            ? '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs"><i class="fas fa-check mr-1"></i>Confirmado</span>'
+                            : '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs"><i class="fas fa-clock mr-1"></i>Pendente</span>'
+                        }
+                    </div>
+                    <button class="text-gray-400 hover:text-purple-600 transition">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            // Atualizar contadores
+            document.getElementById('consultasHoje').textContent = agendamentos.length;
+            document.getElementById('confirmados').textContent = agendamentos.filter(a => a.status === 'confirmado').length;
+            document.getElementById('pendentes').textContent = agendamentos.filter(a => a.status === 'pendente').length;
+        }
+
+        function iniciarTour() {
+            introJs().setOptions({
+                nextLabel: 'Próximo →',
+                prevLabel: '← Anterior',
+                doneLabel: 'Finalizar',
+                skipLabel: 'Pular',
+                showProgress: true,
+                showBullets: true,
+                exitOnOverlayClick: false,
+                steps: [
+                    {
+                        intro: `
+                            <div class="text-center">
+                                <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-4">
+                                    <i class="fas fa-hand-sparkles text-white text-3xl"></i>
+                                </div>
+                                <h3 class="text-xl font-bold mb-2">Bem-vindo ao Tour!</h3>
+                                <p class="text-gray-600">Vamos conhecer as principais funcionalidades do Horário Inteligente.</p>
+                            </div>
+                        `
+                    }
+                ]
+            }).oncomplete(function() {
+                localStorage.setItem('demo_tour_done', 'true');
+            }).start();
+        }
+
+        function abrirAgendamento() {
+            document.getElementById('modalAgendamento').classList.remove('hidden');
+            document.getElementById('modalAgendamento').classList.add('flex');
+        }
+
+        function fecharModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+            document.getElementById(modalId).classList.remove('flex');
+        }
+
+        function salvarAgendamento() {
+            mostrarInfo('Agendamento Criado!', 'Na versão completa, o agendamento seria salvo e o paciente receberia uma confirmação automática via WhatsApp.');
+            fecharModal('modalAgendamento');
+        }
+
+        function mostrarInfo(titulo, texto) {
+            document.getElementById('modalInfoTitulo').textContent = titulo;
+            document.getElementById('modalInfoTexto').textContent = texto;
+            document.getElementById('modalInfo').classList.remove('hidden');
+            document.getElementById('modalInfo').classList.add('flex');
+        }
+
+        function abrirWhatsApp() {
+            mostrarInfo('Integração WhatsApp', 'Envie mensagens, confirme consultas e receba respostas dos pacientes diretamente no sistema. Lembretes automáticos 24h, 3h e 1h antes da consulta.');
+        }
+
+        function abrirRelatorios() {
+            mostrarInfo('Relatórios', 'Visualize relatórios detalhados de atendimentos, taxa de comparecimento, agendamentos por período e muito mais.');
+        }
+
+        // ==================== CHAT SIMULATOR ====================
+        let chatContext = [];  // Histórico de conversa para contexto
+        let isProcessing = false;
+        const DEMO_PHONE = 'demo-simulator-' + Date.now();  // ID único para esta sessão
+
+        function abrirAssistente() {
+            document.getElementById('modalChat').classList.remove('hidden');
+            document.getElementById('modalChat').classList.add('flex');
+            document.getElementById('chatInput').focus();
+        }
+
+        function enviarSugestao(texto) {
+            document.getElementById('chatInput').value = texto;
+            enviarMensagem();
+            // Esconder sugestões após primeira interação
+            const suggestions = document.getElementById('suggestions');
+            if (suggestions) {
+                suggestions.style.display = 'none';
+            }
+        }
+
+        async function enviarMensagem() {
+            const input = document.getElementById('chatInput');
+            const mensagem = input.value.trim();
+
+            if (!mensagem || isProcessing) return;
+
+            isProcessing = true;
+            input.value = '';
+            document.getElementById('btnEnviar').disabled = true;
+
+            // Esconder sugestões
+            const suggestions = document.getElementById('suggestions');
+            if (suggestions) {
+                suggestions.style.display = 'none';
+            }
+
+            // Adicionar mensagem do usuário
+            adicionarMensagem(mensagem, 'user');
+
+            // Mostrar indicador de digitação
+            mostrarDigitando(true);
+
+            try {
+                // Chamar API de chat
+                const response = await fetch('/api/chat/processar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        mensagem: mensagem,
+                        telefone: DEMO_PHONE,
+                        cliente_id: 3,  // Cliente demo
+                        contexto_conversa: chatContext
+                    })
+                });
+
+                const data = await response.json();
+
+                // Esconder indicador de digitação
+                mostrarDigitando(false);
+
+                if (data.resposta) {
+                    // Verificar se a resposta tem marcador de pausa (⏳)
+                    // Isso indica que devemos dividir a mensagem com delay
+                    if (data.resposta.includes('⏳')) {
+                        await processarRespostaComPausa(data.resposta);
+                    } else {
+                        // Adicionar resposta da IA normalmente
+                        adicionarMensagem(data.resposta, 'bot');
+                    }
+
+                    // Atualizar contexto (formato esperado pelo backend)
+                    chatContext.push({
+                        tipo: 'user',
+                        texto: mensagem,
+                        intencao: '',
+                        dados_coletados: {}
+                    });
+                    chatContext.push({
+                        tipo: 'assistant',
+                        texto: data.resposta,
+                        intencao: data.intencao || '',
+                        dados_coletados: data.dados_coletados || {}
+                    });
+
+                    // Limitar contexto a últimas 20 mensagens
+                    if (chatContext.length > 20) {
+                        chatContext = chatContext.slice(-20);
+                    }
+                } else {
+                    adicionarMensagem('Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.', 'bot');
+                }
+            } catch (error) {
+                console.error('Erro ao enviar mensagem:', error);
+                mostrarDigitando(false);
+                adicionarMensagem('Ops! Parece que houve um problema de conexão. Por favor, tente novamente em alguns instantes.', 'bot');
+            }
+
+            isProcessing = false;
+            document.getElementById('btnEnviar').disabled = false;
+            input.focus();
+        }
+
+        function adicionarMensagem(texto, tipo) {
+            const container = document.getElementById('chatMessages');
+            const agora = new Date();
+            const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${tipo}`;
+            bubble.innerHTML = `
+                <p>${formatarTexto(texto)}</p>
+                <div class="time">${hora}</div>
+            `;
+
+            container.appendChild(bubble);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function formatarTexto(texto) {
+            // Converter quebras de linha em <br>
+            return texto
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Negrito
+                .replace(/\*(.*?)\*/g, '<em>$1</em>');  // Itálico
+        }
+
+        async function processarRespostaComPausa(resposta) {
+            // Divide a resposta no marcador ⏳
+            const partes = resposta.split('⏳');
+
+            if (partes.length >= 2) {
+                // Primeira parte: "Um momentinho, vou verificar..."
+                const primeiraParte = partes[0].trim();
+                if (primeiraParte) {
+                    adicionarMensagem(primeiraParte, 'bot');
+                }
+
+                // Mostrar indicador de digitação durante a "verificação"
+                mostrarDigitando(true);
+
+                // Aguardar 2.5 segundos (simulando verificação)
+                await new Promise(resolve => setTimeout(resolve, 2500));
+
+                // Esconder indicador
+                mostrarDigitando(false);
+
+                // Segunda parte: "Você está com sorte!..."
+                const segundaParte = partes.slice(1).join('').trim();
+                if (segundaParte) {
+                    adicionarMensagem(segundaParte, 'bot');
+                }
+            } else {
+                // Sem marcador, adiciona normalmente
+                adicionarMensagem(resposta, 'bot');
+            }
+        }
+
+        function mostrarDigitando(mostrar) {
+            const container = document.getElementById('chatMessages');
+            const existente = document.getElementById('typingIndicator');
+
+            if (mostrar) {
+                if (!existente) {
+                    const typing = document.createElement('div');
+                    typing.id = 'typingIndicator';
+                    typing.className = 'typing-indicator';
+                    typing.innerHTML = '<span></span><span></span><span></span>';
+                    container.appendChild(typing);
+                    container.scrollTop = container.scrollHeight;
+                }
+                document.getElementById('chatStatus').textContent = 'digitando...';
+            } else {
+                if (existente) {
+                    existente.remove();
+                }
+                document.getElementById('chatStatus').textContent = 'online';
+            }
+        }
+
+        function reiniciarChat() {
+            chatContext = [];
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = `
+                <div class="chat-bubble bot">
+                    <p>Olá! 👋 Seja bem-vindo(a) à Clínica Dr. Carlos Silva!</p>
+                    <p class="mt-2">Sou a assistente virtual e estou aqui para ajudar você a agendar sua consulta.</p>
+                    <p class="mt-2">Como posso ajudar?</p>
+                    <div class="time">agora</div>
+                </div>
+                <div id="suggestions" class="text-center py-4">
+                    <p class="text-sm text-gray-600 mb-3">Toque em uma opção ou digite sua mensagem:</p>
+                    <div class="flex flex-wrap justify-center gap-2">
+                        <button class="suggestion-chip" onclick="enviarSugestao('Olá, gostaria de agendar uma consulta')">
+                            📅 Agendar consulta
+                        </button>
+                        <button class="suggestion-chip" onclick="enviarSugestao('Quais especialidades vocês atendem?')">
+                            🏥 Ver especialidades
+                        </button>
+                        <button class="suggestion-chip" onclick="enviarSugestao('Quais convênios são aceitos?')">
+                            💳 Convênios aceitos
+                        </button>
+                        <button class="suggestion-chip" onclick="enviarSugestao('Qual o horário de funcionamento?')">
+                            🕐 Horários
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        // ==================== FIM CHAT SIMULATOR ====================
+
+        function abrirCalendario() {
+            window.location.href = '/static/calendario-unificado.html';
+        }
+
+        function abrirConfiguracoes() {
+            mostrarInfo('Configurações', 'Personalize horários de atendimento, intervalos entre consultas, convênios aceitos, e muito mais.');
+        }
+
+        function voltarDemo() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('medico');
+            localStorage.removeItem('cliente_id');
+            localStorage.removeItem('demo_mode');
+            window.location.href = '/static/demo/index.html';
+        }
+    </script>
+</body>
+</html>

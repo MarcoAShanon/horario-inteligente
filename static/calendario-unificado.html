@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendário de Agendamentos - Horário Inteligente</title>
+
+    <!-- Branding Dinâmico -->
+    <script src="/static/branding.js"></script>
+
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Sistema de Agendamento e Gestão de Consultas para Clínicas">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Horário Inteligente">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css' rel='stylesheet'>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/pt-br.global.min.js'></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Garantir altura mínima para eventos em todas as visualizações */
+        .fc-event {
+            min-height: 60px !important;
+            cursor: pointer !important;
+        }
+
+        /* Altura mínima para eventos na visualização mensal */
+        .fc-daygrid-event {
+            min-height: 60px !important;
+            white-space: normal !important;
+            cursor: pointer !important;
+        }
+
+        /* Altura mínima para eventos na visualização semanal/diária */
+        .fc-timegrid-event {
+            min-height: 80px !important;
+            cursor: pointer !important;
+        }
+
+        /* Permitir quebra de linha no conteúdo dos eventos */
+        .fc-event-main {
+            white-space: normal !important;
+            overflow: visible !important;
+            cursor: pointer !important;
+        }
+
+        /* Ajustar padding do conteúdo do evento */
+        .fc-event-title {
+            white-space: normal !important;
+            cursor: pointer !important;
+        }
+
+        /* Garantir que eventos sejam clicáveis */
+        .fc-event-main-frame {
+            cursor: pointer !important;
+            pointer-events: auto !important;
+        }
+
+        /* Hover nos eventos */
+        .fc-event:hover {
+            opacity: 0.9 !important;
+            transform: scale(1.02);
+            transition: all 0.2s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+            <div class="flex justify-between items-center h-14 sm:h-16">
+                <div class="flex items-center flex-1 min-w-0">
+                    <h1 class="text-sm sm:text-lg md:text-xl font-semibold text-gray-900 truncate">
+                        <i class="fas fa-calendar-alt mr-1 sm:mr-2 text-blue-600"></i>
+                        <span class="hidden sm:inline">Calendário de Agendamentos</span>
+                        <span class="sm:hidden">Agendamentos</span>
+                    </h1>
+                </div>
+
+                <!-- Desktop Menu -->
+                <div class="hidden sm:flex items-center space-x-1 sm:space-x-2 md:space-x-4">
+                    <span id="userInfo" class="hidden md:flex text-xs sm:text-sm text-gray-600 mr-0 sm:mr-2">
+                        <i class="fas fa-user-circle mr-1"></i>
+                        <span id="userName"></span>
+                    </span>
+                    <button onclick="window.location.href='/static/perfil.html'" class="inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 whitespace-nowrap">
+                        <i class="fas fa-user-edit sm:mr-2"></i>
+                        <span class="hidden md:inline">Perfil</span>
+                    </button>
+                    <!-- Botão de Instalação PWA (oculto por padrão) -->
+                    <button id="installButton" onclick="instalarApp()" class="hidden px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 whitespace-nowrap shadow-lg">
+                        <i class="fas fa-download sm:mr-2"></i>
+                        <span class="hidden sm:inline">Instalar App</span>
+                    </button>
+                    <button onclick="abrirModalAgendamento()" class="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">
+                        <i class="fas fa-plus sm:mr-2"></i>
+                        <span class="hidden sm:inline">Novo</span>
+                    </button>
+                    <button onclick="window.location.href='/static/minha-agenda.html'" class="inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 whitespace-nowrap">
+                        <i class="fas fa-calendar-check sm:mr-2"></i>
+                        <span class="hidden md:inline">Minha Agenda</span>
+                    </button>
+                    <button onclick="window.location.href='/static/configuracao-agenda.html'" class="inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 whitespace-nowrap">
+                        <i class="fas fa-cog sm:mr-2"></i>
+                        <span class="hidden md:inline">Configurações</span>
+                    </button>
+                    <button onclick="window.location.href='/static/dashboard.html'" class="hidden lg:inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 whitespace-nowrap">
+                        <i class="fas fa-arrow-left sm:mr-2"></i>
+                        <span class="hidden md:inline">Dashboard</span>
+                    </button>
+                    <button onclick="logout()" class="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 whitespace-nowrap">
+                        <i class="fas fa-sign-out-alt sm:mr-2"></i>
+                        <span class="hidden sm:inline">Sair</span>
+                    </button>
+                </div>
+
+                <!-- Mobile Menu -->
+                <div class="sm:hidden flex items-center space-x-2">
+                    <button onclick="abrirModalAgendamento()" class="px-2 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <button onclick="toggleMobileMenu()" class="px-2 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Menu Dropdown -->
+            <div id="mobileMenu" class="hidden sm:hidden bg-white border-t border-gray-200 py-2">
+                <div class="flex flex-col space-y-2">
+                    <button onclick="window.location.href='/static/perfil.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
+                        <i class="fas fa-user-edit mr-3 text-purple-600"></i>
+                        Meu Perfil
+                    </button>
+                    <button onclick="window.location.href='/static/minha-agenda.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
+                        <i class="fas fa-calendar-check mr-3 text-green-600"></i>
+                        Minha Agenda
+                    </button>
+                    <button onclick="window.location.href='/static/configuracao-agenda.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
+                        <i class="fas fa-cog mr-3 text-indigo-600"></i>
+                        Configurações
+                    </button>
+                    <button onclick="window.location.href='/static/dashboard.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
+                        <i class="fas fa-arrow-left mr-3 text-gray-600"></i>
+                        Dashboard
+                    </button>
+                    <!-- Botão de Instalação PWA para Mobile -->
+                    <button id="installButtonMobile" onclick="instalarApp()" class="hidden flex items-center px-4 py-2 text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded mx-2">
+                        <i class="fas fa-download mr-3"></i>
+                        Instalar App
+                    </button>
+                    <div class="border-t border-gray-200 my-1"></div>
+                    <button onclick="logout()" class="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded">
+                        <i class="fas fa-sign-out-alt mr-3"></i>
+                        Sair
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Filtro e Legenda -->
+    <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 mt-3 sm:mt-6">
+        <!-- Filtro por Médico -->
+        <div class="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-3 sm:mb-4">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <label class="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">Filtrar por médico:</label>
+                <select id="filtroMedico" onchange="aplicarFiltroMedico()"
+                        class="w-full sm:w-auto px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="0">📋 Todos os médicos</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Legenda por Médico -->
+        <div class="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6">
+            <h3 class="text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">Legenda por Médico:</h3>
+            <div id="legendaMedicos" class="flex flex-wrap gap-2 sm:gap-3 md:gap-4 text-xs sm:text-sm">
+                <!-- Será preenchido dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Calendário -->
+        <div class="bg-white rounded-lg shadow-sm p-2 sm:p-4 md:p-6">
+            <div id="calendario"></div>
+        </div>
+    </div>
+
+    <!-- Modal de Agendamento -->
+    <div id="modalAgendamento" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-2 sm:p-0">
+        <div class="relative top-4 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-2 sm:mt-3">
+                <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">
+                    Novo Agendamento
+                </h3>
+
+                <form id="formAgendamento" class="space-y-3 sm:space-y-4">
+                    <!-- Nome do Paciente -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                            Nome do Paciente *
+                        </label>
+                        <input type="text" id="paciente_nome" name="paciente_nome"
+                               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="João Silva" required>
+                    </div>
+
+                    <!-- Telefone -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                            Telefone *
+                        </label>
+                        <input type="tel" id="paciente_telefone" name="paciente_telefone"
+                               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="(21) 99999-9999" required>
+                    </div>
+
+                    <!-- Médico -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                            Médico *
+                        </label>
+                        <select id="medico_id" name="medico_id"
+                                onchange="verificarHorariosDisponiveis()"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <option value="1">Dra. Tânia Maria - Alergista</option>
+                            <option value="2">Dr. Marco Aurélio - Cardiologista</option>
+                        </select>
+                    </div>
+
+                    <!-- Data e Hora -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                Data *
+                            </label>
+                            <input type="date" id="data" name="data"
+                                   onchange="verificarHorariosDisponiveis()"
+                                   class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                Hora *
+                            </label>
+                            <input type="time" id="hora" name="hora"
+                                   onchange="verificarDisponibilidadeHorario()"
+                                   class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                    </div>
+
+                    <!-- Indicador de Disponibilidade -->
+                    <div id="indicadorDisponibilidade" class="hidden p-2 sm:p-3 rounded-md text-xs sm:text-sm">
+                        <span id="mensagemDisponibilidade"></span>
+                    </div>
+
+                    <!-- Horários Disponíveis -->
+                    <div id="horariosDisponiveisContainer" class="hidden">
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-clock mr-1"></i>
+                            Horários Disponíveis:
+                        </label>
+                        <div id="horariosDisponiveis" class="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                            <!-- Será preenchido dinamicamente -->
+                        </div>
+                    </div>
+
+                    <!-- Motivo -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                            Motivo da Consulta
+                        </label>
+                        <textarea id="motivo_consulta" name="motivo_consulta"
+                                  class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  rows="2" placeholder="Consulta de rotina..."></textarea>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-0 sm:space-x-3">
+                        <button type="button" onclick="fecharModal()"
+                                class="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 text-xs sm:text-sm font-medium rounded-md hover:bg-gray-300 order-2 sm:order-1">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                                class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-md hover:bg-blue-700 order-1 sm:order-2">
+                            Agendar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes do Agendamento -->
+    <div id="modalDetalhes" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-2 sm:p-0">
+        <div class="relative top-4 sm:top-20 mx-auto p-3 sm:p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white max-h-[95vh] overflow-y-auto">
+            <div class="mt-2 sm:mt-3">
+                <div class="flex justify-between items-center mb-4 sm:mb-6">
+                    <h3 class="text-base sm:text-xl font-medium text-gray-900">
+                        <i class="fas fa-calendar-check mr-1 sm:mr-2 text-blue-600"></i>
+                        <span class="hidden sm:inline">Detalhes do Agendamento</span>
+                        <span class="sm:hidden">Detalhes</span>
+                    </h3>
+                    <button onclick="fecharModalDetalhes()" class="text-gray-400 hover:text-gray-600 p-1">
+                        <i class="fas fa-times text-lg sm:text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Informações do Agendamento -->
+                <div id="detalhesContent" class="space-y-3 sm:space-y-4">
+                    <!-- Informações do Paciente -->
+                    <div class="bg-blue-50 rounded-lg p-3 sm:p-4">
+                        <h4 class="font-semibold text-sm sm:text-base text-gray-700 mb-2 sm:mb-3 flex items-center">
+                            <i class="fas fa-user mr-1 sm:mr-2 text-blue-600"></i>
+                            Paciente
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+                            <div>
+                                <span class="text-gray-600">Nome:</span>
+                                <p class="font-medium" id="det_paciente_nome"></p>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Telefone:</span>
+                                <p class="font-medium" id="det_paciente_telefone"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informações da Consulta -->
+                    <div class="bg-green-50 rounded-lg p-3 sm:p-4">
+                        <h4 class="font-semibold text-sm sm:text-base text-gray-700 mb-2 sm:mb-3 flex items-center">
+                            <i class="fas fa-calendar-alt mr-1 sm:mr-2 text-green-600"></i>
+                            Consulta
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+                            <div>
+                                <span class="text-gray-600">Médico:</span>
+                                <p class="font-medium break-words" id="det_medico"></p>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Especialidade:</span>
+                                <p class="font-medium" id="det_especialidade"></p>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Data:</span>
+                                <p class="font-medium" id="det_data"></p>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Horário:</span>
+                                <p class="font-medium" id="det_hora"></p>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Status:</span>
+                                <p class="font-medium" id="det_status"></p>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Tipo:</span>
+                                <p class="font-medium" id="det_tipo"></p>
+                            </div>
+                        </div>
+                        <div class="mt-2 sm:mt-3">
+                            <span class="text-gray-600 text-xs sm:text-sm">Motivo:</span>
+                            <p class="font-medium text-xs sm:text-sm break-words" id="det_motivo"></p>
+                        </div>
+                    </div>
+
+                    <!-- ID do Agendamento (oculto) -->
+                    <input type="hidden" id="det_agendamento_id">
+                </div>
+
+                <!-- Botões de Ação -->
+                <div class="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
+                    <button onclick="fecharModalDetalhes()"
+                            class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-gray-200 text-gray-800 text-xs sm:text-sm font-medium rounded-md hover:bg-gray-300 order-3 sm:order-1">
+                        <i class="fas fa-times mr-1 sm:mr-2"></i>
+                        Fechar
+                    </button>
+                    <div class="flex flex-col sm:flex-row gap-2 order-1 sm:order-2">
+                        <button onclick="abrirReagendamento()"
+                                class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-md hover:bg-blue-700 whitespace-nowrap">
+                            <i class="fas fa-calendar mr-1 sm:mr-2"></i>
+                            Reagendar
+                        </button>
+                        <button onclick="marcarComoFalta()" id="btnMarcarFalta"
+                                class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-yellow-600 text-white text-xs sm:text-sm font-medium rounded-md hover:bg-yellow-700 whitespace-nowrap">
+                            <i class="fas fa-user-times mr-1 sm:mr-2"></i>
+                            <span class="hidden sm:inline">Marcar Falta</span>
+                            <span class="sm:hidden">Falta</span>
+                        </button>
+                        <button onclick="confirmarCancelamento()"
+                                class="w-full sm:w-auto px-3 sm:px-4 py-2 bg-red-600 text-white text-xs sm:text-sm font-medium rounded-md hover:bg-red-700 whitespace-nowrap">
+                            <i class="fas fa-times-circle mr-1 sm:mr-2"></i>
+                            <span class="hidden sm:inline">Cancelar Consulta</span>
+                            <span class="sm:hidden">Cancelar</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Reagendamento -->
+    <div id="modalReagendamento" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-2 sm:p-0">
+        <div class="relative top-4 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-2 sm:mt-3">
+                <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">
+                    <i class="fas fa-calendar-alt mr-1 sm:mr-2 text-blue-600"></i>
+                    Reagendar Consulta
+                </h3>
+
+                <form id="formReagendamento" class="space-y-3 sm:space-y-4">
+                    <!-- Nova Data e Hora -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                Nova Data *
+                            </label>
+                            <input type="date" id="reagendar_data" name="reagendar_data"
+                                   onchange="verificarHorariosDisponiveisReagendamento()"
+                                   class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                Nova Hora *
+                            </label>
+                            <input type="time" id="reagendar_hora" name="reagendar_hora"
+                                   class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                    </div>
+
+                    <!-- Horários Disponíveis -->
+                    <div id="horariosDisponiveisReagendamento" class="hidden">
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-clock mr-1"></i>
+                            Horários Disponíveis:
+                        </label>
+                        <div id="horariosListReagendamento" class="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                            <!-- Será preenchido dinamicamente -->
+                        </div>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-0 sm:space-x-3">
+                        <button type="button" onclick="fecharModalReagendamento()"
+                                class="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 text-xs sm:text-sm font-medium rounded-md hover:bg-gray-300 order-2 sm:order-1">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                                class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-md hover:bg-blue-700 order-1 sm:order-2 whitespace-nowrap">
+                            <i class="fas fa-check mr-1 sm:mr-2"></i>
+                            <span class="hidden sm:inline">Confirmar Reagendamento</span>
+                            <span class="sm:hidden">Confirmar</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // VERIFICAÇÃO DE AUTENTICAÇÃO
+        // ==========================================
+        let authToken = null;
+        let currentUser = null;
+
+        // Verificar autenticação ao carregar a página
+        (async function checkAuth() {
+            authToken = localStorage.getItem('authToken');
+
+            if (!authToken) {
+                // Não está logado, redirecionar para login
+                window.location.href = '/static/login.html';
+                return;
+            }
+
+            try {
+                // Buscar dados atualizados do usuário
+                const response = await fetch('/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Token inválido');
+                }
+
+                currentUser = await response.json();
+                console.log('Usuário autenticado:', currentUser);
+
+                // Exibir nome do usuário no header
+                const userNameEl = document.getElementById('userName');
+                if (currentUser.tipo === 'medico') {
+                    userNameEl.textContent = `Dr(a). ${currentUser.nome}`;
+                } else {
+                    userNameEl.textContent = currentUser.nome;
+                }
+
+                // Ocultar filtro de médico se usuário for médico (vê apenas sua agenda)
+                if (currentUser.tipo === 'medico') {
+                    const filtroContainer = document.querySelector('.bg-white.rounded-lg.shadow-sm.p-4.mb-4');
+                    if (filtroContainer) {
+                        filtroContainer.style.display = 'none';
+                    }
+                }
+
+            } catch (error) {
+                console.error('Erro na autenticação:', error);
+                // Limpar storage e redirecionar
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userData');
+                window.location.href = '/static/login.html';
+            }
+        })();
+
+        // Função de logout
+        function logout() {
+            if (confirm('Deseja realmente sair do sistema?')) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userData');
+                window.location.href = '/static/login.html';
+            }
+        }
+
+        // Função para toggle do menu mobile
+        function toggleMobileMenu() {
+            const mobileMenu = document.getElementById('mobileMenu');
+            if (mobileMenu.classList.contains('hidden')) {
+                mobileMenu.classList.remove('hidden');
+            } else {
+                mobileMenu.classList.add('hidden');
+            }
+        }
+
+        // Fechar menu mobile ao clicar fora
+        document.addEventListener('click', function(event) {
+            const mobileMenu = document.getElementById('mobileMenu');
+            const menuButton = event.target.closest('button[onclick="toggleMobileMenu()"]');
+
+            if (!menuButton && !mobileMenu.contains(event.target)) {
+                if (!mobileMenu.classList.contains('hidden')) {
+                    mobileMenu.classList.add('hidden');
+                }
+            }
+        });
+
+        // Função para fazer requisições autenticadas
+        async function fetchAuth(url, options = {}) {
+            const token = localStorage.getItem('authToken');
+
+            if (!token) {
+                window.location.href = '/static/login.html';
+                return;
+            }
+
+            // Adicionar header de autenticação
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`
+            };
+
+            const response = await fetch(url, options);
+
+            // Se receber 401, redirecionar para login
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userData');
+                window.location.href = '/static/login.html';
+                return;
+            }
+
+            return response;
+        }
+
+        // ==========================================
+        // CALENDÁRIO
+        // ==========================================
+        let calendar;
+        let selectedDate = null;
+        let medicosData = []; // Armazenar dados dos médicos
+        let todosEventos = []; // Armazenar todos os eventos
+
+        // Paleta de cores para médicos (cores distintas e agradáveis)
+        const coresMedicos = [
+            '#3b82f6', // Azul
+            '#10b981', // Verde
+            '#f59e0b', // Laranja
+            '#8b5cf6', // Roxo
+            '#ec4899', // Rosa
+            '#14b8a6', // Teal
+            '#f97316', // Laranja escuro
+            '#06b6d4'  // Ciano
+        ];
+
+        // Inicializar calendário quando a página carregar
+       document.addEventListener('DOMContentLoaded', async function() {
+           inicializarCalendario();
+           await carregarMedicos(); // AGUARDAR médicos carregarem primeiro
+           await carregarEventos(); // DEPOIS carregar eventos com as cores corretas
+        });
+
+        // ========== PWA: Instalação do App ==========
+        let deferredPrompt;
+        const installButton = document.getElementById('installButton');
+        const installButtonMobile = document.getElementById('installButtonMobile');
+
+        // Capturar o evento beforeinstallprompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevenir o prompt automático
+            e.preventDefault();
+            // Guardar o evento para usar depois
+            deferredPrompt = e;
+            // Mostrar os botões de instalação (desktop e mobile)
+            if (installButton) {
+                installButton.classList.remove('hidden');
+            }
+            if (installButtonMobile) {
+                installButtonMobile.classList.remove('hidden');
+            }
+            console.log('✅ PWA: Botões de instalação mostrados');
+        });
+
+        // Função para instalar o app
+        async function instalarApp() {
+            if (!deferredPrompt) {
+                console.log('⚠️ PWA: Prompt de instalação não disponível');
+                alert('Este aplicativo já está instalado ou não pode ser instalado neste navegador.');
+                return;
+            }
+
+            // Mostrar o prompt de instalação
+            deferredPrompt.prompt();
+
+            // Aguardar a escolha do usuário
+            const { outcome } = await deferredPrompt.userChoice;
+
+            if (outcome === 'accepted') {
+                console.log('✅ PWA: Usuário aceitou a instalação');
+                // Ocultar os botões após instalação
+                if (installButton) {
+                    installButton.classList.add('hidden');
+                }
+                if (installButtonMobile) {
+                    installButtonMobile.classList.add('hidden');
+                }
+            } else {
+                console.log('❌ PWA: Usuário recusou a instalação');
+            }
+
+            // Limpar o prompt
+            deferredPrompt = null;
+        }
+
+        // Detectar quando o app foi instalado
+        window.addEventListener('appinstalled', () => {
+            console.log('🎉 PWA: App instalado com sucesso!');
+            // Ocultar os botões
+            if (installButton) {
+                installButton.classList.add('hidden');
+            }
+            if (installButtonMobile) {
+                installButtonMobile.classList.add('hidden');
+            }
+            deferredPrompt = null;
+        });
+
+        function inicializarCalendario() {
+            const calendarEl = document.getElementById('calendario');
+
+            // Detectar tamanho da tela e ajustar visualização inicial
+            const isMobile = window.innerWidth < 768;
+            const initialView = isMobile ? 'timeGridDay' : 'dayGridMonth';
+
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                locale: 'pt-br',
+                initialView: initialView,
+                headerToolbar: {
+                    left: isMobile ? 'prev,next' : 'prev,next today',
+                    center: 'title',
+                    right: isMobile ? 'timeGridDay,dayGridMonth' : 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                // Ajustar altura automaticamente baseado no conteúdo
+                contentHeight: isMobile ? 'auto' : 650,
+                // Tamanho do título responsivo
+                titleFormat: isMobile ? { month: 'short', day: 'numeric' } : { year: 'numeric', month: 'long' },
+                businessHours: {
+                    daysOfWeek: [1, 2, 3, 4, 5],
+                    startTime: '08:00',
+                    endTime: '18:00'
+                },
+                // Configurações para visualização por tempo (diária/semanal)
+                slotMinTime: '08:00:00',
+                slotMaxTime: '19:00:00',
+                slotDuration: '00:30:00',
+                allDaySlot: false,
+                displayEventTime: true,
+                displayEventEnd: false,
+                eventTimeFormat: {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                },
+                // Permitir cliques nos eventos
+                eventInteractive: true,
+                editable: false,
+                // Callback para customizar exibição dos eventos
+                eventContent: function(arg) {
+                    const paciente = arg.event.extendedProps.paciente || arg.event.title.split(' - ')[0];
+                    const telefone = arg.event.extendedProps.telefone;
+                    const motivo = arg.event.extendedProps.motivo;
+
+                    // Criar estrutura HTML customizada
+                    const container = document.createElement('div');
+                    container.style.padding = '2px 4px';
+                    container.style.overflow = 'hidden';
+                    container.style.lineHeight = '1.3';
+                    container.style.cursor = 'pointer';
+                    container.style.pointerEvents = 'auto';
+
+                    // Nome do paciente
+                    const nomeDiv = document.createElement('div');
+                    nomeDiv.innerHTML = '👤 ' + paciente;
+                    nomeDiv.style.fontWeight = 'bold';
+                    nomeDiv.style.fontSize = '0.9em';
+                    nomeDiv.style.marginBottom = '2px';
+                    container.appendChild(nomeDiv);
+
+                    // Telefone
+                    if (telefone) {
+                        const phoneDiv = document.createElement('div');
+                        phoneDiv.innerHTML = '📱 ' + telefone;
+                        phoneDiv.style.fontSize = '0.8em';
+                        phoneDiv.style.marginBottom = '2px';
+                        container.appendChild(phoneDiv);
+                    }
+
+                    // Motivo da consulta
+                    if (motivo) {
+                        const motivoDiv = document.createElement('div');
+                        motivoDiv.innerHTML = '📋 ' + motivo;
+                        motivoDiv.style.fontSize = '0.8em';
+                        motivoDiv.style.fontStyle = 'italic';
+                        container.appendChild(motivoDiv);
+                    }
+
+                    return { domNodes: [container] };
+                },
+                selectable: true,
+                selectMirror: true,
+                dateClick: function(info) {
+                    selectedDate = info.dateStr;
+                    document.getElementById('data').value = selectedDate;
+                    document.getElementById('hora').value = '09:00';
+                    abrirModalAgendamento();
+                },
+                eventClick: async function(info) {
+                    console.log('📅 Evento clicado!', info.event);
+                    const event = info.event;
+                    console.log('ID do evento:', event.id);
+
+                    if (event.id.startsWith('ag_')) {
+                        // Extrair ID numérico do agendamento
+                        const agendamentoId = event.id.replace('ag_', '');
+                        console.log('Abrindo detalhes do agendamento:', agendamentoId);
+                        await abrirDetalhesAgendamento(agendamentoId);
+                    } else if (event.id.startsWith('bl_')) {
+                        alert('Este é um horário bloqueado');
+                    } else {
+                        console.warn('Formato de ID não reconhecido:', event.id);
+                        alert('Clique registrado! ID: ' + event.id);
+                    }
+                },
+                events: [],
+                height: 'auto'
+            });
+            
+            calendar.render();
+        }
+
+        function getCorMedico(medicoId) {
+            // Encontrar índice do médico na lista
+            const index = medicosData.findIndex(m => m.id === medicoId);
+            const cor = index >= 0 ? coresMedicos[index % coresMedicos.length] : '#3b82f6';
+            console.log(`getCorMedico(${medicoId}): index=${index}, cor=${cor}, medicosData=`, medicosData);
+            // Retornar cor baseada no índice (cicla se houver mais médicos que cores)
+            return cor;
+        }
+
+        async function carregarEventos() {
+            try {
+                // Não passar medico_id - o backend decide baseado no tipo de usuário
+                // Médicos verão apenas suas agendas, secretárias verão todas
+                const response = await fetch('/api/agendamentos/calendario', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const data = await response.json();
+
+                console.log('Dados recebidos da API:', data);
+
+                if (data.eventos) {
+                    // Armazenar todos os eventos
+                    todosEventos = data.eventos;
+
+                    // Remover eventos antigos do calendário
+                    calendar.removeAllEvents();
+
+                    // Adicionar novos eventos com cores por médico
+                    data.eventos.forEach(evento => {
+                        let eventColor;
+                        let eventId;
+
+                        if (String(evento.id).startsWith('bl_')) {
+                            // Bloqueios em vermelho
+                            eventColor = '#ef4444';
+                            eventId = evento.id;
+                        } else if (evento.extendedProps?.status === 'faltou') {
+                            // Faltas em laranja/amarelo
+                            eventColor = '#f59e0b';
+                            eventId = 'ag_' + evento.id;
+                        } else if (evento.extendedProps?.status === 'cancelado') {
+                            // Cancelados em cinza
+                            eventColor = '#9ca3af';
+                            eventId = 'ag_' + evento.id;
+                        } else if (evento.medico_id) {
+                            // Cor baseada no médico
+                            eventColor = getCorMedico(evento.medico_id);
+                            // Adicionar prefixo ag_ para agendamentos
+                            eventId = 'ag_' + evento.id;
+                        } else {
+                            // Cor padrão se não tiver médico
+                            eventColor = '#6b7280';
+                            eventId = 'ag_' + evento.id;
+                        }
+
+                        calendar.addEvent({
+                            id: eventId,
+                            title: evento.title,
+                            start: evento.start,
+                            end: evento.end || evento.start,
+                            color: eventColor,
+                            extendedProps: {
+                                telefone: evento.extendedProps?.telefone,
+                                paciente: evento.extendedProps?.paciente,
+                                medico: evento.extendedProps?.medico,
+                                especialidade: evento.extendedProps?.especialidade,
+                                tipo: evento.extendedProps?.tipo,
+                                status: evento.extendedProps?.status,
+                                motivo: evento.extendedProps?.motivo,
+                                medico_id: evento.medico_id
+                            }
+                        });
+                    });
+
+                    console.log('Eventos carregados:', data.eventos.length);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar eventos:', error);
+            }
+        }
+
+        async function carregarMedicos() {
+            try {
+                // Backend filtra médicos baseado no tipo de usuário
+                // Médicos veem apenas a si mesmos, secretárias veem todos
+                const response = await fetch('/api/medicos', {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const data = await response.json();
+
+                if (data.sucesso && data.medicos) {
+                   // Armazenar dados dos médicos
+                   medicosData = data.medicos;
+
+                   // Preencher dropdown do formulário
+                   const selectMedico = document.getElementById('medico_id');
+                   selectMedico.innerHTML = '';
+
+                   data.medicos.forEach(medico => {
+                       const option = document.createElement('option');
+                       option.value = medico.id;
+                       option.textContent = `${medico.nome} - ${medico.especialidade}`;
+                       selectMedico.appendChild(option);
+                   });
+
+                   // Preencher dropdown de filtro
+                   const filtroMedico = document.getElementById('filtroMedico');
+                   // Manter a opção "Todos os médicos"
+                   filtroMedico.innerHTML = '<option value="0">📋 Todos os médicos</option>';
+
+                   data.medicos.forEach(medico => {
+                       const option = document.createElement('option');
+                       option.value = medico.id;
+                       option.textContent = `${medico.nome} - ${medico.especialidade}`;
+                       filtroMedico.appendChild(option);
+                   });
+
+                   // Criar legenda com cores
+                   const legendaDiv = document.getElementById('legendaMedicos');
+                   legendaDiv.innerHTML = '';
+
+                   data.medicos.forEach((medico, index) => {
+                       const cor = coresMedicos[index % coresMedicos.length];
+                       const legendaItem = document.createElement('div');
+                       legendaItem.className = 'flex items-center';
+                       legendaItem.innerHTML = `
+                           <span class="w-4 h-4 rounded mr-2" style="background-color: ${cor}"></span>
+                           <span class="text-sm">${medico.nome} - ${medico.especialidade}</span>
+                       `;
+                       legendaDiv.appendChild(legendaItem);
+                   });
+
+                   // Adicionar item para bloqueios
+                   const bloqueioItem = document.createElement('div');
+                   bloqueioItem.className = 'flex items-center';
+                   bloqueioItem.innerHTML = `
+                       <span class="w-4 h-4 bg-red-500 rounded mr-2"></span>
+                       <span class="text-sm">Horário Bloqueado</span>
+                   `;
+                   legendaDiv.appendChild(bloqueioItem);
+
+                   console.log('Médicos carregados:', data.medicos.length);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar médicos:', error);
+            }
+        }
+
+        function aplicarFiltroMedico() {
+            const medicoSelecionado = parseInt(document.getElementById('filtroMedico').value);
+
+            // Remover todos os eventos do calendário
+            calendar.removeAllEvents();
+
+            // Filtrar e adicionar eventos
+            const eventosFiltrados = medicoSelecionado === 0
+                ? todosEventos
+                : todosEventos.filter(evento => evento.medico_id === medicoSelecionado);
+
+            eventosFiltrados.forEach(evento => {
+                let eventColor;
+                let eventId;
+
+                if (String(evento.id).startsWith('bl_')) {
+                    eventColor = '#ef4444';
+                    eventId = evento.id;
+                } else if (evento.medico_id) {
+                    eventColor = getCorMedico(evento.medico_id);
+                    eventId = 'ag_' + evento.id;
+                } else {
+                    eventColor = '#6b7280';
+                    eventId = 'ag_' + evento.id;
+                }
+
+                calendar.addEvent({
+                    id: eventId,
+                    title: evento.title,
+                    start: evento.start,
+                    end: evento.end || evento.start,
+                    color: eventColor,
+                    extendedProps: {
+                        telefone: evento.extendedProps?.telefone || evento.telefone,
+                        paciente: evento.extendedProps?.paciente || evento.title.split(' - ')[0],
+                        motivo: evento.extendedProps?.motivo,
+                        status: evento.status,
+                        medico_id: evento.medico_id
+                    }
+                });
+            });
+
+            console.log(`Filtro aplicado: ${eventosFiltrados.length} eventos exibidos`);
+        }
+
+        function abrirModalAgendamento() {
+            document.getElementById('modalAgendamento').classList.remove('hidden');
+        }
+
+        function fecharModal() {
+            document.getElementById('modalAgendamento').classList.add('hidden');
+            document.getElementById('formAgendamento').reset();
+            // Limpar indicadores
+            document.getElementById('indicadorDisponibilidade').classList.add('hidden');
+            document.getElementById('horariosDisponiveisContainer').classList.add('hidden');
+        }
+
+        // Verificar horários disponíveis quando médico ou data mudam
+        async function verificarHorariosDisponiveis() {
+            const medicoId = document.getElementById('medico_id').value;
+            const data = document.getElementById('data').value;
+
+            if (!medicoId || !data) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/horarios-disponiveis?medico_id=${medicoId}&data=${data}`);
+                const result = await response.json();
+
+                if (result.sucesso && result.horarios.length > 0) {
+                    mostrarHorariosDisponiveis(result.horarios);
+                } else {
+                    document.getElementById('horariosDisponiveisContainer').classList.add('hidden');
+                    mostrarMensagem('Nenhum horário disponível para esta data', 'warning');
+                }
+            } catch (error) {
+                console.error('Erro ao buscar horários:', error);
+            }
+        }
+
+        function mostrarHorariosDisponiveis(horarios) {
+            const container = document.getElementById('horariosDisponiveisContainer');
+            const horariosDiv = document.getElementById('horariosDisponiveis');
+
+            horariosDiv.innerHTML = '';
+
+            horarios.forEach(horario => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'px-3 py-2 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 transition';
+                button.textContent = horario;
+                button.onclick = () => selecionarHorario(horario);
+                horariosDiv.appendChild(button);
+            });
+
+            container.classList.remove('hidden');
+        }
+
+        function selecionarHorario(horario) {
+            document.getElementById('hora').value = horario;
+            verificarDisponibilidadeHorario();
+        }
+
+        // Verificar disponibilidade de um horário específico
+        async function verificarDisponibilidadeHorario() {
+            const medicoId = document.getElementById('medico_id').value;
+            const data = document.getElementById('data').value;
+            const hora = document.getElementById('hora').value;
+
+            if (!medicoId || !data || !hora) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/verificar-disponibilidade', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `medico_id=${medicoId}&data=${data}&hora=${hora}`
+                });
+
+                const result = await response.json();
+
+                if (result.sucesso) {
+                    if (result.disponivel) {
+                        mostrarMensagem('✓ Horário disponível!', 'success');
+                    } else {
+                        mostrarMensagem('✗ Horário não disponível. Escolha outro horário.', 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao verificar disponibilidade:', error);
+            }
+        }
+
+        function mostrarMensagem(mensagem, tipo) {
+            const indicador = document.getElementById('indicadorDisponibilidade');
+            const mensagemSpan = document.getElementById('mensagemDisponibilidade');
+
+            indicador.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800', 'bg-yellow-100', 'text-yellow-800');
+
+            if (tipo === 'success') {
+                indicador.classList.add('bg-green-100', 'text-green-800');
+            } else if (tipo === 'error') {
+                indicador.classList.add('bg-red-100', 'text-red-800');
+            } else if (tipo === 'warning') {
+                indicador.classList.add('bg-yellow-100', 'text-yellow-800');
+            }
+
+            mensagemSpan.textContent = mensagem;
+        }
+
+        // Handler do formulário
+        document.getElementById('formAgendamento')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                paciente_nome: document.getElementById('paciente_nome').value,
+                paciente_telefone: document.getElementById('paciente_telefone').value,
+                medico_id: parseInt(document.getElementById('medico_id').value),
+                data: document.getElementById('data').value,
+                hora: document.getElementById('hora').value,
+                motivo_consulta: document.getElementById('motivo_consulta').value || 'Consulta'
+            };
+            
+            try {
+                const response = await fetch('/api/agendamentos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.sucesso) {
+                    alert('Agendamento criado com sucesso!');
+                    fecharModal();
+                    carregarEventos(); // Recarregar eventos
+                } else {
+                    alert('Erro ao criar agendamento: ' + (result.erro || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao criar agendamento');
+            }
+        });
+
+        // ==========================================
+        // FUNÇÕES DE DETALHES E GERENCIAMENTO
+        // ==========================================
+        let agendamentoAtual = null;
+
+        async function abrirDetalhesAgendamento(agendamentoId) {
+            try {
+                const response = await fetch(`/api/agendamentos/${agendamentoId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                const result = await response.json();
+
+                if (result.sucesso && result.agendamento) {
+                    const ag = result.agendamento;
+                    agendamentoAtual = {
+                        id: ag.id,
+                        data_hora: ag.data_hora,
+                        status: ag.status,
+                        tipo: ag.tipo_atendimento,
+                        motivo_consulta: ag.motivo_consulta,
+                        paciente_nome: ag.paciente?.nome || ag.paciente_nome,
+                        paciente_telefone: ag.paciente?.telefone || ag.paciente_telefone,
+                        medico_id: ag.medico?.id || ag.medico_id,
+                        medico_nome: ag.medico?.nome || ag.medico_nome,
+                        especialidade: ag.medico?.especialidade || ag.especialidade
+                    };
+
+                    // Preencher detalhes no modal
+                    document.getElementById('det_agendamento_id').value = agendamentoAtual.id;
+                    document.getElementById('det_paciente_nome').textContent = agendamentoAtual.paciente_nome || '-';
+                    document.getElementById('det_paciente_telefone').textContent = agendamentoAtual.paciente_telefone || '-';
+                    document.getElementById('det_medico').textContent = agendamentoAtual.medico_nome || '-';
+                    document.getElementById('det_especialidade').textContent = agendamentoAtual.especialidade || '-';
+
+                    // Formatar data e hora
+                    const dataHora = new Date(agendamentoAtual.data_hora);
+                    const dataFormatada = dataHora.toLocaleDateString('pt-BR');
+                    const horaFormatada = dataHora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                    document.getElementById('det_data').textContent = dataFormatada;
+                    document.getElementById('det_hora').textContent = horaFormatada;
+
+                    // Status com cor
+                    const statusElement = document.getElementById('det_status');
+                    const statusTexto = agendamentoAtual.status || 'agendado';
+                    const statusMap = {
+                        'agendado': '🗓️ Agendado',
+                        'confirmado': '✅ Confirmado',
+                        'realizado': '✔️ Realizado',
+                        'cancelado': '❌ Cancelado',
+                        'faltou': '⚠️ Faltou'
+                    };
+                    statusElement.textContent = statusMap[statusTexto] || statusTexto;
+
+                    document.getElementById('det_tipo').textContent = agendamentoAtual.tipo || '-';
+                    document.getElementById('det_motivo').textContent = agendamentoAtual.motivo_consulta || 'Não informado';
+
+                    // Gerenciar botão "Marcar Falta"
+                    const btnMarcarFalta = document.getElementById('btnMarcarFalta');
+                    btnMarcarFalta.disabled = false;
+                    btnMarcarFalta.innerHTML = '<i class="fas fa-user-times mr-1 sm:mr-2"></i><span class="hidden sm:inline">Marcar Falta</span><span class="sm:hidden">Falta</span>';
+
+                    // Ocultar botão se status não permite marcar falta
+                    if (['faltou', 'realizado', 'cancelado'].includes(statusTexto)) {
+                        btnMarcarFalta.style.display = 'none';
+                    } else {
+                        btnMarcarFalta.style.display = '';
+                    }
+
+                    // Abrir modal
+                    document.getElementById('modalDetalhes').classList.remove('hidden');
+                } else {
+                    alert('Erro ao carregar detalhes do agendamento');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar agendamento:', error);
+                alert('Erro ao carregar detalhes do agendamento');
+            }
+        }
+
+        function fecharModalDetalhes() {
+            document.getElementById('modalDetalhes').classList.add('hidden');
+            agendamentoAtual = null;
+        }
+
+        function abrirReagendamento() {
+            if (!agendamentoAtual) return;
+
+            // Fechar modal de detalhes
+            document.getElementById('modalDetalhes').classList.add('hidden');
+
+            // Definir data mínima (hoje)
+            const hoje = new Date().toISOString().split('T')[0];
+            document.getElementById('reagendar_data').min = hoje;
+
+            // Abrir modal de reagendamento
+            document.getElementById('modalReagendamento').classList.remove('hidden');
+        }
+
+        function fecharModalReagendamento() {
+            document.getElementById('modalReagendamento').classList.add('hidden');
+            document.getElementById('formReagendamento').reset();
+            document.getElementById('horariosDisponiveisReagendamento').classList.add('hidden');
+        }
+
+        async function verificarHorariosDisponiveisReagendamento() {
+            if (!agendamentoAtual) return;
+
+            const data = document.getElementById('reagendar_data').value;
+            if (!data) return;
+
+            try {
+                const response = await fetch(`/api/horarios-disponiveis?medico_id=${agendamentoAtual.medico_id}&data=${data}`);
+                const result = await response.json();
+
+                if (result.sucesso && result.horarios.length > 0) {
+                    const container = document.getElementById('horariosListReagendamento');
+                    container.innerHTML = '';
+
+                    result.horarios.forEach(horario => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'px-3 py-2 text-sm bg-green-100 text-green-800 rounded hover:bg-green-200 transition';
+                        button.textContent = horario;
+                        button.onclick = () => {
+                            document.getElementById('reagendar_hora').value = horario;
+                        };
+                        container.appendChild(button);
+                    });
+
+                    document.getElementById('horariosDisponiveisReagendamento').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Erro ao buscar horários:', error);
+            }
+        }
+
+        // Handler do formulário de reagendamento
+        document.getElementById('formReagendamento')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (!agendamentoAtual) return;
+
+            const novaData = document.getElementById('reagendar_data').value;
+            const novaHora = document.getElementById('reagendar_hora').value;
+
+            if (!confirm(`Confirma o reagendamento para ${novaData} às ${novaHora}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/agendamentos/${agendamentoAtual.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        data: novaData,
+                        hora: novaHora
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.sucesso || response.ok) {
+                    alert('Agendamento reagendado com sucesso!');
+                    fecharModalReagendamento();
+                    carregarEventos(); // Recarregar calendário
+                } else {
+                    alert('Erro ao reagendar: ' + (result.mensagem || result.erro || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('Erro ao reagendar:', error);
+                alert('Erro ao reagendar agendamento');
+            }
+        });
+
+        async function marcarComoFalta() {
+            if (!agendamentoAtual) return;
+
+            // Confirmar ação
+            const confirmacao = confirm(
+                `⚠️ Marcar como FALTA:\n\n` +
+                `Paciente: ${agendamentoAtual.paciente_nome}\n` +
+                `Data: ${new Date(agendamentoAtual.data_hora).toLocaleString('pt-BR')}\n\n` +
+                `Esta ação irá:\n` +
+                `✓ Marcar o agendamento como "faltou"\n` +
+                `✓ Enviar mensagem empática via WhatsApp\n` +
+                `✓ Sugerir reagendamento automaticamente\n\n` +
+                `Confirmar?`
+            );
+
+            if (!confirmacao) return;
+
+            try {
+                const btnMarcarFalta = document.getElementById('btnMarcarFalta');
+                btnMarcarFalta.disabled = true;
+                btnMarcarFalta.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processando...';
+
+                const response = await fetch(`/api/agendamentos/${agendamentoAtual.id}/marcar-falta`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.sucesso || response.ok) {
+                    let mensagem = '✅ Agendamento marcado como FALTA!\n\n';
+
+                    if (result.whatsapp_enviado) {
+                        mensagem += '📱 Mensagem WhatsApp enviada com sucesso\n';
+                    } else {
+                        mensagem += '⚠️ Não foi possível enviar mensagem WhatsApp\n';
+                    }
+
+                    if (result.horarios_sugeridos && result.horarios_sugeridos.length > 0) {
+                        mensagem += `\n💡 Horários sugeridos ao paciente:\n`;
+                        result.horarios_sugeridos.forEach((h, i) => {
+                            mensagem += `${i + 1}. ${h.dia_semana}, ${h.data_formatada} às ${h.hora_formatada}\n`;
+                        });
+                    }
+
+                    alert(mensagem);
+                    fecharModalDetalhes();
+                    carregarEventos(); // Recarregar calendário
+                } else {
+                    alert('❌ Erro ao marcar falta:\n' + (result.mensagem || result.detail || result.erro || 'Erro desconhecido'));
+                    btnMarcarFalta.disabled = false;
+                    btnMarcarFalta.innerHTML = '<i class="fas fa-user-times mr-2"></i><span class="hidden sm:inline">Marcar Falta</span><span class="sm:hidden">Falta</span>';
+                }
+            } catch (error) {
+                console.error('Erro ao marcar falta:', error);
+                alert('❌ Erro ao marcar como falta: ' + error.message);
+                const btnMarcarFalta = document.getElementById('btnMarcarFalta');
+                btnMarcarFalta.disabled = false;
+                btnMarcarFalta.innerHTML = '<i class="fas fa-user-times mr-2"></i><span class="hidden sm:inline">Marcar Falta</span><span class="sm:hidden">Falta</span>';
+            }
+        }
+
+        async function confirmarCancelamento() {
+            if (!agendamentoAtual) return;
+
+            const motivo = prompt('Digite o motivo do cancelamento:');
+            if (!motivo) {
+                return; // Usuário cancelou
+            }
+
+            if (!confirm('Tem certeza que deseja cancelar este agendamento?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/agendamentos/${agendamentoAtual.id}?motivo=${encodeURIComponent(motivo)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.sucesso || response.ok) {
+                    alert('Agendamento cancelado com sucesso!');
+                    fecharModalDetalhes();
+                    carregarEventos(); // Recarregar calendário
+                } else {
+                    alert('Erro ao cancelar: ' + (result.mensagem || result.erro || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('Erro ao cancelar:', error);
+                alert('Erro ao cancelar agendamento');
+            }
+        }
+    </script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(registration => {
+                        console.log('✅ PWA: Service Worker registrado com sucesso!', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ PWA: Falha ao registrar Service Worker:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

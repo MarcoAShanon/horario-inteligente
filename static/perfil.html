@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Header -->
+    <div class="bg-white shadow-md border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                        <i class="fas fa-heartbeat text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Horário Inteligente</h1>
+                        <p class="text-xs sm:text-sm text-gray-600">Meu Perfil</p>
+                    </div>
+                </div>
+                <button onclick="window.location.href='/static/calendario-unificado.html'" class="text-gray-600 hover:text-blue-600">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    <span class="hidden sm:inline">Voltar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensagens -->
+    <div id="mensagemSucesso" class="hidden max-w-4xl mx-auto mt-4 px-4">
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle mr-2"></i>
+                <span id="mensagemSucessoTexto"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="mensagemErro" class="hidden max-w-4xl mx-auto mt-4 px-4">
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span id="mensagemErroTexto"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Container Principal -->
+    <div class="max-w-4xl mx-auto p-4 sm:p-6">
+        <!-- Card Foto de Perfil -->
+        <div class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+            <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
+                <div class="relative">
+                    <img id="fotoPerfil" src="" alt="Foto de Perfil" class="w-32 h-32 rounded-full object-cover border-4 border-blue-600" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%234f46e5%22 width=%22200%22 height=%22200%22/%3E%3Ctext fill=%22white%22 font-size=%2280%22 x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22%3E%3C/text%3E%3C/svg%3E'">
+                    <label for="inputFoto" class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full p-2 cursor-pointer hover:bg-blue-700 transition">
+                        <i class="fas fa-camera"></i>
+                    </label>
+                    <input type="file" id="inputFoto" accept="image/*" class="hidden" onchange="uploadFoto()">
+                </div>
+                <div class="text-center sm:text-left flex-1">
+                    <h2 id="nomeUsuario" class="text-2xl font-bold text-gray-800"></h2>
+                    <p id="tipoUsuario" class="text-gray-600 mt-1"></p>
+                    <p id="emailUsuario" class="text-sm text-gray-500 mt-1"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulário de Perfil -->
+        <div class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-user-edit mr-2 text-blue-600"></i>
+                Dados Pessoais
+            </h3>
+
+            <form id="formPerfil" class="space-y-4">
+                <!-- Nome -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome Completo *</label>
+                    <input type="text" id="nome" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+
+                <!-- Email (readonly) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email (Login) *</label>
+                    <input type="email" id="email" readonly class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+                    <p class="text-xs text-gray-500 mt-1">O email não pode ser alterado pois é usado para login</p>
+                </div>
+
+                <!-- Telefones -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Telefone Principal
+                            <i class="fas fa-info-circle text-gray-400 text-xs ml-1" title="Número usado para contato profissional"></i>
+                        </label>
+                        <input type="tel" id="telefone" placeholder="(00) 00000-0000" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Telefone Particular
+                            <i class="fas fa-info-circle text-gray-400 text-xs ml-1" title="Número pessoal (opcional)"></i>
+                        </label>
+                        <input type="tel" id="telefone_particular" placeholder="(00) 00000-0000" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                </div>
+
+                <!-- Campos específicos para Profissionais -->
+                <div id="camposMedico" class="hidden space-y-4 pt-4 border-t border-gray-200">
+                    <h4 class="text-lg font-semibold text-gray-800 flex items-center">
+                        <i class="fas fa-user-md mr-2 text-blue-600"></i>
+                        Dados Profissionais
+                    </h4>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">CRM</label>
+                            <input type="text" id="crm" placeholder="CRM-UF 12345" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Especialidade</label>
+                            <input type="text" id="especialidade" placeholder="Ex: Cardiologista" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Valor Consulta Particular (R$)</label>
+                        <input type="number" id="valor_consulta_particular" step="0.01" min="0" placeholder="0.00" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Biografia/Sobre</label>
+                        <textarea id="biografia" rows="4" placeholder="Conte um pouco sobre você e sua experiência profissional..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                    </div>
+
+                    <!-- Convênios -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Convênios Aceitos
+                            <button type="button" onclick="adicionarConvenio()" class="ml-2 text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-plus-circle"></i> Adicionar
+                            </button>
+                        </label>
+                        <div id="listaConvenios" class="space-y-2"></div>
+                    </div>
+
+                    <!-- Procedimentos -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Procedimentos Realizados
+                            <button type="button" onclick="adicionarProcedimento()" class="ml-2 text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-plus-circle"></i> Adicionar
+                            </button>
+                        </label>
+                        <div id="listaProcedimentos" class="space-y-3"></div>
+                    </div>
+                </div>
+
+                <!-- Botões -->
+                <div class="flex flex-col sm:flex-row gap-3 pt-6">
+                    <button type="submit" id="btnSalvar" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                        <i class="fas fa-save mr-2"></i>
+                        Salvar Alterações
+                    </button>
+                    <button type="button" onclick="window.location.href='/static/calendario-unificado.html'" class="sm:w-auto px-6 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Configurações de Notificações (apenas para profissionais) -->
+        <div id="secaoNotificacoes" class="bg-white rounded-2xl shadow-xl p-6 mb-6 hidden">
+            <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-bell mr-2 text-blue-600"></i>
+                Configurações de Notificações
+            </h3>
+
+            <form id="formNotificacoes" class="space-y-6">
+                <!-- Eventos para Notificar -->
+                <div class="border-b border-gray-200 pb-4">
+                    <h4 class="text-md font-semibold text-gray-700 mb-3">
+                        <i class="fas fa-calendar-check mr-2 text-gray-600"></i>
+                        Quando Notificar
+                    </h4>
+                    <div class="space-y-3">
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition">
+                            <input type="checkbox" id="notif_novos" class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                            <span class="ml-3 text-gray-700">Novos agendamentos</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition">
+                            <input type="checkbox" id="notif_reagenda" class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                            <span class="ml-3 text-gray-700">Reagendamentos</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition">
+                            <input type="checkbox" id="notif_cancela" class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                            <span class="ml-3 text-gray-700">Cancelamentos</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition">
+                            <input type="checkbox" id="notif_confirma" class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                            <span class="ml-3 text-gray-700">Confirmações de pacientes</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Canais de Notificação -->
+                <div class="border-b border-gray-200 pb-4">
+                    <h4 class="text-md font-semibold text-gray-700 mb-3">
+                        <i class="fas fa-paper-plane mr-2 text-gray-600"></i>
+                        Como Notificar
+                    </h4>
+                    <div class="space-y-4">
+                        <!-- WhatsApp -->
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="canal_whatsapp" class="w-4 h-4 text-green-600 rounded focus:ring-2 focus:ring-green-500" onchange="toggleWhatsAppInput()">
+                                <i class="fab fa-whatsapp ml-3 mr-2 text-green-600 text-xl"></i>
+                                <span class="text-gray-700 font-medium">WhatsApp</span>
+                            </label>
+                            <div id="whatsappInputDiv" class="mt-3 hidden">
+                                <input type="tel" id="whatsapp_numero" placeholder="(24) 98849-3257" class="w-full px-4 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                <p class="text-xs text-gray-600 mt-1">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Digite o número com DDD (formato: (24) 98849-3257)
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Email -->
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="canal_email" class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500" onchange="toggleEmailInput()">
+                                <i class="fas fa-envelope ml-3 mr-2 text-blue-600 text-xl"></i>
+                                <span class="text-gray-700 font-medium">Email</span>
+                            </label>
+                            <div id="emailInputDiv" class="mt-3 hidden">
+                                <input type="email" id="email_notif" placeholder="seu@email.com" class="w-full px-4 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <p class="text-xs text-gray-600 mt-1">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Insira o email onde deseja receber as notificações
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botão Salvar -->
+                <button type="submit" class="w-full sm:w-auto px-6 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                    <i class="fas fa-save mr-2"></i>
+                    Salvar Configurações de Notificações
+                </button>
+            </form>
+        </div>
+
+        <!-- Alterar Senha -->
+        <div class="bg-white rounded-2xl shadow-xl p-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                <i class="fas fa-lock mr-2 text-blue-600"></i>
+                Alterar Senha
+            </h3>
+
+            <form id="formSenha" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Senha Atual</label>
+                    <input type="password" id="senhaAtual" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nova Senha (mín. 6 caracteres)</label>
+                        <input type="password" id="novaSenha" minlength="6" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Confirmar Nova Senha</label>
+                        <input type="password" id="confirmarNovaSenha" minlength="6" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full sm:w-auto px-6 bg-yellow-600 text-white py-3 rounded-lg font-semibold hover:bg-yellow-700 transition">
+                    <i class="fas fa-key mr-2"></i>
+                    Alterar Senha
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let perfilAtual = null;
+        let conveniosAtuais = [];
+        let procedimentosAtuais = [];
+
+        // Carregar perfil ao iniciar
+        document.addEventListener('DOMContentLoaded', async function() {
+            await carregarPerfil();
+        });
+
+        async function carregarPerfil() {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) {
+                    window.location.href = '/static/login.html';
+                    return;
+                }
+
+                const response = await fetch('/api/perfil', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar perfil');
+                }
+
+                perfilAtual = await response.json();
+                preencherFormulario(perfilAtual);
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarErro('Erro ao carregar perfil. Tente novamente.');
+            }
+        }
+
+        function preencherFormulario(perfil) {
+            // Dados básicos
+            document.getElementById('nome').value = perfil.nome || '';
+            document.getElementById('email').value = perfil.email || '';
+            document.getElementById('telefone').value = perfil.telefone || '';
+            document.getElementById('telefone_particular').value = perfil.telefone_particular || '';
+
+            // Header
+            document.getElementById('nomeUsuario').textContent = perfil.nome || 'Usuário';
+            document.getElementById('emailUsuario').textContent = perfil.email || '';
+
+            // Foto de perfil
+            if (perfil.foto_perfil) {
+                document.getElementById('fotoPerfil').src = perfil.foto_perfil;
+            }
+
+            // Se for profissional
+            if (perfil.tipo === 'medico' || perfil.user_type === 'medico') {
+                document.getElementById('tipoUsuario').innerHTML = '<i class="fas fa-user-md mr-1"></i>Profissional';
+                document.getElementById('camposMedico').classList.remove('hidden');
+
+                document.getElementById('crm').value = perfil.crm || '';
+                document.getElementById('especialidade').value = perfil.especialidade || '';
+                document.getElementById('valor_consulta_particular').value = perfil.valor_consulta_particular || '';
+                document.getElementById('biografia').value = perfil.biografia || '';
+
+                // Convênios
+                conveniosAtuais = perfil.convenios_aceitos || [];
+                renderizarConvenios();
+
+                // Procedimentos
+                procedimentosAtuais = perfil.procedimentos || [];
+                renderizarProcedimentos();
+
+                // Mostrar seção de notificações e carregar configurações
+                document.getElementById('secaoNotificacoes').classList.remove('hidden');
+                carregarNotificacoes();
+            } else {
+                document.getElementById('tipoUsuario').innerHTML = '<i class="fas fa-user-tie mr-1"></i>Secretária';
+            }
+        }
+
+        // Gerenciamento de Convênios
+        function adicionarConvenio() {
+            const nome = prompt('Nome do convênio:');
+            if (nome && nome.trim()) {
+                conveniosAtuais.push(nome.trim());
+                renderizarConvenios();
+            }
+        }
+
+        function removerConvenio(index) {
+            conveniosAtuais.splice(index, 1);
+            renderizarConvenios();
+        }
+
+        function renderizarConvenios() {
+            const lista = document.getElementById('listaConvenios');
+            if (conveniosAtuais.length === 0) {
+                lista.innerHTML = '<p class="text-sm text-gray-500">Nenhum convênio cadastrado</p>';
+                return;
+            }
+
+            lista.innerHTML = conveniosAtuais.map((convenio, index) => `
+                <div class="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
+                    <span class="text-sm">${convenio}</span>
+                    <button type="button" onclick="removerConvenio(${index})" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Gerenciamento de Procedimentos
+        function adicionarProcedimento() {
+            const nome = prompt('Nome do procedimento:');
+            if (!nome || !nome.trim()) return;
+
+            const duracao = prompt('Duração em minutos:');
+            if (!duracao || isNaN(duracao)) {
+                alert('Duração inválida');
+                return;
+            }
+
+            const valor = prompt('Valor (R$):');
+            if (!valor || isNaN(valor)) {
+                alert('Valor inválido');
+                return;
+            }
+
+            procedimentosAtuais.push({
+                nome: nome.trim(),
+                duracao_minutos: parseInt(duracao),
+                valor: parseFloat(valor)
+            });
+
+            renderizarProcedimentos();
+        }
+
+        function removerProcedimento(index) {
+            procedimentosAtuais.splice(index, 1);
+            renderizarProcedimentos();
+        }
+
+        function renderizarProcedimentos() {
+            const lista = document.getElementById('listaProcedimentos');
+            if (procedimentosAtuais.length === 0) {
+                lista.innerHTML = '<p class="text-sm text-gray-500">Nenhum procedimento cadastrado</p>';
+                return;
+            }
+
+            lista.innerHTML = procedimentosAtuais.map((proc, index) => `
+                <div class="flex items-center justify-between bg-gray-50 px-3 py-3 rounded-lg">
+                    <div>
+                        <p class="font-semibold text-sm">${proc.nome}</p>
+                        <p class="text-xs text-gray-600">
+                            <i class="fas fa-clock mr-1"></i>${proc.duracao_minutos} min
+                            <span class="mx-2">|</span>
+                            <i class="fas fa-dollar-sign mr-1"></i>R$ ${proc.valor.toFixed(2)}
+                        </p>
+                    </div>
+                    <button type="button" onclick="removerProcedimento(${index})" class="text-red-600 hover:text-red-800">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Upload de foto
+        async function uploadFoto() {
+            const input = document.getElementById('inputFoto');
+            const file = input.files[0];
+
+            if (!file) return;
+
+            // Validar tamanho (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                mostrarErro('A foto deve ter no máximo 2MB');
+                input.value = '';
+                return;
+            }
+
+            // Converter para base64
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64 = e.target.result;
+
+                try {
+                    const token = localStorage.getItem('authToken');
+                    const response = await fetch('/api/perfil/foto', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ foto_base64: base64 })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Erro ao fazer upload');
+                    }
+
+                    const result = await response.json();
+                    document.getElementById('fotoPerfil').src = base64;
+                    mostrarSucesso('Foto atualizada com sucesso!');
+                } catch (error) {
+                    console.error('Erro:', error);
+                    mostrarErro('Erro ao fazer upload da foto');
+                }
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        // Salvar perfil
+        document.getElementById('formPerfil').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const btnSalvar = document.getElementById('btnSalvar');
+            btnSalvar.disabled = true;
+            btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Salvando...';
+
+            try {
+                const dados = {
+                    nome: document.getElementById('nome').value,
+                    telefone: document.getElementById('telefone').value || null,
+                    telefone_particular: document.getElementById('telefone_particular').value || null
+                };
+
+                // Se for médico, adicionar campos específicos
+                if (perfilAtual.tipo === 'medico' || perfilAtual.user_type === 'medico') {
+                    dados.crm = document.getElementById('crm').value || null;
+                    dados.especialidade = document.getElementById('especialidade').value || null;
+                    dados.valor_consulta_particular = parseFloat(document.getElementById('valor_consulta_particular').value) || null;
+                    dados.biografia = document.getElementById('biografia').value || null;
+                    dados.convenios_aceitos = conveniosAtuais;
+                    dados.procedimentos = procedimentosAtuais;
+                }
+
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/perfil', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao salvar perfil');
+                }
+
+                const result = await response.json();
+                mostrarSucesso('Perfil atualizado com sucesso!');
+
+                // Atualizar localStorage se necessário
+                const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+                userData.nome = dados.nome;
+                localStorage.setItem('userData', JSON.stringify(userData));
+
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarErro('Erro ao salvar perfil. Tente novamente.');
+            } finally {
+                btnSalvar.disabled = false;
+                btnSalvar.innerHTML = '<i class="fas fa-save mr-2"></i>Salvar Alterações';
+            }
+        });
+
+        // Alterar senha
+        document.getElementById('formSenha').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const senhaAtual = document.getElementById('senhaAtual').value;
+            const novaSenha = document.getElementById('novaSenha').value;
+            const confirmarNovaSenha = document.getElementById('confirmarNovaSenha').value;
+
+            if (!senhaAtual || !novaSenha || !confirmarNovaSenha) {
+                mostrarErro('Preencha todos os campos de senha');
+                return;
+            }
+
+            if (novaSenha !== confirmarNovaSenha) {
+                mostrarErro('As senhas não coincidem');
+                return;
+            }
+
+            if (novaSenha.length < 6) {
+                mostrarErro('A senha deve ter no mínimo 6 caracteres');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/perfil/alterar-senha', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        senha_atual: senhaAtual,
+                        nova_senha: novaSenha
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Erro ao alterar senha');
+                }
+
+                mostrarSucesso('Senha alterada com sucesso!');
+                document.getElementById('formSenha').reset();
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarErro(error.message || 'Erro ao alterar senha');
+            }
+        });
+
+        // Funções auxiliares
+        function mostrarSucesso(mensagem) {
+            const div = document.getElementById('mensagemSucesso');
+            document.getElementById('mensagemSucessoTexto').textContent = mensagem;
+            div.classList.remove('hidden');
+
+            setTimeout(() => {
+                div.classList.add('hidden');
+            }, 5000);
+
+            // Esconder mensagem de erro se estiver visível
+            document.getElementById('mensagemErro').classList.add('hidden');
+        }
+
+        function mostrarErro(mensagem) {
+            const div = document.getElementById('mensagemErro');
+            document.getElementById('mensagemErroTexto').textContent = mensagem;
+            div.classList.remove('hidden');
+
+            setTimeout(() => {
+                div.classList.add('hidden');
+            }, 5000);
+
+            // Esconder mensagem de sucesso se estiver visível
+            document.getElementById('mensagemSucesso').classList.add('hidden');
+        }
+
+        // ============= FUNÇÕES DE NOTIFICAÇÕES =============
+
+        function toggleWhatsAppInput() {
+            const checkbox = document.getElementById('canal_whatsapp');
+            const inputDiv = document.getElementById('whatsappInputDiv');
+            if (checkbox.checked) {
+                inputDiv.classList.remove('hidden');
+            } else {
+                inputDiv.classList.add('hidden');
+            }
+        }
+
+        function toggleEmailInput() {
+            const checkbox = document.getElementById('canal_email');
+            const inputDiv = document.getElementById('emailInputDiv');
+            if (checkbox.checked) {
+                inputDiv.classList.remove('hidden');
+            } else {
+                inputDiv.classList.add('hidden');
+            }
+        }
+
+        async function carregarNotificacoes() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const medicoId = perfilAtual.id;
+
+                const response = await fetch(`/api/medicos/${medicoId}/notificacoes`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    console.error('Erro ao carregar notificações');
+                    return;
+                }
+
+                const data = await response.json();
+                const notif = data.notificacoes;
+
+                // Preencher checkboxes de eventos
+                document.getElementById('notif_novos').checked = notif.notificar_novos;
+                document.getElementById('notif_reagenda').checked = notif.notificar_reagendamentos;
+                document.getElementById('notif_cancela').checked = notif.notificar_cancelamentos;
+                document.getElementById('notif_confirma').checked = notif.notificar_confirmacoes;
+
+                // Preencher checkboxes e inputs de canais
+                document.getElementById('canal_whatsapp').checked = notif.canal_whatsapp;
+                document.getElementById('canal_email').checked = notif.canal_email;
+
+                if (notif.whatsapp_numero) {
+                    document.getElementById('whatsapp_numero').value = notif.whatsapp_numero;
+                }
+
+                if (notif.email) {
+                    document.getElementById('email_notif').value = notif.email;
+                }
+
+                // Mostrar inputs se canais estiverem habilitados
+                toggleWhatsAppInput();
+                toggleEmailInput();
+
+            } catch (error) {
+                console.error('Erro ao carregar notificações:', error);
+            }
+        }
+
+        // Event listener para o form de notificações
+        document.getElementById('formNotificacoes')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const medicoId = perfilAtual.id;
+
+                const dados = {
+                    notificar_novos: document.getElementById('notif_novos').checked,
+                    notificar_reagendamentos: document.getElementById('notif_reagenda').checked,
+                    notificar_cancelamentos: document.getElementById('notif_cancela').checked,
+                    notificar_confirmacoes: document.getElementById('notif_confirma').checked,
+                    canal_whatsapp: document.getElementById('canal_whatsapp').checked,
+                    canal_email: document.getElementById('canal_email').checked,
+                    whatsapp_numero: document.getElementById('whatsapp_numero').value || null,
+                    email: document.getElementById('email_notif').value || null
+                };
+
+                const response = await fetch(`/api/medicos/${medicoId}/notificacoes`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao salvar notificações');
+                }
+
+                const result = await response.json();
+                mostrarSucesso(result.mensagem || 'Configurações de notificações salvas com sucesso!');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarErro('Erro ao salvar configurações de notificações. Tente novamente.');
+            }
+        });
+    </script>
+
+    <!-- Service Worker para PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
+            });
+        }
+    </script>
+</body>
+</html>

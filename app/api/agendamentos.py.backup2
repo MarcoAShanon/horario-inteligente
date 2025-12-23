@@ -1,0 +1,179 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime, timedelta
+from app.database import get_db
+
+router = APIRouter()
+
+# Schema para criar agendamento - CORRIGIDO
+class AgendamentoCreate(BaseModel):
+    paciente_nome: str
+    paciente_telefone: str
+    data: str
+    hora: str
+    medico_id: int = 1
+    motivo_consulta: Optional[str] = None  # Aceita do frontend
+    motivo: Optional[str] = None  # Retrocompatibilidade
+    # Campos opcionais adicionais
+    paciente_cpf: Optional[str] = None
+    paciente_email: Optional[str] = None
+    paciente_data_nascimento: Optional[str] = None
+
+@router.post("/agendamentos")
+async def criar_agendamento(
+    dados: AgendamentoCreate,
+    db: Session = Depends(get_db)
+):
+    """Cria um novo agendamento manual"""
+    try:
+        # Determinar o motivo (prioriza motivo_consulta)
+        motivo_final = dados.motivo_consulta or dados.motivo or "Consulta"
+        
+        # Buscar ou criar paciente
+        paciente = db.execute(text("""
+            SELECT id FROM pacientes
+            WHERE telefone = :tel
+            LIMIT 1
+        """), {"tel": dados.paciente_telefone}).fetchone()
+        
+        if not paciente:
+            # Criar paciente com campos opcionais
+            result = db.execute(text("""
+            INSERT INTO pacientes (nome, telefone, cpf, email, data_nascimento, cliente_id, convenio, criado_em, atualizado_em)
+            VALUES (:nome, :tel, :cpf, :email, :data_nasc, 1, 'Particular', NOW(), NOW())
+            RETURNING id
+            """), {
+                "nome": dados.paciente_nome,
+                "tel": dados.paciente_telefone,
+                "cpf": dados.paciente_cpf,
+                "email": dados.paciente_email,
+                "data_nasc": dados.paciente_data_nascimento
+            })
+            paciente_id = result.scalar()
+        else:
+            paciente_id = paciente.id
+            # Atualizar paciente se campos adicionais foram fornecidos
+            if dados.paciente_cpf or dados.paciente_email or dados.paciente_data_nascimento:
+                db.execute(text("""
+                    UPDATE pacientes 
+                    SET cpf = COALESCE(:cpf, cpf),
+                        email = COALESCE(:email, email),
+                        data_nascimento = COALESCE(:data_nasc, data_nascimento),
+                        atualizado_em = NOW()
+                    WHERE id = :pac_id
+                """), {
+                    "cpf": dados.paciente_cpf,
+                    "email": dados.paciente_email,
+                    "data_nasc": dados.paciente_data_nascimento,
+                    "pac_id": paciente_id
+                })
+        
+        # Criar agendamento - CORRIGIDO para gravar motivo_consulta
+        data_hora = f"{dados.data} {dados.hora}:00"
+        result = db.execute(text("""
+            INSERT INTO agendamentos
+            (paciente_id, medico_id, data_hora, status, tipo_atendimento,
+             motivo_consulta, criado_em, atualizado_em)
+            VALUES
+            (:pac_id, :med_id, :dt, 'confirmado', 'consulta',
+             :motivo, NOW(), NOW())
+            RETURNING id
+        """), {
+            "pac_id": paciente_id,
+            "med_id": dados.medico_id,
+            "dt": data_hora,
+            "motivo": motivo_final
+        })
+        
+        agendamento_id = result.scalar()
+        db.commit()
+        
+        return {
+            "sucesso": True,
+            "mensagem": "Agendamento criado com sucesso",
+            "agendamento_id": agendamento_id,
+            "paciente_id": paciente_id
+        }
+    except Exception as e:
+        db.rollback()
+        return {
+            "sucesso": False,
+            "erro": str(e)
+        }
+
+@router.get("/agendamentos/calendario")
+async def listar_calendario(
+    db: Session = Depends(get_db),
+    medico_id: int = 1
+):
+    """Lista agendamentos e bloqueios para o calendário"""
+    try:
+        # Buscar agendamentos
+        result = db.execute(text("""
+            SELECT 
+                a.id,
+                a.data_hora,
+                a.status,
+                a.tipo_atendimento,
+                a.motivo_consulta,
+                p.nome as paciente_nome,
+                p.telefone as paciente_telefone,
+                m.nome as medico_nome,
+                m.especialidade
+            FROM agendamentos a
+            JOIN pacientes p ON a.paciente_id = p.id
+            JOIN medicos m ON a.medico_id = m.id
+            WHERE a.medico_id = :medico_id
+            AND a.data_hora >= CURRENT_DATE - INTERVAL '30 days'
+            ORDER BY a.data_hora
+        """), {"medico_id": medico_id})
+        
+        agendamentos = []
+        for row in result:
+            agendamentos.append({
+                "id": row.id,
+                "title": f"{row.paciente_nome} - {row.tipo_atendimento}",
+                "start": row.data_hora.isoformat(),
+                "backgroundColor": "#10b981" if row.status == "confirmado" else "#f59e0b",
+                "borderColor": "#10b981" if row.status == "confirmado" else "#f59e0b",
+                "extendedProps": {
+                    "paciente": row.paciente_nome,
+                    "telefone": row.paciente_telefone,
+                    "medico": row.medico_nome,
+                    "especialidade": row.especialidade,
+                    "tipo": row.tipo_atendimento,
+                    "status": row.status,
+                    "motivo": row.motivo_consulta
+                }
+            })
+        
+        return {"eventos": agendamentos}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/medicos")
+async def listar_medicos(db: Session = Depends(get_db)):
+    """Lista médicos disponíveis"""
+    try:
+        result = db.execute(text("""
+            SELECT id, nome, especialidade, crm
+            FROM medicos
+            WHERE ativo = true
+            ORDER BY nome
+        """))
+        
+        medicos = []
+        for row in result:
+            medicos.append({
+                "id": row.id,
+                "nome": row.nome,
+                "especialidade": row.especialidade,
+                "crm": row.crm
+            })
+        
+        return {"medicos": medicos}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

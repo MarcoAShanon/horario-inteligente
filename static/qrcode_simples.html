@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="25">
+    <title>QR Code WhatsApp - Horário Inteligente</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 600px;
+        }
+        h1 { color: #333; margin-bottom: 10px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        img {
+            max-width: 400px;
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .instructions {
+            text-align: left;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .instructions ol { padding-left: 20px; }
+        .instructions li { margin: 10px 0; }
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            text-align: left;
+        }
+        .refresh-info {
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        .alert {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Horário Inteligente</h1>
+        <p class="subtitle">Conecte o WhatsApp da Clínica</p>
+
+        <div class="alert">
+            <strong>⚠️ ATENÇÃO:</strong><br>
+            Use o número <strong>21 99208-6879</strong> (número da CLÍNICA)<br>
+            NÃO use o número de teste do paciente!
+        </div>
+
+        <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAVwAAAFcCAYAAACEFgYsAAAjFUlEQVR4AezB0ZEky65sydUhRQX4Ai8gAbwYX8ZGT3/iy0VcMiv2uW+g+ufvP6y11vp1D2uttV7xsNZa6xUPa621XvGw1lrrFQ9rrbVe8bDWWusVD2uttV7xsNZa6xUPa621XvGw1lrrFQ9rrbVe8cOl6ORNLvGJ6OTEJabo5MQlTqKTE5eYopNvcokpOplcYopOPuESn4hOPuESvyk6mVxiik5+k0ucRCeTS0zRyTe5xBSdnLjEFJ1MLvFN0cmbXOLGw1prrVc8rLXWesXDWmutV/zwIZf4pujkJDo5cYlvcokpOjlxiU+4xP8l0cnkEifRyYlLfCI6OXGJk+jkhkucRCeTS0zRyY3o5CQ6ueESU3QyucQnopPJJabo5BMuceIS3xSdfOJhrbXWKx7WWmu94mGttdYrfviy6OSGS3zCJU5cYopOvsklbkQnk0ucRCcnLnHiEp9wiSk6mVxiik5OXGKKTqbo5BMuMUUnJ9HJ5BJTdHIjOplc4oZLTNHJN7nEFJ1MLjFFJ5NLnLjEDZeYopPJJabo5BPRyQ2X+KaHtdZar3hYa631ioe11lqv+OH/MdHJ5BKTS5y4xIlL3IhOJpc4iU4ml5iik29yiZPo5BMu8U0uccMlTlzixCWm6GRyid/kElN0csMlTlzim6KTySWm6GRyif8/eVhrrfWKh7XWWq94WGut9Yof/o+LTk6ikxsuMUUnJy5xIzo5cYkpOjmJTj7hElN0cuISU3RyIzo5cYkpOjmJTiaXOIlObrjESXRyEp18Ijq54RJTdDK5xBSdnLjEDZc4cYkTlzhxif/LHtZaa73iYa211ise1lprveKHL3OJ/yUucRKdTNHJiUvccIkpOplc4hMucSM6+UR08gmXmKKTG9HJ5BJTdDK5xOQSJ9HJDZe4EZ3ccIkpOplcYopOJpf4RHTyiejkxCVOopPJJT7hEv+lh7XWWq94WGut9YqHtdZar/jhQ9HJf8klpujkJDqZXGKKTiaXmKKTySWm6GRyiRvRyeQSU3RyEp1MLvEJl5iik8klpujkJDqZXGKKTiaXmKKTT0Qnk0t8U3QyucSJS0zRyeQS3xSdTC4xRSeTS0zRyeQSU3QyucQUnZxEJ5NLTNHJ5BIn0cn/koe11lqveFhrrfWKh7XWWq/44ZJL/Jdc4sQlfpNL/C9ziW+KTiaXOHGJKTo5iU5uuMSJS0zRyeQSU3TyTS5xIzr5JpeYopPfFJ2cRCcn0clJdHLDJf6XPay11nrFw1prrVc8rLXWesUPXxadTC5xEp18k0v8pujkRnRywyWm6OQkOvlEdDK5xBSdTNHJ5BKfcIlPRCeTS3xTdHISnfym6OQ3RScn0cnkElN08ptcYopOpuhkcokpOvkml/jEw1prrVc8rLXWesXDWmutV/xwKTqZXGJyiZPoZHKJG9HJjehkcokpOplc4sQlpuhkcokb0cmJS0zRyeQSJ9HJiUtM0cmN6OSbopMTl/gml5iikxOX+ER0MrnEFJ1MLjFFJzdcYopOJpeYopPJJU5c4iQ6mVziJDo5cYmT6OQTLjFFJ9/0sNZa6xUPa621XvGw1lrrFX/+/sMHopPJJaboZHKJKTo5cYmT6OTEJabo5IZL3IhOJpeYopMTl5iik0+4xBSdTC5xEp38JpeYopPJJW5EJzdc4hPRyQ2XmKKTySWm6GRyiSk6mVzif0l0MrnESXQyucSN6GRyiSk6OXGJk+hkcokbD2uttV7xsNZa6xUPa621XvHn7z98UXQyucQUnUwu8YnoZHKJKTqZXOJGdDK5xBSdfJNLnEQnk0tM0cnkEifRyQ2XmKKTySVOopNPuMSN6OTEJU6ikxOXOIlOTlxiik4ml5iikxsuMUUnJy4xRScnLjFFJycuMUUnJy4xRScnLjFFJ5NLTNHJ5BJTdDK5xCce1lprveJhrbXWKx7WWmu94s/ff/ii6GRyiSk6+YRLfFN0MrnEJ6KTySWm6GRyiW+KTk5cYopObrjEFJ1MLnEjOjlxiSk6mVzif0l0MrnEFJ2cuMQUnZy4xBSdvMklpujkxCVOopPf5BIn0ckNl7jxsNZa6xUPa621XvGw1lrrFT9cik4+4RLfFJ1MLnESnUwucRKdTC7xCZeYopMbLnHiElN0MkUnN1xiik4ml/iES3xTdDK5xDdFJzeikxOXuOESJy7xTdHJ5BI3XOITLjFFJ5NL/CaXmKKTTzystdZ6xcNaa61XPKy11nrFD5dc4kZ0MrnESXQyucQUnZxEJ5NLnEQnk0ucRCeTS0wucRKdfCI6mVxiik5uuMRJdHISnZy4xBSdTC7xm6KTGy4xRSff5BK/KTq54RLf5BIn0cmJS0zRyY3o5IZLTC5x4hKfeFhrrfWKh7XWWq94WGut9Yo/f//hQnTyTS5xEp3ccImT6OSGS/yXopPJJabo5BMuMUUnn3CJKTo5cYkpOplc4hPRyeQSU3TyCZeYopMbLnEjOplcYopOJpeYopPJJaboZHKJKTqZXGKKTm64xI3oZHKJKTo5cYn/0sNaa61XPKy11nrFw1prrVf8+fsPH4hOJpeYopMTl5iik8klbkQnk0tM0cnkElN0MrnEFJ1MLjFFJ5NLnEQnJy5xEp1MLnESnbzJJU6ik9/kEp+ITiaXmKKTGy5xIzqZXGKKTm64xI3oZHKJG9HJiUt8IjqZXGKKTiaXuBGdnLjEjYe11lqveFhrrfWKh7XWWq/44VJ0csMlpujkxCVOopMb0clJdDK5xBSdTC4xRSc3opMb0cnkEpNLTNHJ5BI3XGKKTm64xBSdTC7xm1ziJDo5cYnJJaboZHKJk+jkRnRyEp1MLnEjOplcYopOvsklbkQnk0t8wiVOopMbLvGJh7XWWq94WGut9YqHtdZar/jz9x8+EJ38JpeYopNPuMQUnUwucRKdfMIlTqKTE5e4EZ1MLjFFJ5NLTNHJ5BKfiE4ml5iik8klTqKTE5c4iU5uuMQUndxwiRvRyYlLnEQnJy5xEp1MLjFFJ5NLnEQnk0tM0ckNl5iik29yiSk6mVzixsNaa61XPKy11nrFw1prrVf8cCk6OXGJG9HJ5BI3XGKKTj4RnUwuMbnEJ6KTGy4xRSc3XGKKTk6ik8klPhGdTC5xIzqZXGJyiSk6OYlOJpeYopPJJb4pOvm/xCWm6GRyiSk6+YRLTNHJ5BJTdDK5xI3oZHKJE5f4xMNaa61XPKy11nrFw1prrVf8+fsPvyg6mVziJDqZXOJGdDK5xCeik8klTqKTGy5xEp1MLnEjOplcYopOfpNLnEQnn3CJKTqZXGKKTk5c4iQ6+SaXmKKTGy4xRSc3XGKKTk5cYopOvsklTqKTE5c4iU5uuMQUnUwuceNhrbXWKx7WWmu94mGttdYrfrgUnZy4xI3oZHKJk+hkconJJb7JJabo5IZL/Kbo5EZ0MrnEjejkxCWm6GRyiU+4xIlL3HCJKTqZXOKGS0zRyQ2X+IRLfMIlpuhkik4ml5iik8klbkQnk0tMLjFFJyfRyQ2XmKKTySU+8bDWWusVD2uttV7xsNZa6xV//v7DB6KTGy5xEp1MLnESnZy4xEl08ptcYopOJpf4RHRy4hJTdHLiElN0MrnEjejkhkv8puhkcomT6GRyiSk6OXGJKTo5cYmT6OTEJabo5MQlpuhkcokpOjlxiSk6OXGJk+jkxCWm6OSGS0zRyeQSU3QyucSNh7XWWq94WGut9YqHtdZar/jhUnQyucQUnUwuccMlpujkxCWm6GSKTj7hEjeikyk6mVxiik4mlziJTiaXuOESU3Ry4hLf5BJTdDJFJycu8SaX+ER0cuISn3CJE5eYopMTl5iikzdFJ5NLTNHJJ1xiik4ml5iik8klPvGw1lrrFQ9rrbVe8bDWWusVf/7+w4Xo5MQlTqKTb3KJT0QnJy4xRSeTS/ym6OQ3ucRJdHLiEifRyQ2X+ER0MrnEFJ2cuMRJdPKbXGKKTm64xBSdTC5xEp2cuMSN6OQTLjFFJ9/kEjeik8klbjystdZ6xcNaa61XPKy11nrFDx9yiZPo5MQlbkQnN6KTySVuRCc3opPJJT7hElN0MrnEjejkEy4xRSeTS0wuMUUnN6KTT0QnJy4xRSc3XOJGdDK5xA2XOIlO/pe4xBSdTC7xCZe4EZ1M0cnkEr/pYa211ise1lprveJhrbXWK374sujkE9HJ5BLfFJ2cuMQ3RSefcIkb0cnkEifRyeQSk0tM0clJdHLDJaboZHKJKTqZXOIkOplcYopOJpc4iU5OopPJJU6ik8klTqKTE5eYopNvik5OXGKKTj4RndyITiaXOHGJk+jkmx7WWmu94mGttdYrHtZaa73ih0suMUUnJy4xRScnLnEjOplcYnKJk+jkTS5xIzq54RLfFJ1MLjFFJ5NLTNHJSXRyEp2cRCcnLnHiEt/kEm9yiU9EJ98UnfyXXOJGdDK5xOQSU3TyiYe11lqveFhrrfWKh7XWWq/48/cfPhCdTC5xEp18k0u8KTqZXOIT0cmJS0zRyTe5xBSdnLjEjejkEy4xRSeTS5xEJ+v3uMRJdDK5xCeik9/kElN0MrnEJx7WWmu94mGttdYrHtZaa73ih0vRyeQSU3QyucTkEjeikxvRyTe5xEl0cuISJy4xRSdTdHLDJW5EJ5+ITk5c4kZ0MkUnN6KTySWm6OSGS5xEJycucSM6OXGJk+hkcolvik6m6GRyicklpuhkcokpOrnhElN0cuISU3Typoe11lqveFhrrfWKh7XWWq/48/cfvig6mVziRnQyucQUnXzCJW5EJycucSM6OXGJKTqZXOIkOplc4iQ6ueESU3TyCZeYopPJJU6ik0+4xEl0MrnEjejkxCVOopPJJabo5IZLnEQnk0ucRCeTS0zRyQ2XOIlOJpd4U3QyucSNh7XWWq94WGut9YqHtdZar/jhUnTyiehkconJJaboZHKJk+jkJDqZXOJNLjFFJ1N0chKd3IhObrjESXRywyWm6OSbXGKKTiaXmKKTKTqZXOJGdHLiEt8UnUwuMUUn3xSdnLjEiUtM0cnkElN0cuISU3QyucQ3RSff9LDWWusVD2uttV7xsNZa6xV//v7DhejkxCVuRCefcIkb0cmJS0zRyeQSJ9HJiUucRCeTS/ym6GRyiSk6+SaXuBGdTC7xm6KTE5e4EZ2cuMRJdDK5xI3o5IZLTNHJ5BJTdDK5xBSd3HCJKTq54RIn0cnkEifRyYlL3HhYa631ioe11lqveFhrrfWKP3//4QPRyeQSN6KTySVOopMTl5iik8klPhGdTC5xEp2cuMQnopNvcomT6GRyiSk6mVxiik4ml5iik8klpujkxCWm6GRyiRvRyeQSU3QyucQUnUwucRKdTC7xiehkcon/y6KTySVOopMTl5iikxsuceNhrbXWKx7WWmu94mGttdYr/vz9hwvRyQ2XuBGdnLjEFJ1MLvFN0cnkEifRySdcYopOvsklpuhkcokpOjlxiSk6ueESU3QyucSN6OQTLjFFJ59wiW+KTk5cYopOTlziJDqZXOJGdDK5xEl08gmXmKKTGy4xRScnLnHjYa211ise1lprveJhrbXWK3645BJTdHIjOplcYnKJKTqZopOT6GRyiU+4xEl0csMlpuhkik5OXOIkOplcYopO3uQSb3KJKTr5JpeYopPJJabo5MQlTqKTE5c4cYkpOjmJTk6ikxsucRKd3HCJKTo5cYmT6OTEJb7pYa211ise1lprveJhrbXWK364FJ2cuMQnopPfFJ1MLnEjOjlxiSk6+abo5MQlpuhkcokpOjlxiZPo5CQ6OXGJySU+EZ2cuMRJdHISnUwuMUUnJy4xRSeTS5y4xBSdnLjEDZeYopMTlziJTiaXmFziJDqZopOT6GRyiSk6OYlOJpeYopPJJW48rLXWesXDWmutVzystdZ6xZ+///CB6GRyiSk6mVzim6KTySW+KTo5cYkpOrnhElN08gmXmKKTE5eYopPJJaboZHKJk+jkhkucRCeTS9yITn6TS0zRyYlLTNHJ5BKfiE5OXOJGdDK5xBSdTC5xIzo5cYmT6OTEJT4RnUwuceNhrbXWKx7WWmu94mGttdYr/vz9hwvRyeQS3xSdTC4xRSeTS5xEJ59wiSk6mVxiik5+k0tM0cnkEr8pOjlxiTdFJ5NLnEQnk0vciE4ml5iikxsucRKdTC4xRSeTS3xTdHLDJabo5IZLTNHJ5BJTdDK5xI3oZHKJKTo5cYkbD2uttV7xsNZa6xUPa621XvHDJZeYopPJJaboZHKJKTqZXGKKTj7hEt/kElN0MrnESXTyiejkv+QSU3QyRSeTS3wiOvlEdPJNLjFFJzdcYopOJpf4RHRy4hIn0ckNlzhxiSk6mVziN0UnJy5xwyU+8bDWWusVD2uttV7xsNZa6xU/fFl0csMlpuhkcok3RSeTS9yITiaXmFziRnQyucQUnZxEJycucRKdnLjEFJ2cRCeTS0zRyW9yiSk6mVzihkt8wiWm6OQTLjFFJ78pOrnhEjdcYopOJpf4TS7xTQ9rrbVe8bDWWusVD2uttV7xw6XoZHKJk+hkik4ml5hcYopOTlziE9HJJ1xiik5OopNPRCeTS0zRyeQSN6KT/5JLnEQnk0tM0clJdDK5xBSdTC5xEp2cuMQUnUwuMbnEDZeYopPf5BIn0cknopPJJU6ik09EJycuMUUnk0vceFhrrfWKh7XWWq94WGut9Yo/f//hF0Unn3CJKTo5cYkb0cmJS0zRyYlL3IhOJpc4iU4ml7gRnZy4xEl0MrnEFJ2cuMQUnUwuMUUnk0ucRCeTS0zRyYlLTNHJJ1ziJDqZXGKKTk5c4kZ0MrnESXQyucT/kujkEy5xIzqZXOLGw1prrVc8rLXWesXDWmutV/z5+w8XopMTl/gvRSeTS0zRyeQSU3Ry4hJTdDK5xEl0csMlTqKTySU+EZ18wiVOopMTlziJTr7JJabo5De5xCeik8klbkQnk0tM0cmJS5xEJzdc4jdFJ5NLTNHJ5BIn0cnkEjce1lprveJhrbXWKx7WWmu94s/ff/ii6OSGS0zRyeQSJ9HJJ1xiik5OXOIkOjlxiRvRyQ2XmKKTGy5xEp1MLnESnZy4xDdFJ5NLTNHJN7nEFJ2cuMQUnXyTS0zRyeQSJ9HJiUtM0cnkElN0MrnEfyk6ueES3/Sw1lrrFQ9rrbVe8bDWWusVf/7+wweik8klpuhkcokb0cnkEjeik8kl/kvRyYlLTNHJDZeYopPJJabo5MQlpujkxCVOopMTl5iikxsu8YnoZHKJk+hkcokpOjlxiSk6mVxiik4ml5iik8klpuhkcokpOplc4kZ0MrnEJ6KTySU+EZ2cuMRvelhrrfWKh7XWWq94WGut9YofLkUn3xSd3IhOJpeYopPJJabo5BMucRKdnLjEN7nEFJ1MLjFFJ5NLnEQnk0tM0ckNl7jhEifRyY3oZHKJG9HJ5BI3XOLEJabo5CQ6mVxiik4ml5iik8klpuhkcokpOplcYopOJpe44RIn0cmJS0wu8YnoZHKJGw9rrbVe8bDWWusVD2uttV7xwyWX+E0uMUUnn4hOTlziN7nEFJ3ccIkpOrkRnUwu8YnoZHKJb4pOJpeYopOT6GRyicklpuhkcokb0cnkEpNLTNHJiUtMLjFFJ5NLTNHJ5BJTdDK5xBSdTC4xRSefiE5OXOITLnEjOplcYopOJpf4xMNaa61XPKy11nrFw1prrVf8+fsPXxSdTC4xRSff5BI3opNPuMQUnZy4xBSd3HCJKTr5Jpc4iU5OXOIkOplcYopOJpeYopMbLjFFJycuMUUnb3KJk+jkhktM0cn/JS4xRSf/y1zixsNaa61XPKy11nrFw1prrVf8+fsPXxSd3HCJG9HJiUt8IjqZXOJGdHLDJabo5IZL3IhOJpeYopPJJabo5MQlTqKTySVuRCeTS9yITk5cYopOTlziRnRy4hIn0cnkElN0MrnEjejkhkvciE4ml5iikxsucSM6OXGJKTqZXOITD2uttV7xsNZa6xUPa621XvHDpejkxCWm6ORGdDK5xCeik8klpujkJDqZXGKKTiaXOIlOpuhkcomT6OQkOplc4iQ6OYlOJpeYopMpOplc4iQ6OXGJySU+4RJTdDJFJ5+ITiaX+ER0MrnEiUtM0cnkElN0MrnEjehkcon/UnQyucSN6GRyiSk6mVzixsNaa61XPKy11nrFw1prrVf88MtcYopOTlziTS4xRSc3XOIkOplcYopOpujkEy5xwyWm6GRyiROXmKKTE5e4EZ3ccImT6GRyiSk6+YRLfJNLTNHJ5BJTdDK5xBSdTC4xRSc3XOIkOjmJTiaXmKKTGy7xCZeYopNvelhrrfWKh7XWWq94WGut9Yoffll0chKdfMIlpuhkcokpOjlxiSk6uRGdTC4xRSeTS5xEJyfRyX8pOplcYopOJpf4JpeYopPJJU6ik8klTqKTKTr5TdHJ5BI3opOT6OS/5BInLjFFJ1N08k3RyeQS3/Sw1lrrFQ9rrbVe8bDWWusVf/7+w4XoZHKJKTo5cYkpOplcYopOJpeYopMTl5iikxsuMUUn3+QSN6KTySV+U3QyucQUnZy4xBSdfMIlpujkN7nEJ6KTE5d4U3QyucQUnZy4xEl0csMlpuhkcokpOjlxiSk6mVxiik4+4RI3HtZaa73iYa211ise1lprveLP33/4oujkTS4xRSefcIkb0cmJS5xEJ5NLnEQnk0ucRCcnLjFFJ5NL3IhObrjESXQyucRJdHLDJU6ik8klTqKTySVuRCeTS5xEJ5NLTNHJ5BI3opMbLjFFJ5NLTNHJ5BJTdDK5xBSdTC4xRSeTS3wiOplc4sbDWmutVzystdZ6xcNaa61X/HApOplc4sQlpujkxCVuRCeTS0zRyeQSU3QyRScnLnHiElN0cuIS3xSdTC4xRSdTdDK5xBSdTC4xRSeTS0zRyUl0MrnESXQyucQnopPJJd4UnUwuMUUnJy5x4hJTdHLDJaboZHKJKTo5iU5OopOT6GRyiU9EJ5NLnLjEJx7WWmu94mGttdYrHtZaa73ih18WnUwucRKdTC4xRSeTS0zRyUl0MrnESXQyRSeTS0zRyYlL/CaXuOESU3RyEp1MLnHiElN0csMlpuhkik4ml5iik8klpuhkik4ml5iik8klPuESN1ziJDr5puhkcolPuMQUnXxTdPJN0cmJS9x4WGut9YqHtdZar3hYa631ih8uucQUnUwuMUUnU3QyucTkElN0MrnEFJ1MLjFFJyfRyYlLTNHJiUucRCeTS5xEJ5NLnEQnk0tMLnHDJU6ik0+4xEl08k3RyeQSU3TyCZc4iU4+EZ1MLjG5xBSdnLjEFJ1MLnHDJaboZIpOJpeYopPJJabo5L/kEp94WGut9YqHtdZar3hYa631ij9//+FCdDK5xBSdTC4xRSff5BI3opMTl5iikxsuMUUnk0ucRCc3XGKKTm64xEl0cuISN6KTE5c4iU4ml/hfFp3ccIkpOrnhElN0csMlpuhkcokpOplc4iQ6mVziJDqZXGKKTn6TS0zRyeQSNx7WWmu94mGttdYrHtZaa73ih5e5xBSdTC5xEp1M0cnkEp+ITk5c4oZLnEQnk0v8JpeYopPJJU5c4iQ6+U0uMUUnk0tM0cnkElN08gmXmKKTN7nEJ1ziEy5xEp2cRCeTS5xEJzdcYopOTlzixCU+8bDWWusVD2uttV7xsNZa6xU/fCg6mVziJDo5iU5OXGKKTj7hElN08iaXOIlOTlxicokpOpmik8klPhGdnLjEFJ1MLjFFJycuMbnEjejkxCWm6OQkOplc4kZ0csMlvik6uRGdnLjEiUt8k0tM0ckUnUwuMUUnN6KTySVuPKy11nrFw1prrVc8rLXWesUPH3KJKTr5hEucRCeTS0zRyeQSN1xiik5uRCff5BIn0ckNl/hEdHLiEjeik8klpujkJDqZXGJyiZPo5MQlpuhkcomT6GRyickl3uQSJ9HJ5BJTdDK5xBSd3IhOJpf4f9nDWmutVzystdZ6xcNaa61X/PCh6GRyiSk6uRGdTC7xTS5xwyWm6OTEJaboZHKJKTqZXGKKTiaXOHGJKTqZopPJJaboZHKJKTq5EZ18wiVuRCeTS9yITm5EJycucRKdTC7xiejkRnRywyVOXGKKTt7kEjdcYopOJpf4poe11lqveFhrrfWKh7XWWq/48/cfvig6mVxiik4ml7gRnfwmlziJTiaXmKKTySWm6GRyiSk6+YRLfCI6ueESN6KTySWm6OTEJW5EJ9/kEjeik8klTqKTySWm6GRyiSk6OXGJk+jkTS7xm6KTySVuRCcnLnHjYa211ise1lprveJhrbXWK374UHQyucSJS5xEJ5NLTC4xRSc3XOIkOplcYnKJb4pObrjESXRy4hI3XGKKTqboZHKJKTr5puhkcokpOplc4iQ6mVziRnQyucQ3RSeTS3wiOjlxiSk6+SaXmKKTySVOopP/yx7WWmu94mGttdYrHtZaa73ih18WnUwuceISJ9HJ5BI3opPJJSaXmKKTySU+4RJTdDK5xEl0MrnE5BIn0cnkEpNL3HCJKTr5hEtM0cnkEicucRKdTC4xRSeTS9yITm5EJ5NLTNHJFJ1MLnHiElN0MrnEiUtM0cnkEifRyRSdTC5xEp1MLjFFJycucRKdnLjEFJ184mGttdYrHtZaa73iYa211it++GUuMUUnN1ziRnTyTS4xRSeTS5xEJzeik8klJpeYopPJJaboZHKJKTqZXOLEJabo5MQlpuhkik5OXOIkOplcYopOJpc4cYkpOplc4oZLvMklpuhkcokpOplcYopOJpeYopPJJT4RndxwiZPoZHKJySWm6GSKTr7pYa211ise1lprveJhrbXWK/78/YcL0cmJS0zRyeQS/8uik8klPhGdTC5xEp18wiVuRCeTS0zRyeQSN6KTGy4xRSeTS5xEJycucRKdnLjESXRy4hKfiE4+4RLfFJ2cuMQUnbzJJaboZHKJk+hkcolPPKy11nrFw1prrVc8rLXWesUPH3KJKTqZXGKKTm64xI3oZHKJKTq5EZ1MLjFFJycuMUUnk0tMLjFFJzeik8klpuhkcokpOrkRnUwuceISJ9HJ5BIn0cmJS9xwiU+4xBSdTNHJiUvccIkpOjmJTj7hEicuMUUnJy4xRSc3XGKKTqbo5H/Jw1prrVc8rLXWesXDWmutV/z5+w+/KDqZXOIT0cnkEp+ITiaXmKKTE5c4iU4ml5iikxOXOIlObrjEb4pOJpc4iU4mlziJTm64xI3o5BMuMUUnJy5xEp2cuMQUnUwucSM6mVziRnQyucQ3RScnLjFFJ5NL3IhOJpf4xMNaa61XPKy11nrFw1prrVf8+fsPH4hObrjESXQyucQUnXzCJW5EJ5NLfCI6mVziJDqZXOIT0cknXOIT0cnkEp+ITiaXmKKTySWm6GRyiSk6mVziJDo5cYkpOjlxiSk6mVziJDo5cYmT6GRyiZPo5MQlpuhkcokpOjlxiZPo5BMuMUUnk0vceFhrrfWKh7XWWq94WGut9YofvswlbkQnk0tM0cmJS0zRyeQSU3Ry4hIn0cnkEifRyeQSU3QyucRJdDK5xBSdTC4xucSN6OQkOplcYopObkQnJy7xiehkcolPRCeTS3zCJabo5EZ0cuISJ9HJJ1ziJDq54RI3opPJJb7JJT7xsNZa6xUPa621XvGw1lrrFX/+/sMHopMbLnESnZy4xEl0MrnEFJ38JpeYopMbLnESnfwml/hEdDK5xCeik8klpuhkcokpOjlxiZPo5De5xBSdnLjEFJ3ccIkpOplcYopOTlziJDr5hEtM0ck3ucRJdDK5xCce1lprveJhrbXWKx7WWmu94ocPucQ3ucRJdHLiEp9wiSk6+U0ucRKdnLjEjehkcokpOjlxiSk6uRGdTC4xRScn0cnkEp+ITiaXmFxiik4ml7gRnXyTS0zRyeQSU3QyucQNlzj5/yfGrgMAAAOWSURBVNqDgxtbjBCKgsetiYK8yIUQyIW8SMP2khVS673pL1u3ytK50VF8oqO4Yenc6Ci+6SAiIk8cRETkiYOIiDzxwyVL56WOYtNRbCydTUdxo6PYWDpTRzFZOpOlM3UUn7B0po7imyydqaOYLJ3J0pk6it9k6dzoKCZLZ+ooblg6U0exsXSmjmJj6UwdxdRRbDqKjaUzdRQbS2fqKCZLZ+oofpOlM3UUNyydqaOYLJ2po7hxEBGRJw4iIvLEQUREnvjhQx3FN1k6NyydqaPYdBSfsHQ2HcWmo7jRUUyWzqaj+KaOYrJ0Jktn6igmS+dGRzFZOjc6isnSudFRfKKjuNFRbCydjaXzmyydTUdxw9LZdBSf6ChuWDpTR/GbDiIi8sRBRESeOIiIyBM/fJmlc6OjuNFRTJbOZOl8wtL5TZbO1FF8wtL5po5isnSmjuJGR7GxdDYdxcbS2XQUv8nS+YSlc6OjmCydGx3FxtLZdBQbS+ebLJ2NpfNNls5vOoiIyBMHERF54iAiIk/88D/TUWwsnamj2HQUNyydTUcxWTrf1FFsLJ2NpfNNls4nLJ1vsnSmjuJGR3HD0pk6ihuWzmTpTB3FZOlsLJ2po5g6io2lM3UUU0cxWTqbjmKydDYdxWTpfKKjmCydqaP4poOIiDxxEBGRJw4iIvLED/8xls7UUUyWzqajmCydjaWz6SimjuKbOorJ0pk6io2lM3UUk6UzdRSTpTNZOn9SR7GxdCZL54als+koJktn6iimjuKGpTN1FBtLZ+ooblg6U0cxWTo3LJ1NR7HpKCZL5xMdxWTpTJbOxtLZdBQ3DiIi8sRBRESeOIiIyBN//f0vLlg6U0fxTZbO1FFsLJ1NRzFZOi91FBtL55s6ihuWzqaj+E2WztRRbCydTUfxTZbOjY5isnRudBSTpbPpKCZLZ9NRbCydqaOYLJ2po9hYOlNHMVk6m47iE5bOpqN46SAiIk8cRETkiYOIiDzxw4csnT+po5gsncnSmTqKjaWz6SgmS+ebOorJ0tl0FDcsnamj2Fg6U0cxWTpTR3Gjo9hYOlNHccPSmTqKjaUzdRSTpTN1FDc6it/UUUyWzsbS2Vg6G0vnEx3FDUvnT7J0po7ixkFERJ44iIjIEwcREXnir7//hYiI/LqDiIg8cRARkScOIiLyxEFERJ44iIjIEwcREXniICIiTxxEROSJg4iIPHEQEZEnDiIi8sQ/xqK4szhSlNQAAAAASUVORK5CYII=" alt="QR Code WhatsApp">
+
+        <div class="instructions">
+            <h3>📱 Como Conectar:</h3>
+            <ol>
+                <li>Pegue o celular com o número <strong>21 99208-6879</strong></li>
+                <li>Abra o <strong>WhatsApp</strong></li>
+                <li>Toque em <strong>⋮</strong> (Mais opções)</li>
+                <li>Selecione <strong>Aparelhos conectados</strong></li>
+                <li>Toque em <strong>Conectar um aparelho</strong></li>
+                <li><strong>Escaneie o QR Code</strong> acima</li>
+            </ol>
+        </div>
+
+        <div class="info">
+            <strong>ℹ️ Informações:</strong><br>
+            📱 <strong>Número do Serviço:</strong> 21 99208-6879<br>
+            💼 <strong>Instância:</strong> Clinica2024<br>
+            📡 <strong>API:</strong> Evolution API v1.7.4<br>
+            🔄 <strong>Status:</strong> Aguardando conexão
+        </div>
+
+        <div class="refresh-info">
+            ⏱️ Página atualiza a cada 25 segundos<br>
+            🔄 Recarregue (F5) se o QR code expirar
+        </div>
+    </div>
+</body>
+</html>
