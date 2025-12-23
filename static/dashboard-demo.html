@@ -93,6 +93,52 @@
         .chat-bubble.bot .time {
             text-align: left;
         }
+        /* Audio button styles */
+        .audio-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #128C7E;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 8px;
+            transition: all 0.2s;
+            vertical-align: middle;
+        }
+        .audio-btn:hover {
+            background: #075E54;
+            transform: scale(1.1);
+        }
+        .audio-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .audio-btn.playing {
+            background: #e74c3c;
+            animation: pulse-audio 1s infinite;
+        }
+        .audio-btn.loading {
+            background: #f39c12;
+        }
+        @keyframes pulse-audio {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .chat-bubble .message-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 4px;
+        }
+        .chat-bubble.bot .message-footer {
+            justify-content: flex-start;
+            gap: 8px;
+        }
         .typing-indicator {
             display: flex;
             gap: 4px;
@@ -507,11 +553,16 @@
                 <!-- Messages Area -->
                 <div class="chat-messages" id="chatMessages">
                     <!-- Mensagem de boas-vindas -->
-                    <div class="chat-bubble bot">
+                    <div class="chat-bubble bot" id="msg-welcome" data-texto-original="Olá! Seja bem-vindo à Clínica Dr. Carlos Silva! Sou a assistente virtual e estou aqui para ajudar você a agendar sua consulta. Como posso ajudar?">
                         <p>Olá! 👋 Seja bem-vindo(a) à Clínica Dr. Carlos Silva!</p>
                         <p class="mt-2">Sou a assistente virtual e estou aqui para ajudar você a agendar sua consulta.</p>
                         <p class="mt-2">Como posso ajudar?</p>
-                        <div class="time">agora</div>
+                        <div class="message-footer">
+                            <span class="time">agora</span>
+                            <button class="audio-btn" id="audio-msg-welcome" onclick="reproduzirAudio('msg-welcome', this)" title="Ouvir mensagem">
+                                <i class="fas fa-volume-up"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Sugestões iniciais -->
@@ -798,20 +849,161 @@
             input.focus();
         }
 
-        function adicionarMensagem(texto, tipo) {
+        // Variável global para controlar áudio atual
+        let currentAudio = null;
+        let currentAudioBtn = null;
+
+        function adicionarMensagem(texto, tipo, autoPlayAudio = false) {
             const container = document.getElementById('chatMessages');
             const agora = new Date();
             const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const msgId = 'msg-' + Date.now();
 
             const bubble = document.createElement('div');
             bubble.className = `chat-bubble ${tipo}`;
-            bubble.innerHTML = `
-                <p>${formatarTexto(texto)}</p>
-                <div class="time">${hora}</div>
-            `;
+
+            if (tipo === 'bot') {
+                // Mensagem do bot com botão de áudio
+                bubble.innerHTML = `
+                    <p>${formatarTexto(texto)}</p>
+                    <div class="message-footer">
+                        <span class="time">${hora}</span>
+                        <button class="audio-btn" id="audio-${msgId}" onclick="reproduzirAudio('${msgId}', this)" title="Ouvir mensagem">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                    </div>
+                `;
+                // Armazenar texto original para TTS
+                bubble.dataset.textoOriginal = texto;
+                bubble.id = msgId;
+            } else {
+                // Mensagem do usuário (sem botão de áudio)
+                bubble.innerHTML = `
+                    <p>${formatarTexto(texto)}</p>
+                    <div class="time">${hora}</div>
+                `;
+            }
 
             container.appendChild(bubble);
             container.scrollTop = container.scrollHeight;
+
+            // Auto-play áudio se solicitado
+            if (tipo === 'bot' && autoPlayAudio) {
+                setTimeout(() => {
+                    const audioBtn = document.getElementById(`audio-${msgId}`);
+                    if (audioBtn) {
+                        reproduzirAudio(msgId, audioBtn);
+                    }
+                }, 500);
+            }
+        }
+
+        async function reproduzirAudio(msgId, btn) {
+            const bubble = document.getElementById(msgId);
+            if (!bubble) return;
+
+            const texto = bubble.dataset.textoOriginal;
+            if (!texto) return;
+
+            // Se já está tocando este áudio, parar
+            if (currentAudio && currentAudioBtn === btn) {
+                currentAudio.pause();
+                currentAudio = null;
+                currentAudioBtn = null;
+                btn.classList.remove('playing');
+                btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                return;
+            }
+
+            // Parar áudio anterior se houver
+            if (currentAudio) {
+                currentAudio.pause();
+                if (currentAudioBtn) {
+                    currentAudioBtn.classList.remove('playing');
+                    currentAudioBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                }
+            }
+
+            // Mostrar loading
+            btn.classList.add('loading');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+
+            try {
+                // Chamar API para gerar áudio
+                const response = await fetch('/api/chat/audio', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ texto: texto })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao gerar áudio');
+                }
+
+                const data = await response.json();
+
+                if (data.status === 'success' && data.audio) {
+                    // Criar elemento de áudio
+                    const audioBlob = base64ToBlob(data.audio, 'audio/mpeg');
+                    const audioUrl = URL.createObjectURL(audioBlob);
+
+                    currentAudio = new Audio(audioUrl);
+                    currentAudioBtn = btn;
+
+                    // Configurar eventos
+                    currentAudio.onplay = () => {
+                        btn.classList.remove('loading');
+                        btn.classList.add('playing');
+                        btn.innerHTML = '<i class="fas fa-stop"></i>';
+                        btn.disabled = false;
+                    };
+
+                    currentAudio.onended = () => {
+                        btn.classList.remove('playing');
+                        btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                        currentAudio = null;
+                        currentAudioBtn = null;
+                        URL.revokeObjectURL(audioUrl);
+                    };
+
+                    currentAudio.onerror = () => {
+                        btn.classList.remove('loading', 'playing');
+                        btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                        btn.disabled = false;
+                        console.error('Erro ao reproduzir áudio');
+                    };
+
+                    // Reproduzir
+                    await currentAudio.play();
+                } else {
+                    throw new Error('Resposta inválida da API');
+                }
+
+            } catch (error) {
+                console.error('Erro ao reproduzir áudio:', error);
+                btn.classList.remove('loading');
+                btn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                btn.disabled = false;
+
+                // Mostrar erro brevemente
+                btn.title = 'Erro ao carregar áudio. Tente novamente.';
+                setTimeout(() => {
+                    btn.title = 'Ouvir mensagem';
+                }, 3000);
+            }
+        }
+
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: mimeType });
         }
 
         function formatarTexto(texto) {
@@ -877,13 +1069,24 @@
 
         function reiniciarChat() {
             chatContext = [];
+            // Parar áudio se estiver tocando
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+                currentAudioBtn = null;
+            }
             const container = document.getElementById('chatMessages');
             container.innerHTML = `
-                <div class="chat-bubble bot">
+                <div class="chat-bubble bot" id="msg-welcome" data-texto-original="Olá! Seja bem-vindo à Clínica Dr. Carlos Silva! Sou a assistente virtual e estou aqui para ajudar você a agendar sua consulta. Como posso ajudar?">
                     <p>Olá! 👋 Seja bem-vindo(a) à Clínica Dr. Carlos Silva!</p>
                     <p class="mt-2">Sou a assistente virtual e estou aqui para ajudar você a agendar sua consulta.</p>
                     <p class="mt-2">Como posso ajudar?</p>
-                    <div class="time">agora</div>
+                    <div class="message-footer">
+                        <span class="time">agora</span>
+                        <button class="audio-btn" id="audio-msg-welcome" onclick="reproduzirAudio('msg-welcome', this)" title="Ouvir mensagem">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                    </div>
                 </div>
                 <div id="suggestions" class="text-center py-4">
                     <p class="text-sm text-gray-600 mb-3">Toque em uma opção ou digite sua mensagem:</p>

@@ -171,6 +171,63 @@ def status_sistema(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Erro no sistema: {str(e)}")
 
 
+# ENDPOINTS - ÁUDIO TTS (Text-to-Speech)
+class TTSRequest(BaseModel):
+    texto: str
+
+@router.post("/chat/audio")
+async def gerar_audio_tts(request: TTSRequest):
+    """
+    Gera áudio TTS usando OpenAI.
+    Retorna o áudio em formato base64 para reprodução no navegador.
+    """
+    try:
+        from app.services.openai_audio_service import get_audio_service
+        import base64
+        import os
+
+        audio_service = get_audio_service()
+
+        if not audio_service:
+            raise HTTPException(
+                status_code=503,
+                detail="Serviço de áudio não disponível"
+            )
+
+        # Gerar áudio
+        audio_path = await audio_service.texto_para_audio(request.texto)
+
+        if not audio_path or not os.path.exists(audio_path):
+            raise HTTPException(
+                status_code=500,
+                detail="Erro ao gerar áudio"
+            )
+
+        # Ler arquivo e converter para base64
+        with open(audio_path, 'rb') as f:
+            audio_bytes = f.read()
+
+        audio_base64 = base64.b64encode(audio_bytes).decode('utf-8')
+
+        # Limpar arquivo temporário
+        audio_service.limpar_audio(audio_path)
+
+        return {
+            "status": "success",
+            "audio": audio_base64,
+            "format": "mp3",
+            "mime_type": "audio/mpeg"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao gerar áudio: {str(e)}"
+        )
+
+
 # ENDPOINTS - FORMULÁRIO DE CONTATO
 class ContatoRequest(BaseModel):
     nome: str
