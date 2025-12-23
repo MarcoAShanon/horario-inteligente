@@ -30,6 +30,11 @@ from app.services.calendario_service import CalendarioService
 from app.services.whatsapp_service import whatsapp_service
 from app.services.openai_audio_service import get_audio_service
 from app.services.whatsapp_decrypt import decrypt_whatsapp_media
+from app.services.audio_preference_service import (
+    deve_enviar_audio,
+    detectar_preferencia_na_mensagem,
+    gerar_resposta_preferencia
+)
 
 router = APIRouter()
 
@@ -370,18 +375,55 @@ async def webhook_whatsapp(instance_name: str, request: Request):
         logger.info(f"🔍 DEBUG - Resposta da IA recebida: {response_message[:100] if response_message else 'NENHUMA'}")
 
         if response_message:
-            # Enviar resposta via WhatsApp
-            success = await send_whatsapp_response(instance_name, sender, response_message)
+            # ========================================
+            # SISTEMA HÍBRIDO INTELIGENTE DE ÁUDIO
+            # ========================================
+            # Determinar se deve enviar áudio baseado em:
+            # 1. Preferência explícita na mensagem
+            # 2. Modo espelho (áudio→áudio, texto→texto)
+            # 3. Preferência salva do paciente
+
+            db_audio = SessionLocal()
+            try:
+                mensagem_foi_audio = (message_type == 'audio')
+                enviar_audio, msg_confirmacao = deve_enviar_audio(
+                    db=db_audio,
+                    telefone=sender,
+                    mensagem_foi_audio=mensagem_foi_audio,
+                    mensagem_texto=message_text or ""
+                )
+
+                # Se houve mudança de preferência, adicionar confirmação
+                if msg_confirmacao:
+                    response_message = f"{msg_confirmacao}\n\n{response_message}"
+                    logger.info(f"🔊 Preferência de áudio atualizada para {sender}")
+
+                logger.info(f"🔊 Modo áudio: enviar_audio={enviar_audio}, mensagem_foi_audio={mensagem_foi_audio}")
+
+            except Exception as e:
+                logger.error(f"Erro ao verificar preferência de áudio: {e}")
+                enviar_audio = False
+            finally:
+                db_audio.close()
+
+            # Enviar resposta via WhatsApp (com ou sem áudio)
+            success = await send_whatsapp_response(
+                instance_name,
+                sender,
+                response_message,
+                send_audio=enviar_audio
+            )
 
             if success:
-                logger.info(f"✅ Resposta IA enviada para {push_name}")
+                logger.info(f"✅ Resposta IA enviada para {push_name} (áudio={enviar_audio})")
                 return JSONResponse(
                     status_code=200,
                     content={
                         "status": "success",
                         "response_sent": True,
                         "ai_used": True,
-                        "model": "claude-3.5-sonnet"
+                        "model": "claude-3.5-sonnet",
+                        "audio_sent": enviar_audio
                     }
                 )
             else:
