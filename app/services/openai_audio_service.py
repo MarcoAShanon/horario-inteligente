@@ -131,6 +131,10 @@ class OpenAIAudioService:
         texto = re.sub(r'\s+', ' ', texto)
         texto = texto.strip()
 
+        # Adicionar pausa no início e fim para evitar cortes no navegador
+        # Vírgula + espaço gera uma pausa mais natural no TTS
+        texto = ", " + texto + " ,"
+
         return texto
 
     async def texto_para_audio(

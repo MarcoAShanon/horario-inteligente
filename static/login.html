@@ -17,6 +17,9 @@
     <script src="/static/branding.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Design System -->
+    <link rel="stylesheet" href="/static/css/design-system.css">
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 w-full max-w-md mx-auto">
@@ -87,9 +90,11 @@
                     <button
                         type="button"
                         onclick="togglePassword()"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 p-1"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                        aria-label="Mostrar senha"
+                        id="togglePasswordBtn"
                     >
-                        <i id="toggleIcon" class="fas fa-eye text-sm"></i>
+                        <i id="toggleIcon" class="fas fa-eye text-sm" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
@@ -97,9 +102,9 @@
             <button
                 type="submit"
                 id="submitBtn"
-                class="w-full bg-blue-600 text-white py-2 sm:py-3 text-sm sm:text-base rounded-lg font-semibold hover:bg-blue-700 transition duration-200 flex items-center justify-center"
+                class="w-full bg-blue-600 text-white py-3 text-base rounded-lg font-semibold hover:bg-blue-700 transition duration-200 flex items-center justify-center min-h-[44px]"
             >
-                <i class="fas fa-sign-in-alt mr-2"></i>
+                <i class="fas fa-sign-in-alt mr-2" aria-hidden="true"></i>
                 <span id="submitText">Entrar</span>
             </button>
 
@@ -161,35 +166,42 @@
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const toggleIcon = document.getElementById('toggleIcon');
+            const toggleBtn = document.getElementById('togglePasswordBtn');
 
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';
                 toggleIcon.classList.remove('fa-eye');
                 toggleIcon.classList.add('fa-eye-slash');
+                toggleBtn.setAttribute('aria-label', 'Ocultar senha');
             } else {
                 passwordInput.type = 'password';
                 toggleIcon.classList.remove('fa-eye-slash');
                 toggleIcon.classList.add('fa-eye');
+                toggleBtn.setAttribute('aria-label', 'Mostrar senha');
             }
         }
 
         let emailParaReenvio = '';
 
         function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            const errorText = document.getElementById('errorText');
             const emailNaoVerificado = document.getElementById('emailNaoVerificado');
 
             // Esconder alerta de email não verificado
             emailNaoVerificado.classList.add('hidden');
 
-            errorText.textContent = message;
-            errorDiv.classList.remove('hidden');
-
-            // Esconder após 5 segundos
-            setTimeout(() => {
-                errorDiv.classList.add('hidden');
-            }, 5000);
+            // Usa o sistema de toast do design system
+            if (typeof HiToast !== 'undefined') {
+                HiToast.error('Erro', message);
+            } else {
+                // Fallback para alert se o design system não estiver carregado
+                const errorDiv = document.getElementById('errorMessage');
+                const errorText = document.getElementById('errorText');
+                errorText.textContent = message;
+                errorDiv.classList.remove('hidden');
+                setTimeout(() => {
+                    errorDiv.classList.add('hidden');
+                }, 5000);
+            }
         }
 
         function showEmailNaoVerificado() {
@@ -318,16 +330,22 @@
         });
     </script>
 
+    <!-- Design System Scripts -->
+    <script src="/static/js/components/toast.js"></script>
+    <script src="/static/js/components/modal.js"></script>
+    <script src="/static/js/utils/validation.js"></script>
+    <script src="/static/js/hi-design-system.js"></script>
+
     <!-- PWA Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/service-worker.js')
                     .then(registration => {
-                        console.log('✅ PWA: Service Worker registrado com sucesso!', registration.scope);
+                        console.log('PWA: Service Worker registrado com sucesso!', registration.scope);
                     })
                     .catch(error => {
-                        console.log('❌ PWA: Falha ao registrar Service Worker:', error);
+                        console.log('PWA: Falha ao registrar Service Worker:', error);
                     });
             });
         }

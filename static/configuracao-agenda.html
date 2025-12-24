@@ -15,7 +15,10 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
+
+    <!-- Design System -->
+    <link rel="stylesheet" href="/static/css/design-system.css">
+
     <style>
         .fade-in {
             animation: fadeIn 0.5s ease-in;
@@ -96,6 +99,22 @@
     </style>
 </head>
 <body class="bg-gray-50">
+    <!-- Demo Banner (hidden by default) -->
+    <div id="demoBanner" class="hidden bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 px-4 text-sm">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <span class="inline-flex items-center gap-2">
+                <i class="fas fa-flask"></i>
+                <span class="hidden sm:inline">Ambiente de Demonstração</span>
+                <span class="sm:hidden">Demo</span>
+            </span>
+            <span class="hidden sm:inline text-white/50">|</span>
+            <button onclick="voltarParaDemos()" class="inline-flex items-center gap-1 hover:underline">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Trocar Perfil</span>
+            </button>
+        </div>
+    </div>
+
     <div id="root"></div>
 
     <script type="text/babel">
@@ -546,6 +565,50 @@
         }
 
         ReactDOM.render(<ConfiguracaoIntervalos />, document.getElementById('root'));
+    </script>
+
+    <!-- Mobile Components -->
+    <script src="/static/js/components/toast.js"></script>
+    <script src="/static/js/components/bottom-nav.js"></script>
+
+    <!-- Demo Mode Functions -->
+    <script>
+        function voltarParaDemos() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('medico');
+            localStorage.removeItem('cliente_id');
+            localStorage.removeItem('demo_mode');
+            localStorage.removeItem('demo_tour_done');
+            localStorage.removeItem('userData');
+            window.location.href = '/static/demo/index.html';
+        }
+    </script>
+
+    <!-- Mobile Navigation -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mostrar banner de demo se estiver em modo demo
+            if (localStorage.getItem('demo_mode') === 'true') {
+                const demoBanner = document.getElementById('demoBanner');
+                if (demoBanner) {
+                    demoBanner.classList.remove('hidden');
+                }
+            }
+
+            if (typeof HiBottomNav !== 'undefined') {
+                HiBottomNav.init({
+                    activeId: 'config',
+                    items: [
+                        { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', href: '/static/calendario-unificado.html' },
+                        { id: 'config', label: 'Horários', icon: 'fa-clock', href: '/static/configuracao-agenda.html' },
+                        { id: 'novo', label: 'Novo', icon: 'fa-plus', primary: true, onClick: () => { window.location.href = '/static/calendario-unificado.html'; }},
+                        { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line', href: '/static/dashboard.html' },
+                        { id: 'perfil', label: 'Perfil', icon: 'fa-user', href: '/static/perfil.html' }
+                    ]
+                });
+            }
+        });
     </script>
 
     <!-- Service Worker para PWA -->

@@ -14,6 +14,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
+    <!-- Design System -->
+    <link rel="stylesheet" href="/static/css/design-system.css">
+
     <style>
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -46,6 +49,27 @@
     </style>
 </head>
 <body>
+    <!-- Demo Banner (só aparece em modo demo) -->
+    <div id="demoBanner" class="hidden bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 px-4 text-sm">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <span class="inline-flex items-center gap-2">
+                <i class="fas fa-flask"></i>
+                <span class="hidden sm:inline">Ambiente de Demonstração</span>
+                <span class="sm:hidden">Demo</span>
+            </span>
+            <span class="hidden sm:inline text-white/50">|</span>
+            <button onclick="voltarParaDemos()" class="inline-flex items-center gap-1 hover:underline">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Trocar Perfil</span>
+            </button>
+            <span class="hidden sm:inline text-white/50">|</span>
+            <a href="/static/dashboard-demo.html" class="inline-flex items-center gap-1 hover:underline">
+                <i class="fas fa-home"></i>
+                <span>Dashboard Demo</span>
+            </a>
+        </div>
+    </div>
+
     <div id="app" class="min-h-screen bg-gray-50">
         <!-- Header -->
         <header class="bg-white shadow">
@@ -533,6 +557,59 @@
 
         // Carregar dados iniciais
         loadData();
+    </script>
+
+    <!-- Mobile Components -->
+    <script src="/static/js/components/toast.js"></script>
+    <script src="/static/js/components/bottom-nav.js"></script>
+    <script src="/static/js/components/pull-refresh.js"></script>
+
+    <!-- Mobile Navigation & Demo Mode -->
+    <script>
+        // Função para voltar para seleção de demos
+        function voltarParaDemos() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('medico');
+            localStorage.removeItem('cliente_id');
+            localStorage.removeItem('demo_mode');
+            localStorage.removeItem('demo_tour_done');
+            window.location.href = '/static/demo/index.html';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mostrar banner de demo se estiver em modo demo
+            if (localStorage.getItem('demo_mode') === 'true') {
+                const demoBanner = document.getElementById('demoBanner');
+                if (demoBanner) {
+                    demoBanner.classList.remove('hidden');
+                }
+            }
+
+            // Inicializa Bottom Navigation
+            if (typeof HiBottomNav !== 'undefined') {
+                HiBottomNav.init({
+                    activeId: 'dashboard',
+                    items: [
+                        { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', href: '/static/calendario-unificado.html' },
+                        { id: 'config', label: 'Horários', icon: 'fa-clock', href: '/static/configuracao-agenda.html' },
+                        { id: 'novo', label: 'Novo', icon: 'fa-plus', primary: true, onClick: () => { window.location.href = '/static/calendario-unificado.html'; }},
+                        { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line', href: '/static/dashboard.html' },
+                        { id: 'perfil', label: 'Perfil', icon: 'fa-user', href: '/static/perfil.html' }
+                    ]
+                });
+            }
+
+            // Inicializa Pull-to-Refresh
+            if (typeof HiPullRefresh !== 'undefined') {
+                HiPullRefresh.init({
+                    onRefresh: async () => {
+                        if (typeof loadData === 'function') await loadData();
+                        if (typeof HiToast !== 'undefined') HiToast.success('Dashboard atualizado!');
+                    }
+                });
+            }
+        });
     </script>
 
     <!-- Service Worker para PWA -->

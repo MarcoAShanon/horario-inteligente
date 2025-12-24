@@ -1,0 +1,1331 @@
+/**
+ * HORÁRIO INTELIGENTE - Design System
+ * Versão: 1.0.0
+ * Data: 24/12/2024
+ *
+ * Sistema de design unificado para consistência visual
+ * e acessibilidade em todas as páginas.
+ */
+
+/* ========================================
+   1. CSS VARIABLES (Design Tokens)
+   ======================================== */
+
+:root {
+  /* === Cores Primárias === */
+  --hi-primary: #3b82f6;
+  --hi-primary-dark: #2563eb;
+  --hi-primary-light: #60a5fa;
+  --hi-primary-50: #eff6ff;
+  --hi-primary-100: #dbeafe;
+  --hi-primary-200: #bfdbfe;
+
+  /* === Cores Secundárias === */
+  --hi-secondary: #6366f1;
+  --hi-secondary-dark: #4f46e5;
+  --hi-secondary-light: #818cf8;
+
+  /* === Cores Semânticas === */
+  --hi-success: #10b981;
+  --hi-success-dark: #059669;
+  --hi-success-light: #34d399;
+  --hi-success-bg: #ecfdf5;
+
+  --hi-warning: #f59e0b;
+  --hi-warning-dark: #d97706;
+  --hi-warning-light: #fbbf24;
+  --hi-warning-bg: #fffbeb;
+
+  --hi-error: #ef4444;
+  --hi-error-dark: #dc2626;
+  --hi-error-light: #f87171;
+  --hi-error-bg: #fef2f2;
+
+  --hi-info: #3b82f6;
+  --hi-info-dark: #2563eb;
+  --hi-info-light: #60a5fa;
+  --hi-info-bg: #eff6ff;
+
+  /* === Cores Neutras === */
+  --hi-gray-50: #f9fafb;
+  --hi-gray-100: #f3f4f6;
+  --hi-gray-200: #e5e7eb;
+  --hi-gray-300: #d1d5db;
+  --hi-gray-400: #9ca3af;
+  --hi-gray-500: #6b7280;
+  --hi-gray-600: #4b5563;
+  --hi-gray-700: #374151;
+  --hi-gray-800: #1f2937;
+  --hi-gray-900: #111827;
+
+  /* === Cores de Texto === */
+  --hi-text-primary: #1f2937;
+  --hi-text-secondary: #6b7280;
+  --hi-text-muted: #9ca3af;
+  --hi-text-inverse: #ffffff;
+
+  /* === Cores de Background === */
+  --hi-bg-primary: #ffffff;
+  --hi-bg-secondary: #f9fafb;
+  --hi-bg-tertiary: #f3f4f6;
+
+  /* === Cores de Borda === */
+  --hi-border-light: #e5e7eb;
+  --hi-border-medium: #d1d5db;
+  --hi-border-dark: #9ca3af;
+
+  /* === Tipografia === */
+  --hi-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  --hi-font-size-xs: 0.75rem;    /* 12px */
+  --hi-font-size-sm: 0.875rem;   /* 14px */
+  --hi-font-size-base: 1rem;     /* 16px */
+  --hi-font-size-lg: 1.125rem;   /* 18px */
+  --hi-font-size-xl: 1.25rem;    /* 20px */
+  --hi-font-size-2xl: 1.5rem;    /* 24px */
+  --hi-font-size-3xl: 1.875rem;  /* 30px */
+  --hi-font-size-4xl: 2.25rem;   /* 36px */
+
+  --hi-font-weight-normal: 400;
+  --hi-font-weight-medium: 500;
+  --hi-font-weight-semibold: 600;
+  --hi-font-weight-bold: 700;
+
+  --hi-line-height-tight: 1.25;
+  --hi-line-height-normal: 1.5;
+  --hi-line-height-relaxed: 1.75;
+
+  /* === Espaçamento === */
+  --hi-space-1: 0.25rem;   /* 4px */
+  --hi-space-2: 0.5rem;    /* 8px */
+  --hi-space-3: 0.75rem;   /* 12px */
+  --hi-space-4: 1rem;      /* 16px */
+  --hi-space-5: 1.25rem;   /* 20px */
+  --hi-space-6: 1.5rem;    /* 24px */
+  --hi-space-8: 2rem;      /* 32px */
+  --hi-space-10: 2.5rem;   /* 40px */
+  --hi-space-12: 3rem;     /* 48px */
+  --hi-space-16: 4rem;     /* 64px */
+
+  /* === Border Radius === */
+  --hi-radius-sm: 0.25rem;   /* 4px */
+  --hi-radius-md: 0.5rem;    /* 8px */
+  --hi-radius-lg: 0.75rem;   /* 12px */
+  --hi-radius-xl: 1rem;      /* 16px */
+  --hi-radius-2xl: 1.5rem;   /* 24px */
+  --hi-radius-full: 9999px;
+
+  /* === Sombras === */
+  --hi-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --hi-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --hi-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --hi-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* === Transições === */
+  --hi-transition-fast: 150ms ease;
+  --hi-transition-normal: 200ms ease;
+  --hi-transition-slow: 300ms ease;
+
+  /* === Z-Index === */
+  --hi-z-dropdown: 100;
+  --hi-z-sticky: 200;
+  --hi-z-modal-backdrop: 300;
+  --hi-z-modal: 400;
+  --hi-z-toast: 500;
+  --hi-z-tooltip: 600;
+
+  /* === Touch Targets (Acessibilidade) === */
+  --hi-touch-target-min: 44px;
+  --hi-touch-target-comfortable: 48px;
+}
+
+/* ========================================
+   2. RESET E BASE
+   ======================================== */
+
+.hi-base {
+  font-family: var(--hi-font-family);
+  font-size: var(--hi-font-size-base);
+  line-height: var(--hi-line-height-normal);
+  color: var(--hi-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========================================
+   3. BOTÕES
+   ======================================== */
+
+/* Base do botão */
+.hi-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hi-space-2);
+  min-height: var(--hi-touch-target-min);
+  padding: var(--hi-space-3) var(--hi-space-6);
+  font-family: var(--hi-font-family);
+  font-size: var(--hi-font-size-base);
+  font-weight: var(--hi-font-weight-semibold);
+  line-height: 1;
+  text-decoration: none;
+  border: 2px solid transparent;
+  border-radius: var(--hi-radius-lg);
+  cursor: pointer;
+  transition: all var(--hi-transition-normal);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.hi-btn:focus-visible {
+  outline: 2px solid var(--hi-primary);
+  outline-offset: 2px;
+}
+
+.hi-btn:disabled,
+.hi-btn.hi-btn--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Botão Primário */
+.hi-btn--primary {
+  background-color: var(--hi-primary);
+  color: var(--hi-text-inverse);
+  border-color: var(--hi-primary);
+}
+
+.hi-btn--primary:hover:not(:disabled) {
+  background-color: var(--hi-primary-dark);
+  border-color: var(--hi-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--hi-shadow-md);
+}
+
+.hi-btn--primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* Botão Secundário */
+.hi-btn--secondary {
+  background-color: transparent;
+  color: var(--hi-primary);
+  border-color: var(--hi-primary);
+}
+
+.hi-btn--secondary:hover:not(:disabled) {
+  background-color: var(--hi-primary-50);
+}
+
+/* Botão Sucesso */
+.hi-btn--success {
+  background-color: var(--hi-success);
+  color: var(--hi-text-inverse);
+  border-color: var(--hi-success);
+}
+
+.hi-btn--success:hover:not(:disabled) {
+  background-color: var(--hi-success-dark);
+  border-color: var(--hi-success-dark);
+}
+
+/* Botão Perigo */
+.hi-btn--danger {
+  background-color: var(--hi-error);
+  color: var(--hi-text-inverse);
+  border-color: var(--hi-error);
+}
+
+.hi-btn--danger:hover:not(:disabled) {
+  background-color: var(--hi-error-dark);
+  border-color: var(--hi-error-dark);
+}
+
+/* Botão Ghost */
+.hi-btn--ghost {
+  background-color: transparent;
+  color: var(--hi-text-secondary);
+  border-color: transparent;
+}
+
+.hi-btn--ghost:hover:not(:disabled) {
+  background-color: var(--hi-gray-100);
+  color: var(--hi-text-primary);
+}
+
+/* Tamanhos de Botão */
+.hi-btn--sm {
+  min-height: 36px;
+  padding: var(--hi-space-2) var(--hi-space-4);
+  font-size: var(--hi-font-size-sm);
+}
+
+.hi-btn--lg {
+  min-height: 52px;
+  padding: var(--hi-space-4) var(--hi-space-8);
+  font-size: var(--hi-font-size-lg);
+}
+
+/* Botão com ícone apenas */
+.hi-btn--icon {
+  width: var(--hi-touch-target-min);
+  height: var(--hi-touch-target-min);
+  padding: 0;
+  border-radius: var(--hi-radius-full);
+}
+
+.hi-btn--icon.hi-btn--lg {
+  width: var(--hi-touch-target-comfortable);
+  height: var(--hi-touch-target-comfortable);
+}
+
+/* Botão Full Width */
+.hi-btn--full {
+  width: 100%;
+}
+
+/* Botão com Loading */
+.hi-btn--loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.hi-btn--loading::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: hi-spin 0.6s linear infinite;
+}
+
+.hi-btn--primary.hi-btn--loading::after,
+.hi-btn--success.hi-btn--loading::after,
+.hi-btn--danger.hi-btn--loading::after {
+  border-color: white;
+  border-right-color: transparent;
+}
+
+@keyframes hi-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ========================================
+   4. FORMULÁRIOS
+   ======================================== */
+
+/* Grupo de formulário */
+.hi-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hi-space-2);
+  margin-bottom: var(--hi-space-4);
+}
+
+/* Label */
+.hi-label {
+  display: block;
+  font-size: var(--hi-font-size-sm);
+  font-weight: var(--hi-font-weight-medium);
+  color: var(--hi-text-primary);
+}
+
+.hi-label--required::after {
+  content: ' *';
+  color: var(--hi-error);
+}
+
+/* Input base */
+.hi-input {
+  width: 100%;
+  min-height: var(--hi-touch-target-min);
+  padding: var(--hi-space-3) var(--hi-space-4);
+  font-family: var(--hi-font-family);
+  font-size: var(--hi-font-size-base);
+  color: var(--hi-text-primary);
+  background-color: var(--hi-bg-primary);
+  border: 2px solid var(--hi-border-medium);
+  border-radius: var(--hi-radius-lg);
+  transition: all var(--hi-transition-fast);
+}
+
+.hi-input::placeholder {
+  color: var(--hi-text-muted);
+}
+
+.hi-input:hover:not(:disabled) {
+  border-color: var(--hi-border-dark);
+}
+
+.hi-input:focus {
+  outline: none;
+  border-color: var(--hi-primary);
+  box-shadow: 0 0 0 3px var(--hi-primary-100);
+}
+
+.hi-input:disabled {
+  background-color: var(--hi-gray-100);
+  color: var(--hi-text-muted);
+  cursor: not-allowed;
+}
+
+/* Input com estado de validação */
+.hi-input--valid {
+  border-color: var(--hi-success);
+}
+
+.hi-input--valid:focus {
+  box-shadow: 0 0 0 3px var(--hi-success-bg);
+}
+
+.hi-input--invalid {
+  border-color: var(--hi-error);
+}
+
+.hi-input--invalid:focus {
+  box-shadow: 0 0 0 3px var(--hi-error-bg);
+}
+
+/* Input com ícone */
+.hi-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.hi-input-wrapper .hi-input {
+  padding-left: var(--hi-space-10);
+}
+
+.hi-input-wrapper .hi-input-icon {
+  position: absolute;
+  left: var(--hi-space-4);
+  color: var(--hi-text-muted);
+  pointer-events: none;
+}
+
+.hi-input-wrapper .hi-input-icon--right {
+  left: auto;
+  right: var(--hi-space-4);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.hi-input-wrapper .hi-input--has-icon-right {
+  padding-right: var(--hi-space-10);
+}
+
+/* Mensagens de ajuda e erro */
+.hi-form-hint {
+  font-size: var(--hi-font-size-sm);
+  color: var(--hi-text-secondary);
+}
+
+.hi-form-error {
+  display: flex;
+  align-items: center;
+  gap: var(--hi-space-1);
+  font-size: var(--hi-font-size-sm);
+  color: var(--hi-error);
+}
+
+.hi-form-success {
+  display: flex;
+  align-items: center;
+  gap: var(--hi-space-1);
+  font-size: var(--hi-font-size-sm);
+  color: var(--hi-success);
+}
+
+/* Checkbox e Radio */
+.hi-checkbox,
+.hi-radio {
+  display: flex;
+  align-items: center;
+  gap: var(--hi-space-3);
+  min-height: var(--hi-touch-target-min);
+  cursor: pointer;
+}
+
+.hi-checkbox input,
+.hi-radio input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--hi-primary);
+}
+
+/* Select */
+.hi-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--hi-space-3) center;
+  background-size: 20px;
+  padding-right: var(--hi-space-10);
+}
+
+/* Textarea */
+.hi-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* ========================================
+   5. CARDS
+   ======================================== */
+
+.hi-card {
+  background-color: var(--hi-bg-primary);
+  border: 1px solid var(--hi-border-light);
+  border-radius: var(--hi-radius-xl);
+  box-shadow: var(--hi-shadow-sm);
+  overflow: hidden;
+}
+
+.hi-card--hover:hover {
+  box-shadow: var(--hi-shadow-md);
+  transform: translateY(-2px);
+  transition: all var(--hi-transition-normal);
+}
+
+.hi-card--clickable {
+  cursor: pointer;
+}
+
+.hi-card__header {
+  padding: var(--hi-space-4) var(--hi-space-6);
+  border-bottom: 1px solid var(--hi-border-light);
+}
+
+.hi-card__body {
+  padding: var(--hi-space-6);
+}
+
+.hi-card__footer {
+  padding: var(--hi-space-4) var(--hi-space-6);
+  border-top: 1px solid var(--hi-border-light);
+  background-color: var(--hi-gray-50);
+}
+
+/* Card de Estatística */
+.hi-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hi-space-2);
+  padding: var(--hi-space-6);
+  background-color: var(--hi-bg-primary);
+  border-radius: var(--hi-radius-xl);
+  box-shadow: var(--hi-shadow-sm);
+}
+
+.hi-stat-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--hi-radius-lg);
+  font-size: var(--hi-font-size-xl);
+}
+
+.hi-stat-card__icon--primary {
+  background-color: var(--hi-primary-100);
+  color: var(--hi-primary);
+}
+
+.hi-stat-card__icon--success {
+  background-color: var(--hi-success-bg);
+  color: var(--hi-success);
+}
+
+.hi-stat-card__icon--warning {
+  background-color: var(--hi-warning-bg);
+  color: var(--hi-warning);
+}
+
+.hi-stat-card__icon--error {
+  background-color: var(--hi-error-bg);
+  color: var(--hi-error);
+}
+
+.hi-stat-card__value {
+  font-size: var(--hi-font-size-3xl);
+  font-weight: var(--hi-font-weight-bold);
+  color: var(--hi-text-primary);
+  line-height: 1;
+}
+
+.hi-stat-card__label {
+  font-size: var(--hi-font-size-sm);
+  color: var(--hi-text-secondary);
+}
+
+/* ========================================
+   6. BADGES E TAGS
+   ======================================== */
+
+.hi-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hi-space-1);
+  padding: var(--hi-space-1) var(--hi-space-3);
+  font-size: var(--hi-font-size-xs);
+  font-weight: var(--hi-font-weight-medium);
+  border-radius: var(--hi-radius-full);
+  white-space: nowrap;
+}
+
+.hi-badge--primary {
+  background-color: var(--hi-primary-100);
+  color: var(--hi-primary-dark);
+}
+
+.hi-badge--success {
+  background-color: var(--hi-success-bg);
+  color: var(--hi-success-dark);
+}
+
+.hi-badge--warning {
+  background-color: var(--hi-warning-bg);
+  color: var(--hi-warning-dark);
+}
+
+.hi-badge--error {
+  background-color: var(--hi-error-bg);
+  color: var(--hi-error-dark);
+}
+
+.hi-badge--neutral {
+  background-color: var(--hi-gray-100);
+  color: var(--hi-gray-700);
+}
+
+/* Badge com ponto indicador (para status) */
+.hi-badge--dot::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+/* ========================================
+   7. ESTADOS VAZIOS
+   ======================================== */
+
+.hi-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--hi-space-12) var(--hi-space-6);
+  text-align: center;
+}
+
+.hi-empty-state__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  margin-bottom: var(--hi-space-6);
+  font-size: 2.5rem;
+  color: var(--hi-gray-300);
+  background-color: var(--hi-gray-100);
+  border-radius: var(--hi-radius-full);
+}
+
+.hi-empty-state__title {
+  margin-bottom: var(--hi-space-2);
+  font-size: var(--hi-font-size-lg);
+  font-weight: var(--hi-font-weight-semibold);
+  color: var(--hi-text-primary);
+}
+
+.hi-empty-state__description {
+  max-width: 360px;
+  margin-bottom: var(--hi-space-6);
+  font-size: var(--hi-font-size-base);
+  color: var(--hi-text-secondary);
+}
+
+/* ========================================
+   8. LOADING STATES
+   ======================================== */
+
+/* Spinner */
+.hi-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--hi-gray-200);
+  border-top-color: var(--hi-primary);
+  border-radius: 50%;
+  animation: hi-spin 0.8s linear infinite;
+}
+
+.hi-spinner--sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.hi-spinner--lg {
+  width: 40px;
+  height: 40px;
+  border-width: 4px;
+}
+
+/* Skeleton Loading */
+.hi-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--hi-gray-200) 0%,
+    var(--hi-gray-100) 50%,
+    var(--hi-gray-200) 100%
+  );
+  background-size: 200% 100%;
+  animation: hi-shimmer 1.5s infinite;
+  border-radius: var(--hi-radius-md);
+}
+
+.hi-skeleton--text {
+  height: 1em;
+  margin-bottom: var(--hi-space-2);
+}
+
+.hi-skeleton--text:last-child {
+  width: 70%;
+}
+
+.hi-skeleton--circle {
+  border-radius: 50%;
+}
+
+.hi-skeleton--card {
+  height: 120px;
+}
+
+@keyframes hi-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Loading overlay */
+.hi-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(2px);
+  z-index: var(--hi-z-modal-backdrop);
+}
+
+/* ========================================
+   9. TOAST NOTIFICATIONS
+   ======================================== */
+
+.hi-toast-container {
+  position: fixed;
+  top: var(--hi-space-4);
+  right: var(--hi-space-4);
+  z-index: var(--hi-z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--hi-space-3);
+  max-width: 400px;
+  width: calc(100% - var(--hi-space-8));
+}
+
+@media (max-width: 640px) {
+  .hi-toast-container {
+    top: auto;
+    bottom: var(--hi-space-4);
+    left: var(--hi-space-4);
+    right: var(--hi-space-4);
+    max-width: 100%;
+  }
+}
+
+.hi-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--hi-space-3);
+  padding: var(--hi-space-4);
+  background-color: var(--hi-bg-primary);
+  border-radius: var(--hi-radius-lg);
+  box-shadow: var(--hi-shadow-lg);
+  border-left: 4px solid;
+  animation: hi-toast-in 0.3s ease;
+}
+
+.hi-toast--exiting {
+  animation: hi-toast-out 0.3s ease forwards;
+}
+
+@keyframes hi-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes hi-toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@media (max-width: 640px) {
+  @keyframes hi-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes hi-toast-out {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+  }
+}
+
+.hi-toast--success {
+  border-left-color: var(--hi-success);
+}
+
+.hi-toast--error {
+  border-left-color: var(--hi-error);
+}
+
+.hi-toast--warning {
+  border-left-color: var(--hi-warning);
+}
+
+.hi-toast--info {
+  border-left-color: var(--hi-info);
+}
+
+.hi-toast__icon {
+  flex-shrink: 0;
+  font-size: var(--hi-font-size-xl);
+}
+
+.hi-toast--success .hi-toast__icon { color: var(--hi-success); }
+.hi-toast--error .hi-toast__icon { color: var(--hi-error); }
+.hi-toast--warning .hi-toast__icon { color: var(--hi-warning); }
+.hi-toast--info .hi-toast__icon { color: var(--hi-info); }
+
+.hi-toast__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hi-toast__title {
+  font-size: var(--hi-font-size-base);
+  font-weight: var(--hi-font-weight-semibold);
+  color: var(--hi-text-primary);
+  margin-bottom: var(--hi-space-1);
+}
+
+.hi-toast__message {
+  font-size: var(--hi-font-size-sm);
+  color: var(--hi-text-secondary);
+}
+
+.hi-toast__close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--hi-text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--hi-radius-md);
+  cursor: pointer;
+  transition: all var(--hi-transition-fast);
+}
+
+.hi-toast__close:hover {
+  background-color: var(--hi-gray-100);
+  color: var(--hi-text-primary);
+}
+
+/* ========================================
+   10. MODAL
+   ======================================== */
+
+.hi-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: var(--hi-z-modal-backdrop);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--hi-space-4);
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--hi-transition-normal);
+}
+
+.hi-modal-backdrop--visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.hi-modal {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  max-height: calc(100vh - var(--hi-space-8));
+  background-color: var(--hi-bg-primary);
+  border-radius: var(--hi-radius-xl);
+  box-shadow: var(--hi-shadow-xl);
+  overflow: hidden;
+  transform: scale(0.95) translateY(20px);
+  transition: transform var(--hi-transition-normal);
+}
+
+.hi-modal-backdrop--visible .hi-modal {
+  transform: scale(1) translateY(0);
+}
+
+.hi-modal--sm { max-width: 400px; }
+.hi-modal--lg { max-width: 700px; }
+.hi-modal--xl { max-width: 900px; }
+.hi-modal--full {
+  max-width: calc(100vw - var(--hi-space-8));
+  max-height: calc(100vh - var(--hi-space-8));
+}
+
+.hi-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--hi-space-4) var(--hi-space-6);
+  border-bottom: 1px solid var(--hi-border-light);
+}
+
+.hi-modal__title {
+  font-size: var(--hi-font-size-lg);
+  font-weight: var(--hi-font-weight-semibold);
+  color: var(--hi-text-primary);
+  margin: 0;
+}
+
+.hi-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hi-touch-target-min);
+  height: var(--hi-touch-target-min);
+  margin: calc(var(--hi-space-2) * -1);
+  color: var(--hi-text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--hi-radius-lg);
+  cursor: pointer;
+  transition: all var(--hi-transition-fast);
+}
+
+.hi-modal__close:hover {
+  background-color: var(--hi-gray-100);
+  color: var(--hi-text-primary);
+}
+
+.hi-modal__close:focus-visible {
+  outline: 2px solid var(--hi-primary);
+  outline-offset: 2px;
+}
+
+.hi-modal__body {
+  padding: var(--hi-space-6);
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+
+.hi-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--hi-space-3);
+  padding: var(--hi-space-4) var(--hi-space-6);
+  border-top: 1px solid var(--hi-border-light);
+  background-color: var(--hi-gray-50);
+}
+
+@media (max-width: 640px) {
+  .hi-modal {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    margin: 0;
+  }
+
+  .hi-modal-backdrop {
+    padding: 0;
+  }
+
+  .hi-modal__footer {
+    flex-direction: column;
+  }
+
+  .hi-modal__footer .hi-btn {
+    width: 100%;
+  }
+}
+
+/* ========================================
+   11. NAVEGAÇÃO
+   ======================================== */
+
+/* Bottom Navigation (Mobile) */
+.hi-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: none;
+  background-color: var(--hi-bg-primary);
+  border-top: 1px solid var(--hi-border-light);
+  box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.1);
+  z-index: var(--hi-z-sticky);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (max-width: 768px) {
+  .hi-bottom-nav {
+    display: flex;
+  }
+
+  /* Adiciona padding ao body para não sobrepor conteúdo */
+  body.has-bottom-nav {
+    padding-bottom: 70px;
+  }
+}
+
+.hi-bottom-nav__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hi-space-1);
+  min-height: 60px;
+  padding: var(--hi-space-2);
+  color: var(--hi-text-muted);
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--hi-transition-fast);
+}
+
+.hi-bottom-nav__item:hover,
+.hi-bottom-nav__item--active {
+  color: var(--hi-primary);
+}
+
+.hi-bottom-nav__item i {
+  font-size: 1.25rem;
+}
+
+.hi-bottom-nav__item span {
+  font-size: var(--hi-font-size-xs);
+  font-weight: var(--hi-font-weight-medium);
+}
+
+/* Botão central destacado */
+.hi-bottom-nav__item--primary {
+  position: relative;
+  margin-top: -20px;
+}
+
+.hi-bottom-nav__item--primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, var(--hi-primary), var(--hi-primary-dark));
+  border-radius: 50%;
+  box-shadow: var(--hi-shadow-lg);
+}
+
+.hi-bottom-nav__item--primary i {
+  position: relative;
+  color: white;
+  font-size: 1.5rem;
+  z-index: 1;
+}
+
+.hi-bottom-nav__item--primary span {
+  margin-top: var(--hi-space-1);
+}
+
+/* ========================================
+   12. ACESSIBILIDADE
+   ======================================== */
+
+/* Skip Link */
+.hi-skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--hi-space-4);
+  padding: var(--hi-space-3) var(--hi-space-4);
+  background-color: var(--hi-primary);
+  color: var(--hi-text-inverse);
+  border-radius: var(--hi-radius-md);
+  font-weight: var(--hi-font-weight-semibold);
+  text-decoration: none;
+  z-index: 9999;
+  transition: top var(--hi-transition-fast);
+}
+
+.hi-skip-link:focus {
+  top: var(--hi-space-4);
+}
+
+/* Focus Visible Global */
+*:focus-visible {
+  outline: 2px solid var(--hi-primary);
+  outline-offset: 2px;
+}
+
+/* Remove outline em clique de mouse */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Screen Reader Only */
+.hi-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reduzir animações para preferência do usuário */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Alto contraste */
+@media (prefers-contrast: high) {
+  :root {
+    --hi-primary: #0066cc;
+    --hi-border-medium: #000000;
+  }
+
+  .hi-btn--primary {
+    border: 2px solid #000000;
+  }
+}
+
+/* ========================================
+   13. UTILITÁRIOS
+   ======================================== */
+
+/* Flexbox */
+.hi-flex { display: flex; }
+.hi-flex-col { flex-direction: column; }
+.hi-flex-wrap { flex-wrap: wrap; }
+.hi-items-center { align-items: center; }
+.hi-items-start { align-items: flex-start; }
+.hi-items-end { align-items: flex-end; }
+.hi-justify-center { justify-content: center; }
+.hi-justify-between { justify-content: space-between; }
+.hi-justify-end { justify-content: flex-end; }
+.hi-flex-1 { flex: 1; }
+.hi-gap-1 { gap: var(--hi-space-1); }
+.hi-gap-2 { gap: var(--hi-space-2); }
+.hi-gap-3 { gap: var(--hi-space-3); }
+.hi-gap-4 { gap: var(--hi-space-4); }
+.hi-gap-6 { gap: var(--hi-space-6); }
+
+/* Grid */
+.hi-grid { display: grid; }
+.hi-grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.hi-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hi-grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hi-grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+@media (min-width: 640px) {
+  .sm\:hi-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sm\:hi-grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (min-width: 768px) {
+  .md\:hi-grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .md\:hi-grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .md\:hi-grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* Margin e Padding */
+.hi-m-0 { margin: 0; }
+.hi-mt-4 { margin-top: var(--hi-space-4); }
+.hi-mt-6 { margin-top: var(--hi-space-6); }
+.hi-mb-4 { margin-bottom: var(--hi-space-4); }
+.hi-mb-6 { margin-bottom: var(--hi-space-6); }
+.hi-mx-auto { margin-left: auto; margin-right: auto; }
+
+.hi-p-0 { padding: 0; }
+.hi-p-4 { padding: var(--hi-space-4); }
+.hi-p-6 { padding: var(--hi-space-6); }
+.hi-px-4 { padding-left: var(--hi-space-4); padding-right: var(--hi-space-4); }
+.hi-py-4 { padding-top: var(--hi-space-4); padding-bottom: var(--hi-space-4); }
+
+/* Texto */
+.hi-text-center { text-align: center; }
+.hi-text-left { text-align: left; }
+.hi-text-right { text-align: right; }
+.hi-text-sm { font-size: var(--hi-font-size-sm); }
+.hi-text-lg { font-size: var(--hi-font-size-lg); }
+.hi-text-xl { font-size: var(--hi-font-size-xl); }
+.hi-text-2xl { font-size: var(--hi-font-size-2xl); }
+.hi-font-medium { font-weight: var(--hi-font-weight-medium); }
+.hi-font-semibold { font-weight: var(--hi-font-weight-semibold); }
+.hi-font-bold { font-weight: var(--hi-font-weight-bold); }
+.hi-text-primary { color: var(--hi-text-primary); }
+.hi-text-secondary { color: var(--hi-text-secondary); }
+.hi-text-muted { color: var(--hi-text-muted); }
+
+/* Largura */
+.hi-w-full { width: 100%; }
+.hi-max-w-sm { max-width: 24rem; }
+.hi-max-w-md { max-width: 28rem; }
+.hi-max-w-lg { max-width: 32rem; }
+.hi-max-w-xl { max-width: 36rem; }
+
+/* Visibilidade */
+.hi-hidden { display: none; }
+.hi-visible { visibility: visible; }
+.hi-invisible { visibility: hidden; }
+
+@media (max-width: 639px) {
+  .hi-hidden-mobile { display: none; }
+}
+
+@media (min-width: 640px) {
+  .sm\:hi-block { display: block; }
+  .sm\:hi-flex { display: flex; }
+  .sm\:hi-hidden { display: none; }
+}
+
+@media (min-width: 768px) {
+  .md\:hi-block { display: block; }
+  .md\:hi-flex { display: flex; }
+  .md\:hi-hidden { display: none; }
+}
+
+/* Truncar texto */
+.hi-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hi-line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ========================================
+   14. ANIMAÇÕES
+   ======================================== */
+
+.hi-animate-fade-in {
+  animation: hi-fade-in 0.3s ease;
+}
+
+.hi-animate-slide-up {
+  animation: hi-slide-up 0.3s ease;
+}
+
+.hi-animate-pulse {
+  animation: hi-pulse 2s infinite;
+}
+
+@keyframes hi-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hi-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hi-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ========================================
+   15. PRINT STYLES
+   ======================================== */
+
+@media print {
+  .hi-no-print,
+  .hi-toast-container,
+  .hi-modal-backdrop,
+  .hi-bottom-nav {
+    display: none !important;
+  }
+
+  .hi-card {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+}

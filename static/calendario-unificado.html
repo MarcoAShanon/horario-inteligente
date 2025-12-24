@@ -22,6 +22,9 @@
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/pt-br.global.min.js'></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Design System -->
+    <link rel="stylesheet" href="/static/css/design-system.css">
     <style>
         /* Garantir altura mínima para eventos em todas as visualizações */
         .fc-event {
@@ -70,6 +73,27 @@
     </style>
 </head>
 <body class="bg-gray-50">
+    <!-- Demo Banner (só aparece em modo demo) -->
+    <div id="demoBanner" class="hidden bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 px-4 text-sm">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <span class="inline-flex items-center gap-2">
+                <i class="fas fa-flask"></i>
+                <span class="hidden sm:inline">Ambiente de Demonstração</span>
+                <span class="sm:hidden">Demo</span>
+            </span>
+            <span class="hidden sm:inline text-white/50">|</span>
+            <button onclick="voltarParaDemos()" class="inline-flex items-center gap-1 hover:underline">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Trocar Perfil</span>
+            </button>
+            <span class="hidden sm:inline text-white/50">|</span>
+            <a href="/static/dashboard-demo.html" class="inline-flex items-center gap-1 hover:underline">
+                <i class="fas fa-home"></i>
+                <span>Dashboard Demo</span>
+            </a>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="bg-white shadow-sm border-b">
         <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
@@ -602,7 +626,26 @@
            inicializarCalendario();
            await carregarMedicos(); // AGUARDAR médicos carregarem primeiro
            await carregarEventos(); // DEPOIS carregar eventos com as cores corretas
+
+           // Mostrar banner de demo se estiver em modo demo
+           if (localStorage.getItem('demo_mode') === 'true') {
+               const demoBanner = document.getElementById('demoBanner');
+               if (demoBanner) {
+                   demoBanner.classList.remove('hidden');
+               }
+           }
         });
+
+        // Função para voltar para seleção de demos
+        function voltarParaDemos() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('medico');
+            localStorage.removeItem('cliente_id');
+            localStorage.removeItem('demo_mode');
+            localStorage.removeItem('demo_tour_done');
+            window.location.href = '/static/demo/index.html';
+        }
 
         // ========== PWA: Instalação do App ==========
         let deferredPrompt;
@@ -1407,16 +1450,220 @@
         }
     </script>
 
+    <!-- Design System Scripts -->
+    <script src="/static/js/components/toast.js"></script>
+    <script src="/static/js/components/modal.js"></script>
+    <script src="/static/js/components/empty-state.js"></script>
+    <script src="/static/js/components/patient-details.js"></script>
+    <script src="/static/js/components/schedule-settings.js"></script>
+    <script src="/static/js/components/block-period.js"></script>
+    <script src="/static/js/components/quick-actions.js"></script>
+    <script src="/static/js/components/bottom-nav.js"></script>
+    <script src="/static/js/components/swipe-actions.js"></script>
+    <script src="/static/js/components/mobile-form.js"></script>
+    <script src="/static/js/components/pull-refresh.js"></script>
+    <script src="/static/js/hi-design-system.js"></script>
+
+    <!-- Integração dos componentes do médico -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializa FAB de ações rápidas
+            if (typeof HiQuickActions !== 'undefined') {
+                HiQuickActions.setupDefaults({
+                    onScheduleSettings: () => {
+                        // Abre modal de configuração de horários
+                        if (typeof HiScheduleSettings !== 'undefined') {
+                            // Busca configuração atual da API
+                            const token = localStorage.getItem('authToken');
+                            fetch('/api/configuracao-agenda', {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            })
+                            .then(r => r.json())
+                            .then(config => {
+                                HiScheduleSettings.show({
+                                    config: config,
+                                    onSave: async (newConfig) => {
+                                        const response = await fetch('/api/configuracao-agenda', {
+                                            method: 'PUT',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'Authorization': `Bearer ${token}`
+                                            },
+                                            body: JSON.stringify(newConfig)
+                                        });
+                                        if (!response.ok) throw new Error('Falha ao salvar');
+                                        if (typeof carregarEventos === 'function') carregarEventos();
+                                    }
+                                });
+                            })
+                            .catch(() => {
+                                HiScheduleSettings.show({
+                                    onSave: async (newConfig) => {
+                                        console.log('Config:', newConfig);
+                                    }
+                                });
+                            });
+                        }
+                    },
+                    onBlockPeriod: () => {
+                        // Abre modal de bloqueio de período
+                        if (typeof HiBlockPeriod !== 'undefined') {
+                            const token = localStorage.getItem('authToken');
+                            HiBlockPeriod.show({
+                                onSave: async (bloqueio) => {
+                                    const response = await fetch('/api/bloqueios', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${token}`
+                                        },
+                                        body: JSON.stringify(bloqueio)
+                                    });
+                                    if (!response.ok) throw new Error('Falha ao criar bloqueio');
+                                    if (typeof carregarEventos === 'function') carregarEventos();
+                                }
+                            });
+                        }
+                    },
+                    onDashboard: () => {
+                        window.location.href = '/static/dashboard.html';
+                    },
+                    onNewAppointment: () => {
+                        // Abre modal de novo agendamento existente
+                        if (typeof abrirModalNovoAgendamento === 'function') {
+                            abrirModalNovoAgendamento();
+                        }
+                    }
+                });
+            }
+
+            // Melhora o click em eventos do calendário para usar HiPatientDetails
+            document.addEventListener('hi:event-click', function(e) {
+                const { agendamento } = e.detail;
+                if (typeof HiPatientDetails !== 'undefined' && agendamento) {
+                    HiPatientDetails.show({
+                        paciente: agendamento.paciente || { nome: agendamento.paciente_nome },
+                        agendamento: {
+                            id: agendamento.id,
+                            data: agendamento.data,
+                            hora: agendamento.hora,
+                            tipo: agendamento.tipo_consulta,
+                            convenio: agendamento.convenio,
+                            status: agendamento.status,
+                            observacoes: agendamento.observacoes
+                        },
+                        onConfirm: async () => {
+                            const token = localStorage.getItem('authToken');
+                            await fetch(`/api/agendamentos/${agendamento.id}/confirmar`, {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            if (typeof carregarEventos === 'function') carregarEventos();
+                            if (typeof HiToast !== 'undefined') HiToast.success('Presença confirmada!');
+                        },
+                        onReschedule: () => {
+                            // Abre modal de reagendamento
+                            if (typeof HiToast !== 'undefined') {
+                                HiToast.info('Funcionalidade de reagendamento em desenvolvimento');
+                            }
+                        },
+                        onCancel: async () => {
+                            const token = localStorage.getItem('authToken');
+                            await fetch(`/api/agendamentos/${agendamento.id}/cancelar`, {
+                                method: 'POST',
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+                            if (typeof carregarEventos === 'function') carregarEventos();
+                            if (typeof HiToast !== 'undefined') HiToast.success('Agendamento cancelado');
+                        }
+                    });
+                }
+            });
+
+            // Inicializa Bottom Navigation (apenas mobile)
+            if (typeof HiBottomNav !== 'undefined') {
+                HiBottomNav.init({
+                    activeId: 'agenda',
+                    items: [
+                        {
+                            id: 'agenda',
+                            label: 'Agenda',
+                            icon: 'fa-calendar-alt',
+                            href: '/static/calendario-unificado.html'
+                        },
+                        {
+                            id: 'config',
+                            label: 'Horários',
+                            icon: 'fa-clock',
+                            onClick: () => {
+                                if (typeof HiScheduleSettings !== 'undefined') {
+                                    const token = localStorage.getItem('authToken');
+                                    fetch('/api/configuracao-agenda', {
+                                        headers: { 'Authorization': `Bearer ${token}` }
+                                    })
+                                    .then(r => r.json())
+                                    .then(config => {
+                                        HiScheduleSettings.show({ config });
+                                    })
+                                    .catch(() => HiScheduleSettings.show({}));
+                                }
+                            }
+                        },
+                        {
+                            id: 'novo',
+                            label: 'Novo',
+                            icon: 'fa-plus',
+                            primary: true,
+                            onClick: () => {
+                                if (typeof abrirModalNovoAgendamento === 'function') {
+                                    abrirModalNovoAgendamento();
+                                } else {
+                                    document.dispatchEvent(new CustomEvent('hi:new-appointment'));
+                                }
+                            }
+                        },
+                        {
+                            id: 'dashboard',
+                            label: 'Dashboard',
+                            icon: 'fa-chart-line',
+                            href: '/static/dashboard.html'
+                        },
+                        {
+                            id: 'perfil',
+                            label: 'Perfil',
+                            icon: 'fa-user',
+                            href: '/static/perfil.html'
+                        }
+                    ]
+                });
+            }
+
+            // Inicializa Pull-to-Refresh
+            if (typeof HiPullRefresh !== 'undefined') {
+                HiPullRefresh.init({
+                    onRefresh: async () => {
+                        if (typeof carregarEventos === 'function') {
+                            await carregarEventos();
+                        }
+                        if (typeof HiToast !== 'undefined') {
+                            HiToast.success('Agenda atualizada!');
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+
     <!-- PWA Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/service-worker.js')
                     .then(registration => {
-                        console.log('✅ PWA: Service Worker registrado com sucesso!', registration.scope);
+                        console.log('PWA: Service Worker registrado com sucesso!', registration.scope);
                     })
                     .catch(error => {
-                        console.log('❌ PWA: Falha ao registrar Service Worker:', error);
+                        console.log('PWA: Falha ao registrar Service Worker:', error);
                     });
             });
         }

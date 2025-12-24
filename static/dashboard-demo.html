@@ -8,6 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- Design System -->
+    <link rel="stylesheet" href="/static/css/design-system.css">
+
     <!-- Intro.js para tour guiado -->
     <link rel="stylesheet" href="https://unpkg.com/intro.js/minified/introjs.min.css">
     <script src="https://unpkg.com/intro.js/minified/intro.min.js"></script>
@@ -306,21 +309,29 @@
 </head>
 <body class="min-h-screen">
     <!-- Demo Banner -->
-    <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 px-4 text-center text-sm">
-        <span class="demo-badge inline-flex items-center gap-2">
-            <i class="fas fa-flask"></i>
-            <span>Ambiente de Demonstração</span>
-        </span>
-        <span class="mx-3">|</span>
-        <button onclick="iniciarTour()" class="underline hover:no-underline">
-            <i class="fas fa-route mr-1"></i>
-            Fazer tour guiado
-        </button>
-        <span class="mx-3">|</span>
-        <a href="https://horariointeligente.com.br/#contato" class="underline hover:no-underline">
-            <i class="fab fa-whatsapp mr-1"></i>
-            Contratar agora
-        </a>
+    <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 px-4 text-sm">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <span class="demo-badge inline-flex items-center gap-2">
+                <i class="fas fa-flask"></i>
+                <span class="hidden sm:inline">Ambiente de Demonstração</span>
+                <span class="sm:hidden">Demo</span>
+            </span>
+            <span class="hidden sm:inline text-white/50">|</span>
+            <button onclick="voltarDemo()" class="inline-flex items-center gap-1 hover:underline">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Trocar Perfil</span>
+            </button>
+            <span class="hidden sm:inline text-white/50">|</span>
+            <button onclick="iniciarTour()" class="inline-flex items-center gap-1 hover:underline">
+                <i class="fas fa-route"></i>
+                <span>Tour</span>
+            </button>
+            <span class="hidden sm:inline text-white/50">|</span>
+            <a href="https://horariointeligente.com.br/#contato" class="inline-flex items-center gap-1 hover:underline">
+                <i class="fab fa-whatsapp"></i>
+                <span class="hidden sm:inline">Contratar</span>
+            </a>
+        </div>
     </div>
 
     <!-- Header -->
@@ -335,19 +346,20 @@
                     <p class="text-xs text-gray-500">Horário Inteligente</p>
                 </div>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 sm:gap-4">
                 <button class="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg" data-intro="Central de notificações: lembretes, confirmações e alertas importantes." data-step="2">
                     <i class="fas fa-bell text-xl"></i>
                     <span class="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
                 </button>
-                <div class="flex items-center gap-2 text-gray-700">
+                <div class="hidden sm:flex items-center gap-2 text-gray-700">
                     <div class="w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
                         <i class="fas fa-user-md text-purple-600"></i>
                     </div>
-                    <span class="hidden sm:inline font-medium" id="userName">Dr. Carlos Silva</span>
+                    <span class="font-medium" id="userName">Dr. Carlos Silva</span>
                 </div>
-                <button onclick="voltarDemo()" class="text-gray-500 hover:text-gray-700 p-2" title="Sair">
-                    <i class="fas fa-sign-out-alt"></i>
+                <button onclick="voltarDemo()" class="flex items-center gap-2 px-3 py-2 text-sm text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition" title="Voltar para seleção de perfil">
+                    <i class="fas fa-arrow-left"></i>
+                    <span class="hidden sm:inline">Voltar</span>
                 </button>
             </div>
         </div>
@@ -815,7 +827,7 @@
         }
 
         function abrirRelatorios() {
-            mostrarInfo('Relatórios', 'Visualize relatórios detalhados de atendimentos, taxa de comparecimento, agendamentos por período e muito mais.');
+            window.location.href = '/static/dashboard.html';
         }
 
         // ==================== CHAT SIMULATOR ====================
@@ -926,6 +938,26 @@
         // Variável global para controlar áudio atual
         let currentAudio = null;
         let currentAudioBtn = null;
+        let audioContextInitialized = false;
+
+        // Inicializar AudioContext para evitar delay na primeira reprodução
+        async function initAudioContext() {
+            if (audioContextInitialized) return;
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const ctx = new AudioContext();
+                // Criar um buffer de silêncio curto para "aquecer" o sistema
+                const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(ctx.destination);
+                source.start();
+                audioContextInitialized = true;
+                console.log('🔊 AudioContext inicializado');
+            } catch (e) {
+                console.log('AudioContext init:', e);
+            }
+        }
 
         function adicionarMensagem(texto, tipo, autoPlayAudio = false) {
             const container = document.getElementById('chatMessages');
@@ -973,6 +1005,9 @@
         }
 
         async function reproduzirAudio(msgId, btn) {
+            // Inicializar AudioContext na primeira reprodução
+            await initAudioContext();
+
             const bubble = document.getElementById(msgId);
             if (!bubble) return;
 
@@ -1024,7 +1059,8 @@
                     const audioBlob = base64ToBlob(data.audio, 'audio/mpeg');
                     const audioUrl = URL.createObjectURL(audioBlob);
 
-                    currentAudio = new Audio(audioUrl);
+                    currentAudio = new Audio();
+                    currentAudio.preload = 'auto';
                     currentAudioBtn = btn;
 
                     // Configurar eventos
@@ -1050,8 +1086,21 @@
                         console.error('Erro ao reproduzir áudio');
                     };
 
-                    // Reproduzir
-                    await currentAudio.play();
+                    // Aguardar carregamento completo antes de reproduzir
+                    currentAudio.oncanplaythrough = () => {
+                        // Delay para garantir buffer estável
+                        setTimeout(async () => {
+                            try {
+                                await currentAudio.play();
+                            } catch (e) {
+                                console.error('Erro ao iniciar reprodução:', e);
+                            }
+                        }, 250);
+                    };
+
+                    // Definir fonte e iniciar carregamento
+                    currentAudio.src = audioUrl;
+                    currentAudio.load();
                 } else {
                     throw new Error('Resposta inválida da API');
                 }
@@ -1402,6 +1451,111 @@
             localStorage.removeItem('demo_mode');
             window.location.href = '/static/demo/index.html';
         }
+    </script>
+
+    <!-- Design System Scripts -->
+    <script src="/static/js/components/toast.js"></script>
+    <script src="/static/js/components/modal.js"></script>
+    <script src="/static/js/components/empty-state.js"></script>
+    <script src="/static/js/components/bottom-nav.js"></script>
+    <script src="/static/js/components/pull-refresh.js"></script>
+    <script src="/static/js/components/guided-tour.js"></script>
+    <script src="/static/js/components/hero-demo.js"></script>
+    <script src="/static/js/hi-design-system.js"></script>
+
+    <!-- Mobile & Demo Integration -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializa Bottom Navigation para demo
+            if (typeof HiBottomNav !== 'undefined') {
+                HiBottomNav.init({
+                    activeId: 'dashboard',
+                    items: [
+                        { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', onClick: () => abrirCalendario() },
+                        { id: 'config', label: 'Horários', icon: 'fa-clock', onClick: () => abrirConfiguracoes() },
+                        { id: 'novo', label: 'Novo', icon: 'fa-plus', primary: true, onClick: () => abrirAgendamento() },
+                        { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line', onClick: () => abrirDashboardAnalitico() },
+                        { id: 'chat', label: 'WhatsApp', icon: 'fa-whatsapp', onClick: () => abrirWhatsApp() }
+                    ]
+                });
+            }
+
+            // Inicializa Pull-to-Refresh
+            if (typeof HiPullRefresh !== 'undefined') {
+                HiPullRefresh.init({
+                    onRefresh: async () => {
+                        // Simula atualização
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        if (typeof HiToast !== 'undefined') {
+                            HiToast.success('Demo atualizada!');
+                        }
+                    }
+                });
+            }
+
+            // Substitui função de tour pela nova implementação
+            window.iniciarTour = function() {
+                if (typeof HiGuidedTour !== 'undefined') {
+                    HiGuidedTour.start({
+                        steps: [
+                            {
+                                element: 'header',
+                                title: 'Bem-vindo ao Horário Inteligente!',
+                                content: 'Este é o painel principal do médico. Aqui você acompanha toda sua agenda e métricas.',
+                                position: 'bottom'
+                            },
+                            {
+                                element: '.stat-card:first-child',
+                                title: 'Métricas do Dia',
+                                content: 'Visualize rapidamente quantas consultas você tem hoje, quantas foram confirmadas e quantas estão pendentes.',
+                                position: 'bottom'
+                            },
+                            {
+                                element: '#agendaHoje',
+                                title: 'Agenda do Dia',
+                                content: 'Lista completa dos seus atendimentos. Clique em qualquer consulta para ver detalhes ou gerenciar.',
+                                position: 'top'
+                            },
+                            {
+                                element: '.lg\\:col-span-1',
+                                title: 'Ações Rápidas',
+                                content: 'Acesse rapidamente: novo agendamento, WhatsApp, relatórios e configurações.',
+                                position: 'left'
+                            },
+                            {
+                                element: '#chatContainer',
+                                title: 'Simulador WhatsApp',
+                                content: 'Experimente como seus pacientes agendam via WhatsApp. A IA responde automaticamente 24/7!',
+                                position: 'top'
+                            }
+                        ],
+                        onComplete: () => {
+                            if (typeof HiToast !== 'undefined') {
+                                HiToast.success('Tour concluído! Explore à vontade.');
+                            }
+                        }
+                    });
+                } else if (typeof introJs !== 'undefined') {
+                    // Fallback para Intro.js original
+                    introJs().setOptions({
+                        nextLabel: 'Próximo →',
+                        prevLabel: '← Anterior',
+                        doneLabel: 'Concluir',
+                        skipLabel: 'Pular'
+                    }).start();
+                }
+            };
+
+            // Auto-inicia tour para novos visitantes
+            const tourShown = localStorage.getItem('demo_tour_shown');
+            if (!tourShown) {
+                setTimeout(() => {
+                    if (typeof HiToast !== 'undefined') {
+                        HiToast.info('Primeira vez aqui? Clique em "Fazer tour guiado" no banner superior!');
+                    }
+                }, 2000);
+            }
+        });
     </script>
 </body>
 </html>
