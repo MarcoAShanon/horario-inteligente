@@ -1,7 +1,7 @@
 {
-  "name": "Horário Inteligente - Agendamento para Clínicas",
+  "name": "Horário Inteligente - Agendamento para Profissionais de Saúde",
   "short_name": "Horário Inteligente",
-  "description": "Sistema de Agendamento e Gestão de Consultas para Clínicas",
+  "description": "Sistema de Agendamento e Gestão de Consultas para Profissionais de Saúde",
   "start_url": "/static/login.html",
   "display": "standalone",
   "background_color": "#ffffff",

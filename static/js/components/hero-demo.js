@@ -25,7 +25,7 @@
 
     const {
       userName = 'Dr. Carlos',
-      clinicName = 'Clínica Demonstração',
+      clinicName = 'Consultório Demonstração',
       todayStats = { consultas: 8, confirmados: 5, pendentes: 3 },
       nextAppointment = null,
       onStartTour,
