@@ -2,7 +2,7 @@
 APIs de Gestão de Usuários
 Cadastro, Recuperação de Senha, Perfil
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text, or_
 from pydantic import BaseModel, EmailStr, validator
@@ -18,6 +18,11 @@ import json
 from app.database import get_db
 from app.api.auth import get_current_user
 from app.services.email_service import get_email_service
+
+# Rate Limiting - proteção contra abuso
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -489,12 +494,14 @@ async def resend_verification_email(
 # ==================== RECUPERAÇÃO DE SENHA ====================
 
 @router.post("/auth/forgot-password")
+@limiter.limit("3/minute")  # Máximo 3 solicitações por minuto por IP (evita spam de emails)
 async def forgot_password(
+    request: Request,  # Necessário para rate limiting
     dados: ForgotPasswordRequest,
     db: Session = Depends(get_db)
 ):
     """
-    Solicita recuperação de senha
+    Solicita recuperação de senha (protegido contra abuso)
 
     - Gera token único
     - Define expiração (1 hora)
@@ -755,7 +762,8 @@ async def update_profile(
 
             if dados.convenios_aceitos is not None:
                 updates.append("convenios_aceitos = :convenios::jsonb")
-                params["convenios"] = str(dados.convenios_aceitos)
+                # Converter para JSON válido (json.dumps usa aspas duplas)
+                params["convenios"] = json.dumps([c.dict() if hasattr(c, 'dict') else c for c in dados.convenios_aceitos])
 
             if dados.valor_consulta_particular is not None:
                 updates.append("valor_consulta_particular = :valor")
@@ -771,7 +779,7 @@ async def update_profile(
                     for p in dados.procedimentos
                 ]
                 updates.append("procedimentos = :procedimentos::jsonb")
-                params["procedimentos"] = str(procedimentos_json)
+                params["procedimentos"] = json.dumps(procedimentos_json)
 
             if dados.biografia is not None:
                 updates.append("biografia = :biografia")

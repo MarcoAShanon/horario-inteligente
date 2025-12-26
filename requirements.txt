@@ -79,3 +79,5 @@ yarl==1.20.1
 APScheduler==3.10.4
 openai==1.54.0
 cryptography
+slowapi==0.1.9
+bcrypt==4.2.0

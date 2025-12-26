@@ -15,6 +15,11 @@ import os
 from app.database import get_db
 from sqlalchemy.orm import Session
 
+# Rate Limiting - proteção contra brute force
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+limiter = Limiter(key_func=get_remote_address)
+
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 logger = logging.getLogger(__name__)
 
@@ -155,11 +160,13 @@ async def get_current_admin(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/login")
+@limiter.limit("5/minute")  # Máximo 5 tentativas por minuto por IP
 async def admin_login(
+    request: Request,  # Necessário para rate limiting
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    """Login de super administrador"""
+    """Login de super administrador (protegido contra brute force)"""
     try:
         # Buscar admin por email
         result = db.execute(

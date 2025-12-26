@@ -4,13 +4,87 @@ Arquivo: app/main.py
 """
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 import logging
 import sys
 from pathlib import Path
 import datetime
 from dotenv import load_dotenv
 import os
+
+# Rate Limiting - Proteção contra brute force
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Middleware para adicionar headers de segurança em todas as respostas"""
+
+    # Content Security Policy - recursos permitidos
+    CSP_POLICY = "; ".join([
+        # Scripts permitidos
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+        "cdn.jsdelivr.net cdn.tailwindcss.com cdnjs.cloudflare.com unpkg.com",
+
+        # Estilos permitidos
+        "style-src 'self' 'unsafe-inline' "
+        "cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com unpkg.com",
+
+        # Fontes permitidas
+        "font-src 'self' fonts.gstatic.com cdnjs.cloudflare.com data:",
+
+        # Imagens permitidas
+        "img-src 'self' data: blob: https:",
+
+        # Conexões permitidas (APIs)
+        "connect-src 'self' https://horariointeligente.com.br https://*.horariointeligente.com.br",
+
+        # Frames (bloqueado)
+        "frame-ancestors 'none'",
+
+        # Formulários
+        "form-action 'self'",
+
+        # Base URI
+        "base-uri 'self'",
+
+        # Upgrade requisições HTTP para HTTPS
+        "upgrade-insecure-requests"
+    ])
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+
+        # Headers de segurança básicos
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+
+        # CSP - Content Security Policy
+        response.headers["Content-Security-Policy"] = self.CSP_POLICY
+
+        # Cache-Control para dados sensíveis (APIs com dados de pacientes/agendamentos)
+        if path.startswith("/api/"):
+            # APIs não devem ser cacheadas - dados sensíveis de saúde (LGPD)
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        elif path.startswith("/static/") and not path.endswith((".html", ".htm")):
+            # Arquivos estáticos (JS, CSS, imagens) podem ser cacheados
+            # Exceto HTML que pode conter dados dinâmicos
+            if "Cache-Control" not in response.headers:
+                response.headers["Cache-Control"] = "public, max-age=86400"  # 1 dia
+
+        # HSTS - força HTTPS (apenas em produção)
+        if os.getenv("ENVIRONMENT") == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+
+        return response
 
 # Carregar variáveis de ambiente do arquivo .env
 env_path = Path(__file__).parent.parent / '.env'
@@ -28,6 +102,10 @@ root_dir = Path(__file__).parent.parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
+# Configurar Rate Limiter (proteção contra brute force)
+# Usa IP do cliente como identificador
+limiter = Limiter(key_func=get_remote_address)
+
 # Criar instância do FastAPI
 app = FastAPI(
     title="Horário Inteligente SaaS",
@@ -35,14 +113,47 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configurar CORS
+# Registrar rate limiter no estado da app (para uso nos routers)
+app.state.limiter = limiter
+
+# Handler customizado para rate limit exceeded
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Handler para quando o rate limit é excedido"""
+    logger.warning(f"⚠️ Rate limit excedido: IP={request.client.host}, path={request.url.path}")
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.",
+            "retry_after": "60 segundos"
+        }
+    )
+
+# Configurar CORS - SEGURO (apenas domínios autorizados)
+ALLOWED_ORIGINS = [
+    "https://horariointeligente.com.br",
+    "https://www.horariointeligente.com.br",
+    "https://app.horariointeligente.com.br",
+    "https://demo.horariointeligente.com.br",
+    "https://admin.horariointeligente.com.br",
+    # Desenvolvimento local
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
+
+# Middleware de Headers de Segurança
+app.add_middleware(SecurityHeadersMiddleware)
+logger.info("🔒 SecurityHeadersMiddleware ativado")
 
 # Multi-Tenant Middleware (NOVO)
 from app.middleware.tenant_middleware import TenantMiddleware

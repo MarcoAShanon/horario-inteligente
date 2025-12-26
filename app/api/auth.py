@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Form, Depends, Header
+from fastapi import APIRouter, HTTPException, Form, Depends, Header, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -11,8 +11,16 @@ from typing import Optional
 
 from app.database import get_db
 
+# Rate Limiting - importar do main
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
 router = APIRouter()
 security = HTTPBearer()
+
+# Rate Limiter para endpoints de autenticação
+# 5 tentativas por minuto por IP (proteção contra brute force)
+limiter = Limiter(key_func=get_remote_address)
 
 # Configurações JWT
 SECRET_KEY = os.getenv("SECRET_KEY", "sua-chave-secreta-super-segura-aqui-123")
@@ -109,12 +117,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("5/minute")  # Máximo 5 tentativas por minuto por IP
 async def login(
+    request: Request,  # Necessário para rate limiting
     username: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    """Login de médico ou secretária"""
+    """Login de médico ou secretária (protegido contra brute force)"""
     try:
         # Tentar login como médico
         result = db.execute(text("""
@@ -142,21 +152,8 @@ async def login(
 
         # Verificar se usuário existe e senha está correta
         if not user or not verify_password(password, user.senha if hasattr(user, 'senha') else None):
-            # Fallback para credenciais padrão (desenvolvimento)
-            if username == "admin@prosaude.com" and password == "admin123":
-                # Buscar médico padrão
-                result = db.execute(text("""
-                    SELECT m.id, m.nome, m.email, m.especialidade, m.crm, m.telefone, m.cliente_id
-                    FROM medicos m
-                    WHERE m.ativo = true
-                    LIMIT 1
-                """))
-                user = result.fetchone()
-                user_type = "secretaria"  # Admin tem permissões de secretária
-                cliente_id = user.cliente_id if user else 1
-                email_verificado = True  # Admin bypass
-            else:
-                raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+            # SEGURANÇA: Credenciais hardcoded removidas - usar apenas banco de dados
+            raise HTTPException(status_code=401, detail="Email ou senha incorretos")
         else:
             # Verificar se email foi verificado
             email_verificado = getattr(user, 'email_verificado', True)
@@ -203,8 +200,41 @@ async def login(
         raise HTTPException(status_code=500, detail=f"Erro no login: {str(e)}")
 
 @router.get("/me")
-async def get_me(current_user: dict = Depends(get_current_user)):
-    """Retorna dados do usuário logado"""
+async def get_me(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retorna dados completos do usuário logado"""
+    user_type = current_user.get("tipo")
+    user_id = current_user.get("id")
+
+    if user_type == "medico":
+        result = db.execute(text("""
+            SELECT
+                id, nome, email, crm, especialidade,
+                telefone, convenios_aceitos, valor_consulta_particular,
+                procedimentos, biografia, foto_perfil, ativo
+            FROM medicos
+            WHERE id = :user_id
+        """), {"user_id": user_id}).fetchone()
+
+        if result:
+            return {
+                **current_user,
+                "id": result[0],
+                "nome": result[1],
+                "email": result[2],
+                "crm": result[3],
+                "especialidade": result[4],
+                "telefone": result[5],
+                "convenios_aceitos": result[6],
+                "valor_consulta_particular": float(result[7]) if result[7] else None,
+                "procedimentos": result[8],
+                "biografia": result[9],
+                "foto_perfil": result[10],
+                "ativo": result[11]
+            }
+
     return current_user
 
 @router.post("/logout")
