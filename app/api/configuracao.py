@@ -23,6 +23,8 @@ class ConfiguracaoIntervalosRequest(BaseModel):
     intervalo_almoco_fim: Optional[str] = None     # "13:00"
     tempo_antes_consulta: int = 5  # tempo de preparação em minutos
     consultas_simultaneas: int = 1  # quantas consultas ao mesmo tempo
+    antecedencia_minima: Optional[int] = 60  # antecedência mínima em minutos
+    horarios_por_dia: Optional[dict] = None  # horários individuais por dia da semana
 
 class ConfiguracaoIntervalosResponse(BaseModel):
     id: int
@@ -36,6 +38,8 @@ class ConfiguracaoIntervalosResponse(BaseModel):
     intervalo_almoco_fim: Optional[str]
     tempo_antes_consulta: int
     consultas_simultaneas: int
+    antecedencia_minima: int
+    horarios_por_dia: Optional[dict] = None
     ativo: bool
 
 @router.get("/intervalos/{medico_id}", response_model=ConfiguracaoIntervalosResponse)
@@ -66,6 +70,8 @@ async def obter_configuracao_intervalos(medico_id: int, db: Session = Depends(ge
             intervalo_almoco_fim="13:00",
             tempo_antes_consulta=5,
             consultas_simultaneas=1,
+            antecedencia_minima=60,
+            horarios_por_dia=None,
             ativo=True
         )
     
@@ -76,7 +82,15 @@ async def obter_configuracao_intervalos(medico_id: int, db: Session = Depends(ge
             dias_atendimento = json.loads(dias_atendimento)
         except:
             dias_atendimento = [1, 2, 3, 4, 5]
-    
+
+    # Parse dos horários por dia se existir
+    horarios_por_dia = None
+    if config.horarios_por_dia:
+        try:
+            horarios_por_dia = json.loads(config.horarios_por_dia)
+        except:
+            horarios_por_dia = None
+
     return ConfiguracaoIntervalosResponse(
         id=config.id,
         medico_id=config.medico_id,
@@ -89,6 +103,8 @@ async def obter_configuracao_intervalos(medico_id: int, db: Session = Depends(ge
         intervalo_almoco_fim=config.intervalo_almoco_fim,
         tempo_antes_consulta=config.tempo_antes_consulta or 5,
         consultas_simultaneas=config.consultas_simultaneas or 1,
+        antecedencia_minima=config.antecedencia_minima or 60,
+        horarios_por_dia=horarios_por_dia,
         ativo=config.ativo if config.ativo is not None else True
     )
 
@@ -113,6 +129,11 @@ async def salvar_configuracao_intervalos(config_request: ConfiguracaoIntervalosR
         ConfiguracoesMedico.medico_id == config_request.medico_id
     ).first()
     
+    # Serializar horarios_por_dia se presente
+    horarios_por_dia_json = None
+    if config_request.horarios_por_dia:
+        horarios_por_dia_json = json.dumps(config_request.horarios_por_dia)
+
     if config_existente:
         # Atualizar configuração existente
         config_existente.intervalo_consulta = config_request.intervalo_consulta
@@ -123,8 +144,10 @@ async def salvar_configuracao_intervalos(config_request: ConfiguracaoIntervalosR
         config_existente.intervalo_almoco_fim = config_request.intervalo_almoco_fim
         config_existente.tempo_antes_consulta = config_request.tempo_antes_consulta
         config_existente.consultas_simultaneas = config_request.consultas_simultaneas
+        config_existente.antecedencia_minima = config_request.antecedencia_minima or 60
+        config_existente.horarios_por_dia = horarios_por_dia_json
         config_existente.ativo = True
-        
+
         config = config_existente
     else:
         # Criar nova configuração
@@ -138,6 +161,8 @@ async def salvar_configuracao_intervalos(config_request: ConfiguracaoIntervalosR
             intervalo_almoco_fim=config_request.intervalo_almoco_fim,
             tempo_antes_consulta=config_request.tempo_antes_consulta,
             consultas_simultaneas=config_request.consultas_simultaneas,
+            antecedencia_minima=config_request.antecedencia_minima or 60,
+            horarios_por_dia=horarios_por_dia_json,
             ativo=True
         )
         db.add(nova_config)

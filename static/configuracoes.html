@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+    <!-- Design System -->
+    <link rel="stylesheet" href="/static/css/design-system.css">
+
+    <style>
+        .tab-btn {
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        .tab-btn:not(.active):hover {
+            background: #f3f4f6;
+        }
+        .config-card {
+            transition: all 0.3s ease;
+        }
+        .config-card:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .day-toggle {
+            transition: all 0.2s ease;
+        }
+        .day-toggle.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .convenio-card {
+            transition: all 0.2s ease;
+        }
+        .convenio-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        /* Esconder scrollbar mas manter funcionalidade */
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Demo Banner -->
+    <div id="demoBanner" class="hidden bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2 px-4 text-sm">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <span class="inline-flex items-center gap-2">
+                <i class="fas fa-flask"></i>
+                <span class="hidden sm:inline">Ambiente de Demonstração</span>
+                <span class="sm:hidden">Demo</span>
+            </span>
+            <span class="hidden sm:inline text-white/50">|</span>
+            <button onclick="voltarParaDemos()" class="inline-flex items-center gap-1 hover:underline">
+                <i class="fas fa-exchange-alt"></i>
+                <span>Trocar Perfil</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <nav class="bg-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/static/dashboard.html" class="flex items-center text-gray-600 hover:text-blue-600 mr-4">
+                        <i class="fas fa-arrow-left mr-2"></i>
+                        <span class="hidden sm:inline">Voltar</span>
+                    </a>
+                    <div class="flex items-center">
+                        <i class="fas fa-cog text-blue-600 text-xl mr-3"></i>
+                        <span class="text-lg font-bold text-gray-800">Configurações</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600 hidden md:inline" id="userName">Carregando...</span>
+                    <button onclick="logout()" class="text-gray-500 hover:text-red-600 transition" title="Sair">
+                        <i class="fas fa-sign-out-alt text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Tabs Navigation -->
+        <div class="bg-white rounded-xl shadow-sm p-2 mb-6">
+            <!-- Mobile: Grade 2x2 / Desktop: Linha única -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button onclick="showTab('horarios')" id="tab-horarios" class="tab-btn active px-3 py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2">
+                    <i class="fas fa-clock"></i>
+                    <span>Horários</span>
+                </button>
+                <button onclick="showTab('bloqueios')" id="tab-bloqueios" class="tab-btn px-3 py-3 rounded-lg font-medium text-sm text-gray-600 flex items-center justify-center gap-2">
+                    <i class="fas fa-ban"></i>
+                    <span>Bloqueios</span>
+                </button>
+                <button onclick="showTab('valores')" id="tab-valores" class="tab-btn px-3 py-3 rounded-lg font-medium text-sm text-gray-600 flex items-center justify-center gap-2">
+                    <i class="fas fa-dollar-sign"></i>
+                    <span>Valores</span>
+                </button>
+                <button onclick="showTab('lembretes')" id="tab-lembretes" class="tab-btn px-3 py-3 rounded-lg font-medium text-sm text-gray-600 flex items-center justify-center gap-2">
+                    <i class="fas fa-bell"></i>
+                    <span>Lembretes</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mensagem de feedback -->
+        <div id="mensagemFeedback" class="hidden mb-6 p-4 rounded-lg"></div>
+
+        <!-- ==================== TAB: HORÁRIOS DE ATENDIMENTO ==================== -->
+        <div id="content-horarios" class="tab-content fade-in">
+            <div class="space-y-6">
+                <!-- Card: Duração da Consulta e Antecedência -->
+                <div class="config-card bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-hourglass-half text-blue-600"></i>
+                        Configurações Gerais
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Duração padrão da consulta</label>
+                            <select id="duracao_consulta" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="15">15 minutos</option>
+                                <option value="20">20 minutos</option>
+                                <option value="30" selected>30 minutos</option>
+                                <option value="40">40 minutos</option>
+                                <option value="45">45 minutos</option>
+                                <option value="60">1 hora</option>
+                                <option value="90">1h 30min</option>
+                                <option value="120">2 horas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Antecedência mínima para agendar</label>
+                            <select id="antecedencia_minima" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="0">Sem antecedência</option>
+                                <option value="30">30 minutos</option>
+                                <option value="60" selected>1 hora</option>
+                                <option value="120">2 horas</option>
+                                <option value="240">4 horas</option>
+                                <option value="1440">1 dia</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Horários por Dia da Semana -->
+                <div class="config-card bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                <i class="fas fa-calendar-week text-blue-600"></i>
+                                Horários por Dia da Semana
+                            </h3>
+                            <p class="text-sm text-gray-500 mt-1">Configure horários específicos para cada dia</p>
+                        </div>
+                        <button onclick="aplicarHorarioPadrao()" class="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <i class="fas fa-magic"></i>
+                            Aplicar horário padrão a todos
+                        </button>
+                    </div>
+
+                    <!-- Horário Padrão para aplicar -->
+                    <div id="horarioPadraoBox" class="hidden mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <p class="text-sm font-medium text-blue-800 mb-3">Definir horário padrão:</p>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div>
+                                <label class="block text-xs text-blue-700 mb-1">Início</label>
+                                <input type="time" id="padrao_inicio" value="08:00" class="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-blue-700 mb-1">Fim</label>
+                                <input type="time" id="padrao_fim" value="18:00" class="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-blue-700 mb-1">Almoço Início</label>
+                                <input type="time" id="padrao_almoco_inicio" value="12:00" class="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-blue-700 mb-1">Almoço Fim</label>
+                                <input type="time" id="padrao_almoco_fim" value="13:00" class="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg">
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-3">
+                            <button onclick="confirmarHorarioPadrao()" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                                Aplicar aos dias ativos
+                            </button>
+                            <button onclick="fecharHorarioPadrao()" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de dias -->
+                    <div class="space-y-3" id="listaDiasHorarios">
+                        <!-- Domingo -->
+                        <div class="dia-horario-card border rounded-lg overflow-hidden" data-dia="0">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 cursor-pointer" onclick="toggleDiaExpand(0)">
+                                <div class="flex items-center gap-3">
+                                    <label class="relative inline-flex items-center cursor-pointer" onclick="event.stopPropagation()">
+                                        <input type="checkbox" class="sr-only peer dia-ativo" data-dia="0">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                    <span class="font-medium text-gray-800">Domingo</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm text-gray-500 horario-resumo" data-dia="0">Não atende</span>
+                                    <i class="fas fa-chevron-down text-gray-400 expand-icon transition-transform" data-dia="0"></i>
+                                </div>
+                            </div>
+                            <div class="dia-config hidden p-4 border-t bg-white" data-dia="0">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Início</label>
+                                        <input type="time" class="dia-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="0" value="08:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Fim</label>
+                                        <input type="time" class="dia-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="0" value="18:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Início</label>
+                                        <input type="time" class="dia-almoco-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="0" value="12:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Fim</label>
+                                        <input type="time" class="dia-almoco-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="0" value="13:00">
+                                    </div>
+                                </div>
+                                <div class="mt-3 flex items-center gap-2">
+                                    <input type="checkbox" class="dia-sem-almoco w-4 h-4 text-blue-600 rounded" data-dia="0">
+                                    <label class="text-sm text-gray-600">Sem intervalo de almoço neste dia</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Segunda -->
+                        <div class="dia-horario-card border rounded-lg overflow-hidden" data-dia="1">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 cursor-pointer" onclick="toggleDiaExpand(1)">
+                                <div class="flex items-center gap-3">
+                                    <label class="relative inline-flex items-center cursor-pointer" onclick="event.stopPropagation()">
+                                        <input type="checkbox" class="sr-only peer dia-ativo" data-dia="1" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                    <span class="font-medium text-gray-800">Segunda-feira</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm text-gray-500 horario-resumo" data-dia="1">08:00 - 18:00</span>
+                                    <i class="fas fa-chevron-down text-gray-400 expand-icon transition-transform" data-dia="1"></i>
+                                </div>
+                            </div>
+                            <div class="dia-config hidden p-4 border-t bg-white" data-dia="1">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Início</label>
+                                        <input type="time" class="dia-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="1" value="08:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Fim</label>
+                                        <input type="time" class="dia-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="1" value="18:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Início</label>
+                                        <input type="time" class="dia-almoco-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="1" value="12:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Fim</label>
+                                        <input type="time" class="dia-almoco-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="1" value="13:00">
+                                    </div>
+                                </div>
+                                <div class="mt-3 flex items-center gap-2">
+                                    <input type="checkbox" class="dia-sem-almoco w-4 h-4 text-blue-600 rounded" data-dia="1">
+                                    <label class="text-sm text-gray-600">Sem intervalo de almoço neste dia</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terça -->
+                        <div class="dia-horario-card border rounded-lg overflow-hidden" data-dia="2">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 cursor-pointer" onclick="toggleDiaExpand(2)">
+                                <div class="flex items-center gap-3">
+                                    <label class="relative inline-flex items-center cursor-pointer" onclick="event.stopPropagation()">
+                                        <input type="checkbox" class="sr-only peer dia-ativo" data-dia="2" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                    <span class="font-medium text-gray-800">Terça-feira</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm text-gray-500 horario-resumo" data-dia="2">08:00 - 18:00</span>
+                                    <i class="fas fa-chevron-down text-gray-400 expand-icon transition-transform" data-dia="2"></i>
+                                </div>
+                            </div>
+                            <div class="dia-config hidden p-4 border-t bg-white" data-dia="2">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Início</label>
+                                        <input type="time" class="dia-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="2" value="08:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Fim</label>
+                                        <input type="time" class="dia-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="2" value="18:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Início</label>
+                                        <input type="time" class="dia-almoco-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="2" value="12:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Fim</label>
+                                        <input type="time" class="dia-almoco-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="2" value="13:00">
+                                    </div>
+                                </div>
+                                <div class="mt-3 flex items-center gap-2">
+                                    <input type="checkbox" class="dia-sem-almoco w-4 h-4 text-blue-600 rounded" data-dia="2">
+                                    <label class="text-sm text-gray-600">Sem intervalo de almoço neste dia</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quarta -->
+                        <div class="dia-horario-card border rounded-lg overflow-hidden" data-dia="3">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 cursor-pointer" onclick="toggleDiaExpand(3)">
+                                <div class="flex items-center gap-3">
+                                    <label class="relative inline-flex items-center cursor-pointer" onclick="event.stopPropagation()">
+                                        <input type="checkbox" class="sr-only peer dia-ativo" data-dia="3" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                    <span class="font-medium text-gray-800">Quarta-feira</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm text-gray-500 horario-resumo" data-dia="3">08:00 - 18:00</span>
+                                    <i class="fas fa-chevron-down text-gray-400 expand-icon transition-transform" data-dia="3"></i>
+                                </div>
+                            </div>
+                            <div class="dia-config hidden p-4 border-t bg-white" data-dia="3">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Início</label>
+                                        <input type="time" class="dia-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="3" value="08:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Fim</label>
+                                        <input type="time" class="dia-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="3" value="18:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Início</label>
+                                        <input type="time" class="dia-almoco-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="3" value="12:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Fim</label>
+                                        <input type="time" class="dia-almoco-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="3" value="13:00">
+                                    </div>
+                                </div>
+                                <div class="mt-3 flex items-center gap-2">
+                                    <input type="checkbox" class="dia-sem-almoco w-4 h-4 text-blue-600 rounded" data-dia="3">
+                                    <label class="text-sm text-gray-600">Sem intervalo de almoço neste dia</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quinta -->
+                        <div class="dia-horario-card border rounded-lg overflow-hidden" data-dia="4">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 cursor-pointer" onclick="toggleDiaExpand(4)">
+                                <div class="flex items-center gap-3">
+                                    <label class="relative inline-flex items-center cursor-pointer" onclick="event.stopPropagation()">
+                                        <input type="checkbox" class="sr-only peer dia-ativo" data-dia="4" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                    <span class="font-medium text-gray-800">Quinta-feira</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm text-gray-500 horario-resumo" data-dia="4">08:00 - 18:00</span>
+                                    <i class="fas fa-chevron-down text-gray-400 expand-icon transition-transform" data-dia="4"></i>
+                                </div>
+                            </div>
+                            <div class="dia-config hidden p-4 border-t bg-white" data-dia="4">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Início</label>
+                                        <input type="time" class="dia-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="4" value="08:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Fim</label>
+                                        <input type="time" class="dia-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="4" value="18:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Início</label>
+                                        <input type="time" class="dia-almoco-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="4" value="12:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Fim</label>
+                                        <input type="time" class="dia-almoco-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="4" value="13:00">
+                                    </div>
+                                </div>
+                                <div class="mt-3 flex items-center gap-2">
+                                    <input type="checkbox" class="dia-sem-almoco w-4 h-4 text-blue-600 rounded" data-dia="4">
+                                    <label class="text-sm text-gray-600">Sem intervalo de almoço neste dia</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sexta -->
+                        <div class="dia-horario-card border rounded-lg overflow-hidden" data-dia="5">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 cursor-pointer" onclick="toggleDiaExpand(5)">
+                                <div class="flex items-center gap-3">
+                                    <label class="relative inline-flex items-center cursor-pointer" onclick="event.stopPropagation()">
+                                        <input type="checkbox" class="sr-only peer dia-ativo" data-dia="5" checked>
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                    <span class="font-medium text-gray-800">Sexta-feira</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm text-gray-500 horario-resumo" data-dia="5">08:00 - 18:00</span>
+                                    <i class="fas fa-chevron-down text-gray-400 expand-icon transition-transform" data-dia="5"></i>
+                                </div>
+                            </div>
+                            <div class="dia-config hidden p-4 border-t bg-white" data-dia="5">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Início</label>
+                                        <input type="time" class="dia-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="5" value="08:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Fim</label>
+                                        <input type="time" class="dia-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="5" value="18:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Início</label>
+                                        <input type="time" class="dia-almoco-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="5" value="12:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Fim</label>
+                                        <input type="time" class="dia-almoco-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="5" value="13:00">
+                                    </div>
+                                </div>
+                                <div class="mt-3 flex items-center gap-2">
+                                    <input type="checkbox" class="dia-sem-almoco w-4 h-4 text-blue-600 rounded" data-dia="5">
+                                    <label class="text-sm text-gray-600">Sem intervalo de almoço neste dia</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sábado -->
+                        <div class="dia-horario-card border rounded-lg overflow-hidden" data-dia="6">
+                            <div class="flex items-center justify-between p-4 bg-gray-50 cursor-pointer" onclick="toggleDiaExpand(6)">
+                                <div class="flex items-center gap-3">
+                                    <label class="relative inline-flex items-center cursor-pointer" onclick="event.stopPropagation()">
+                                        <input type="checkbox" class="sr-only peer dia-ativo" data-dia="6">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    </label>
+                                    <span class="font-medium text-gray-800">Sábado</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="text-sm text-gray-500 horario-resumo" data-dia="6">Não atende</span>
+                                    <i class="fas fa-chevron-down text-gray-400 expand-icon transition-transform" data-dia="6"></i>
+                                </div>
+                            </div>
+                            <div class="dia-config hidden p-4 border-t bg-white" data-dia="6">
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Início</label>
+                                        <input type="time" class="dia-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="6" value="08:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Fim</label>
+                                        <input type="time" class="dia-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="6" value="12:00">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Início</label>
+                                        <input type="time" class="dia-almoco-inicio w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="6" value="">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-600 mb-1">Almoço Fim</label>
+                                        <input type="time" class="dia-almoco-fim w-full px-3 py-2 text-sm border border-gray-300 rounded-lg" data-dia="6" value="">
+                                    </div>
+                                </div>
+                                <div class="mt-3 flex items-center gap-2">
+                                    <input type="checkbox" class="dia-sem-almoco w-4 h-4 text-blue-600 rounded" data-dia="6" checked>
+                                    <label class="text-sm text-gray-600">Sem intervalo de almoço neste dia</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview de Horários -->
+                <div class="config-card bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-sm p-6 border border-blue-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-eye text-blue-600"></i>
+                        Preview dos Horários
+                    </h3>
+                    <p class="text-sm text-gray-600 mb-4">Visualização dos horários configurados para cada dia:</p>
+                    <div id="previewHorarios" class="space-y-3">
+                        <!-- Preview será gerado via JS -->
+                    </div>
+                </div>
+
+                <!-- Botão Salvar -->
+                <div class="flex justify-end">
+                    <button onclick="salvarHorarios()" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Salvar Configurações de Horários
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: BLOQUEIOS E AUSÊNCIAS ==================== -->
+        <div id="content-bloqueios" class="tab-content hidden fade-in">
+            <div class="space-y-6">
+                <!-- Adicionar Bloqueio -->
+                <div class="config-card bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-plus-circle text-blue-600"></i>
+                        Adicionar Bloqueio
+                    </h3>
+                    <form id="formBloqueio" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Bloqueio</label>
+                                <select id="tipo_bloqueio" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="ferias">Férias</option>
+                                    <option value="folga">Folga</option>
+                                    <option value="congresso">Congresso/Evento</option>
+                                    <option value="emergencia">Emergência</option>
+                                    <option value="outro">Outro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Motivo/Descrição</label>
+                                <input type="text" id="motivo_bloqueio" placeholder="Ex: Férias de fim de ano" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Data/Hora Início</label>
+                                <input type="datetime-local" id="bloqueio_inicio" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Data/Hora Fim</label>
+                                <input type="datetime-local" id="bloqueio_fim" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2">
+                                <i class="fas fa-plus"></i>
+                                Adicionar Bloqueio
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Lista de Bloqueios -->
+                <div class="config-card bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-list text-blue-600"></i>
+                        Bloqueios Cadastrados
+                    </h3>
+                    <div id="listaBloqueios" class="space-y-3">
+                        <!-- Bloqueios serão carregados via JS -->
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fas fa-calendar-check text-4xl mb-3 opacity-50"></i>
+                            <p>Nenhum bloqueio cadastrado</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: VALORES E CONVÊNIOS ==================== -->
+        <div id="content-valores" class="tab-content hidden fade-in">
+            <div class="space-y-6">
+                <!-- Valor Consulta Particular -->
+                <div class="config-card bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-hand-holding-usd text-green-600"></i>
+                        Consulta Particular
+                    </h3>
+                    <div class="max-w-xs">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Valor da Consulta (R$)</label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                            <input type="number" id="valor_particular" step="0.01" min="0" placeholder="0,00" class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Convênios -->
+                <div class="config-card bg-white rounded-xl shadow-sm p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                <i class="fas fa-file-medical text-blue-600"></i>
+                                Convênios Aceitos
+                            </h3>
+                            <p class="text-sm text-gray-500 mt-1">Cadastre os convênios e seus valores de repasse</p>
+                        </div>
+                        <button onclick="abrirModalConvenio()" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition flex items-center gap-2">
+                            <i class="fas fa-plus"></i>
+                            Adicionar Convênio
+                        </button>
+                    </div>
+                    <div id="listaConvenios" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Convênios serão carregados via JS -->
+                        <div class="col-span-full text-center py-8 text-gray-500">
+                            <i class="fas fa-file-contract text-4xl mb-3 opacity-50"></i>
+                            <p>Nenhum convênio cadastrado</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botão Salvar -->
+                <div class="flex justify-end">
+                    <button onclick="salvarValores()" class="bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition flex items-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Salvar Valores
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: LEMBRETES ==================== -->
+        <div id="content-lembretes" class="tab-content hidden fade-in">
+            <div class="space-y-6">
+                <div class="config-card bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-bell text-yellow-500"></i>
+                        Lembretes Automáticos
+                    </h3>
+                    <p class="text-sm text-gray-500 mb-6">Configure quando os pacientes receberão lembretes sobre suas consultas via WhatsApp</p>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-clock text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-800">Lembrete 24 horas antes</p>
+                                    <p class="text-sm text-gray-500">Enviado um dia antes da consulta</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="lembrete_24h" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-hourglass-half text-green-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-800">Lembrete 2 horas antes</p>
+                                    <p class="text-sm text-gray-500">Enviado no mesmo dia da consulta</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="lembrete_2h" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-check-double text-purple-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-800">Confirmação de presença</p>
+                                    <p class="text-sm text-gray-500">Solicitar confirmação do paciente</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="pedir_confirmacao" checked class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview da Mensagem -->
+                <div class="config-card bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm p-6 border border-green-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fab fa-whatsapp text-green-600"></i>
+                        Preview da Mensagem
+                    </h3>
+                    <div class="bg-white rounded-lg p-4 shadow-sm max-w-md">
+                        <p class="text-sm text-gray-700">
+                            Olá <strong>João</strong>! 👋<br><br>
+                            Lembrando que você tem consulta amanhã:<br>
+                            📅 <strong>25/12/2025 às 14:00</strong><br>
+                            👨‍⚕️ Dr. Carlos Silva<br>
+                            📍 Clínica Exemplo<br><br>
+                            <span id="previewConfirmacao">Confirme sua presença respondendo SIM ou NÃO.</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Botão Salvar -->
+                <div class="flex justify-end">
+                    <button onclick="salvarLembretes()" class="bg-yellow-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-yellow-600 transition flex items-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Salvar Configurações de Lembretes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Adicionar Convênio -->
+    <div id="modalConvenio" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 class="text-lg font-bold text-gray-800">Adicionar Convênio</h3>
+                <button onclick="fecharModalConvenio()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="formConvenio" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Convênio</label>
+                    <input type="text" id="nome_convenio" placeholder="Ex: Unimed, Bradesco Saúde..." required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Valor do Repasse (R$)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                        <input type="number" id="valor_convenio" step="0.01" min="0" placeholder="0,00" required class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Valor que o convênio repassa por consulta</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Código/Registro (opcional)</label>
+                    <input type="text" id="codigo_convenio" placeholder="Ex: 123456" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="fecharModalConvenio()" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 transition">
+                        Adicionar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Conflitos de Bloqueio -->
+    <div id="modalConflitos" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+            <div class="p-6 border-b bg-yellow-50">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 text-2xl"></i>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">Agendamentos Conflitantes</h3>
+                        <p class="text-sm text-gray-600">Existem consultas agendadas neste período</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6">
+                <div id="listaConflitos" class="max-h-60 overflow-y-auto space-y-2 mb-4">
+                    <!-- Conflitos serão listados aqui -->
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="fecharModalConflitos()" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition">
+                        Cancelar
+                    </button>
+                    <button onclick="confirmarBloqueioComCancelamento()" class="flex-1 bg-red-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-red-700 transition">
+                        Bloquear e Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== VARIÁVEIS GLOBAIS ====================
+        let currentUser = null;
+        let medicoId = null;
+        let diasAtendimento = [1, 2, 3, 4, 5]; // Seg a Sex por padrão
+        let convenios = [];
+        let bloqueios = [];
+        let bloqueiosPendentes = null;
+
+        // ==================== AUTENTICAÇÃO ====================
+        async function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = '/static/login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Token inválido');
+
+                currentUser = await response.json();
+                medicoId = currentUser.id;
+                document.getElementById('userName').textContent = `Dr(a). ${currentUser.nome}`;
+
+                // Verificar se é demo
+                if (window.location.hostname.includes('demo')) {
+                    document.getElementById('demoBanner').classList.remove('hidden');
+                }
+
+                // Carregar todas as configurações
+                await Promise.all([
+                    carregarConfiguracaoHorarios(),
+                    carregarBloqueios(),
+                    carregarValores(),
+                    carregarLembretes()
+                ]);
+
+            } catch (error) {
+                console.error('Erro na autenticação:', error);
+                localStorage.removeItem('authToken');
+                window.location.href = '/static/login.html';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            window.location.href = '/static/login.html';
+        }
+
+        function voltarParaDemos() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            window.location.href = '/static/demo/index.html';
+        }
+
+        // ==================== NAVEGAÇÃO POR TABS ====================
+        function showTab(tabName) {
+            // Esconder todos os conteúdos
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.add('hidden');
+            });
+
+            // Remover active de todos os botões
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active');
+                el.classList.add('text-gray-600');
+            });
+
+            // Mostrar conteúdo selecionado
+            const content = document.getElementById(`content-${tabName}`);
+            if (content) {
+                content.classList.remove('hidden');
+            }
+
+            // Ativar botão selecionado
+            const tab = document.getElementById(`tab-${tabName}`);
+            if (tab) {
+                tab.classList.add('active');
+                tab.classList.remove('text-gray-600');
+            }
+        }
+
+        // ==================== FEEDBACK ====================
+        function mostrarMensagem(texto, tipo = 'success') {
+            const el = document.getElementById('mensagemFeedback');
+            el.className = `mb-6 p-4 rounded-lg flex items-center gap-3 ${
+                tipo === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
+                tipo === 'error' ? 'bg-red-100 text-red-800 border border-red-200' :
+                'bg-yellow-100 text-yellow-800 border border-yellow-200'
+            }`;
+            el.innerHTML = `
+                <i class="fas ${tipo === 'success' ? 'fa-check-circle' : tipo === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+                <span>${texto}</span>
+            `;
+            el.classList.remove('hidden');
+
+            setTimeout(() => {
+                el.classList.add('hidden');
+            }, 5000);
+        }
+
+        // ==================== HORÁRIOS DE ATENDIMENTO ====================
+        const nomesDias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+        // Estrutura para horários por dia
+        let horariosPorDia = {
+            0: { ativo: false, inicio: '08:00', fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', sem_almoco: true },
+            1: { ativo: true, inicio: '08:00', fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', sem_almoco: false },
+            2: { ativo: true, inicio: '08:00', fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', sem_almoco: false },
+            3: { ativo: true, inicio: '08:00', fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', sem_almoco: false },
+            4: { ativo: true, inicio: '08:00', fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', sem_almoco: false },
+            5: { ativo: true, inicio: '08:00', fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', sem_almoco: false },
+            6: { ativo: false, inicio: '08:00', fim: '12:00', almoco_inicio: '', almoco_fim: '', sem_almoco: true }
+        };
+
+        function toggleDiaExpand(dia) {
+            const config = document.querySelector(`.dia-config[data-dia="${dia}"]`);
+            const icon = document.querySelector(`.expand-icon[data-dia="${dia}"]`);
+
+            if (config.classList.contains('hidden')) {
+                config.classList.remove('hidden');
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                config.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function atualizarResumoHorario(dia) {
+            const ativo = document.querySelector(`.dia-ativo[data-dia="${dia}"]`).checked;
+            const resumo = document.querySelector(`.horario-resumo[data-dia="${dia}"]`);
+
+            if (!ativo) {
+                resumo.textContent = 'Não atende';
+                resumo.className = 'text-sm text-gray-400 horario-resumo';
+            } else {
+                const inicio = document.querySelector(`.dia-inicio[data-dia="${dia}"]`).value;
+                const fim = document.querySelector(`.dia-fim[data-dia="${dia}"]`).value;
+                resumo.textContent = `${inicio} - ${fim}`;
+                resumo.className = 'text-sm text-green-600 font-medium horario-resumo';
+            }
+
+            // Atualizar estrutura de dados
+            horariosPorDia[dia] = {
+                ativo: ativo,
+                inicio: document.querySelector(`.dia-inicio[data-dia="${dia}"]`).value,
+                fim: document.querySelector(`.dia-fim[data-dia="${dia}"]`).value,
+                almoco_inicio: document.querySelector(`.dia-almoco-inicio[data-dia="${dia}"]`).value,
+                almoco_fim: document.querySelector(`.dia-almoco-fim[data-dia="${dia}"]`).value,
+                sem_almoco: document.querySelector(`.dia-sem-almoco[data-dia="${dia}"]`).checked
+            };
+
+            gerarPreviewHorarios();
+        }
+
+        function aplicarHorarioPadrao() {
+            document.getElementById('horarioPadraoBox').classList.remove('hidden');
+        }
+
+        function fecharHorarioPadrao() {
+            document.getElementById('horarioPadraoBox').classList.add('hidden');
+        }
+
+        function confirmarHorarioPadrao() {
+            const inicio = document.getElementById('padrao_inicio').value;
+            const fim = document.getElementById('padrao_fim').value;
+            const almocoInicio = document.getElementById('padrao_almoco_inicio').value;
+            const almocoFim = document.getElementById('padrao_almoco_fim').value;
+
+            // Aplicar a todos os dias ativos
+            for (let dia = 0; dia <= 6; dia++) {
+                const ativo = document.querySelector(`.dia-ativo[data-dia="${dia}"]`).checked;
+                if (ativo) {
+                    document.querySelector(`.dia-inicio[data-dia="${dia}"]`).value = inicio;
+                    document.querySelector(`.dia-fim[data-dia="${dia}"]`).value = fim;
+                    document.querySelector(`.dia-almoco-inicio[data-dia="${dia}"]`).value = almocoInicio;
+                    document.querySelector(`.dia-almoco-fim[data-dia="${dia}"]`).value = almocoFim;
+                    document.querySelector(`.dia-sem-almoco[data-dia="${dia}"]`).checked = !almocoInicio || !almocoFim;
+                    atualizarResumoHorario(dia);
+                }
+            }
+
+            fecharHorarioPadrao();
+            mostrarMensagem('Horário padrão aplicado aos dias ativos!', 'success');
+        }
+
+        function gerarPreviewHorarios() {
+            const duracao = parseInt(document.getElementById('duracao_consulta').value);
+            const container = document.getElementById('previewHorarios');
+
+            let html = '';
+
+            for (let dia = 0; dia <= 6; dia++) {
+                const config = horariosPorDia[dia];
+                if (!config.ativo) continue;
+
+                const horarios = gerarHorariosDia(config, duracao);
+
+                html += `
+                    <div class="flex flex-wrap items-center gap-2 p-3 bg-white rounded-lg border">
+                        <span class="font-medium text-gray-700 w-24">${nomesDias[dia]}</span>
+                        <div class="flex flex-wrap gap-1">
+                            ${horarios.length > 0
+                                ? horarios.slice(0, 10).map(h => `<span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">${h}</span>`).join('')
+                                : '<span class="text-gray-400 text-sm">Sem horários</span>'
+                            }
+                            ${horarios.length > 10 ? `<span class="text-gray-500 text-xs">+${horarios.length - 10} mais</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (!html) {
+                html = '<p class="text-gray-500 text-center py-4">Nenhum dia de atendimento configurado</p>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function gerarHorariosDia(config, duracao) {
+            const horarios = [];
+            if (!config.inicio || !config.fim) return horarios;
+
+            const inicioDate = new Date(`2000-01-01T${config.inicio}:00`);
+            const fimDate = new Date(`2000-01-01T${config.fim}:00`);
+
+            let almocoInicioDate = null;
+            let almocoFimDate = null;
+
+            if (!config.sem_almoco && config.almoco_inicio && config.almoco_fim) {
+                almocoInicioDate = new Date(`2000-01-01T${config.almoco_inicio}:00`);
+                almocoFimDate = new Date(`2000-01-01T${config.almoco_fim}:00`);
+            }
+
+            let atual = new Date(inicioDate);
+            while (atual < fimDate && horarios.length < 50) {
+                if (almocoInicioDate && almocoFimDate && atual >= almocoInicioDate && atual < almocoFimDate) {
+                    atual = new Date(almocoFimDate);
+                    continue;
+                }
+
+                horarios.push(atual.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+                atual = new Date(atual.getTime() + duracao * 60000);
+            }
+
+            return horarios;
+        }
+
+        async function carregarConfiguracaoHorarios() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/api/configuracao/intervalos/${medicoId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const config = await response.json();
+
+                    // Duração da consulta
+                    if (config.intervalo_consulta) {
+                        document.getElementById('duracao_consulta').value = config.intervalo_consulta;
+                    }
+
+                    // Antecedência mínima
+                    if (config.antecedencia_minima !== undefined) {
+                        document.getElementById('antecedencia_minima').value = config.antecedencia_minima;
+                    }
+
+                    // Carregar horários por dia (se existir no novo formato)
+                    if (config.horarios_por_dia) {
+                        horariosPorDia = config.horarios_por_dia;
+
+                        for (let dia = 0; dia <= 6; dia++) {
+                            const diaConfig = horariosPorDia[dia];
+                            if (diaConfig) {
+                                document.querySelector(`.dia-ativo[data-dia="${dia}"]`).checked = diaConfig.ativo;
+                                document.querySelector(`.dia-inicio[data-dia="${dia}"]`).value = diaConfig.inicio || '08:00';
+                                document.querySelector(`.dia-fim[data-dia="${dia}"]`).value = diaConfig.fim || '18:00';
+                                document.querySelector(`.dia-almoco-inicio[data-dia="${dia}"]`).value = diaConfig.almoco_inicio || '';
+                                document.querySelector(`.dia-almoco-fim[data-dia="${dia}"]`).value = diaConfig.almoco_fim || '';
+                                document.querySelector(`.dia-sem-almoco[data-dia="${dia}"]`).checked = diaConfig.sem_almoco || false;
+                                atualizarResumoHorario(dia);
+                            }
+                        }
+                    } else if (config.dias_atendimento) {
+                        // Converter formato antigo para novo
+                        const diasAtivos = config.dias_atendimento || [1, 2, 3, 4, 5];
+
+                        for (let dia = 0; dia <= 6; dia++) {
+                            const ativo = diasAtivos.includes(dia);
+                            document.querySelector(`.dia-ativo[data-dia="${dia}"]`).checked = ativo;
+
+                            if (ativo) {
+                                document.querySelector(`.dia-inicio[data-dia="${dia}"]`).value = config.horario_inicio || '08:00';
+                                document.querySelector(`.dia-fim[data-dia="${dia}"]`).value = config.horario_fim || '18:00';
+                                document.querySelector(`.dia-almoco-inicio[data-dia="${dia}"]`).value = config.intervalo_almoco_inicio || '12:00';
+                                document.querySelector(`.dia-almoco-fim[data-dia="${dia}"]`).value = config.intervalo_almoco_fim || '13:00';
+                            }
+
+                            atualizarResumoHorario(dia);
+                        }
+                    } else {
+                        // Usar valores padrão
+                        for (let dia = 0; dia <= 6; dia++) {
+                            atualizarResumoHorario(dia);
+                        }
+                    }
+
+                    gerarPreviewHorarios();
+                }
+            } catch (error) {
+                console.error('Erro ao carregar configuração de horários:', error);
+                // Inicializar com valores padrão mesmo se der erro
+                for (let dia = 0; dia <= 6; dia++) {
+                    atualizarResumoHorario(dia);
+                }
+                gerarPreviewHorarios();
+            }
+        }
+
+        async function salvarHorarios() {
+            try {
+                // Atualizar estrutura de dados com valores atuais do DOM
+                for (let dia = 0; dia <= 6; dia++) {
+                    horariosPorDia[dia] = {
+                        ativo: document.querySelector(`.dia-ativo[data-dia="${dia}"]`).checked,
+                        inicio: document.querySelector(`.dia-inicio[data-dia="${dia}"]`).value,
+                        fim: document.querySelector(`.dia-fim[data-dia="${dia}"]`).value,
+                        almoco_inicio: document.querySelector(`.dia-almoco-inicio[data-dia="${dia}"]`).value,
+                        almoco_fim: document.querySelector(`.dia-almoco-fim[data-dia="${dia}"]`).value,
+                        sem_almoco: document.querySelector(`.dia-sem-almoco[data-dia="${dia}"]`).checked
+                    };
+                }
+
+                // Extrair dias ativos para compatibilidade
+                const diasAtivos = [];
+                for (let dia = 0; dia <= 6; dia++) {
+                    if (horariosPorDia[dia].ativo) {
+                        diasAtivos.push(dia);
+                    }
+                }
+
+                const token = localStorage.getItem('authToken');
+                const config = {
+                    medico_id: medicoId,
+                    dias_atendimento: diasAtivos,
+                    intervalo_consulta: parseInt(document.getElementById('duracao_consulta').value),
+                    antecedencia_minima: parseInt(document.getElementById('antecedencia_minima').value),
+                    horarios_por_dia: horariosPorDia,
+                    // Manter compatibilidade com formato antigo (usar primeiro dia ativo como padrão)
+                    horario_inicio: horariosPorDia[diasAtivos[0]]?.inicio || '08:00',
+                    horario_fim: horariosPorDia[diasAtivos[0]]?.fim || '18:00',
+                    intervalo_almoco_inicio: horariosPorDia[diasAtivos[0]]?.almoco_inicio || null,
+                    intervalo_almoco_fim: horariosPorDia[diasAtivos[0]]?.almoco_fim || null
+                };
+
+                const response = await fetch('/api/configuracao/intervalos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                if (response.ok) {
+                    mostrarMensagem('Configurações de horários salvas com sucesso!', 'success');
+                } else {
+                    const error = await response.json();
+                    mostrarMensagem(`Erro ao salvar: ${error.detail || 'Erro desconhecido'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Erro ao salvar horários:', error);
+                mostrarMensagem('Erro ao salvar configurações', 'error');
+            }
+        }
+
+        // Event listeners para os campos de horário
+        function initHorariosEventListeners() {
+            // Toggle de dia ativo
+            document.querySelectorAll('.dia-ativo').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const dia = parseInt(e.target.dataset.dia);
+                    atualizarResumoHorario(dia);
+                });
+            });
+
+            // Campos de horário
+            document.querySelectorAll('.dia-inicio, .dia-fim, .dia-almoco-inicio, .dia-almoco-fim').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const dia = parseInt(e.target.dataset.dia);
+                    atualizarResumoHorario(dia);
+                });
+            });
+
+            // Checkbox sem almoço
+            document.querySelectorAll('.dia-sem-almoco').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const dia = parseInt(e.target.dataset.dia);
+                    atualizarResumoHorario(dia);
+                });
+            });
+        }
+
+        // ==================== BLOQUEIOS ====================
+        async function carregarBloqueios() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/api/bloqueios?medico_id=${medicoId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    bloqueios = await response.json();
+                    renderizarBloqueios();
+                }
+            } catch (error) {
+                console.error('Erro ao carregar bloqueios:', error);
+            }
+        }
+
+        function renderizarBloqueios() {
+            const container = document.getElementById('listaBloqueios');
+
+            if (bloqueios.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-calendar-check text-4xl mb-3 opacity-50"></i>
+                        <p>Nenhum bloqueio cadastrado</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const tipoIcones = {
+                ferias: { icon: 'fa-umbrella-beach', color: 'text-yellow-500', bg: 'bg-yellow-50' },
+                folga: { icon: 'fa-couch', color: 'text-blue-500', bg: 'bg-blue-50' },
+                congresso: { icon: 'fa-users', color: 'text-purple-500', bg: 'bg-purple-50' },
+                emergencia: { icon: 'fa-ambulance', color: 'text-red-500', bg: 'bg-red-50' },
+                outro: { icon: 'fa-ban', color: 'text-gray-500', bg: 'bg-gray-50' }
+            };
+
+            container.innerHTML = bloqueios.map(b => {
+                const tipo = tipoIcones[b.tipo] || tipoIcones.outro;
+                const inicio = new Date(b.data_inicio).toLocaleString('pt-BR');
+                const fim = new Date(b.data_fim).toLocaleString('pt-BR');
+
+                return `
+                    <div class="flex items-center justify-between p-4 ${tipo.bg} rounded-lg border">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+                                <i class="fas ${tipo.icon} ${tipo.color}"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-800">${b.motivo || b.tipo}</p>
+                                <p class="text-sm text-gray-500">${inicio} até ${fim}</p>
+                            </div>
+                        </div>
+                        <button onclick="excluirBloqueio(${b.id})" class="text-red-500 hover:text-red-700 p-2" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('formBloqueio').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const bloqueio = {
+                medico_id: medicoId,
+                tipo: document.getElementById('tipo_bloqueio').value,
+                motivo: document.getElementById('motivo_bloqueio').value,
+                data_inicio: document.getElementById('bloqueio_inicio').value,
+                data_fim: document.getElementById('bloqueio_fim').value
+            };
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/bloqueios', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(bloqueio)
+                });
+
+                if (response.ok) {
+                    mostrarMensagem('Bloqueio adicionado com sucesso!', 'success');
+                    document.getElementById('formBloqueio').reset();
+                    await carregarBloqueios();
+                } else {
+                    const error = await response.json();
+
+                    // Verificar se há conflitos
+                    if (error.conflitos) {
+                        bloqueiosPendentes = bloqueio;
+                        mostrarConflitos(error.conflitos);
+                    } else {
+                        mostrarMensagem(`Erro: ${error.detail || 'Erro desconhecido'}`, 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao adicionar bloqueio:', error);
+                mostrarMensagem('Erro ao adicionar bloqueio', 'error');
+            }
+        });
+
+        function mostrarConflitos(conflitos) {
+            const container = document.getElementById('listaConflitos');
+            container.innerHTML = conflitos.map(c => `
+                <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <p class="font-medium text-gray-800">${c.paciente_nome}</p>
+                    <p class="text-sm text-gray-600">${new Date(c.data_hora).toLocaleString('pt-BR')}</p>
+                </div>
+            `).join('');
+
+            document.getElementById('modalConflitos').classList.remove('hidden');
+        }
+
+        function fecharModalConflitos() {
+            document.getElementById('modalConflitos').classList.add('hidden');
+            bloqueiosPendentes = null;
+        }
+
+        async function confirmarBloqueioComCancelamento() {
+            if (!bloqueiosPendentes) return;
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/bloqueios?cancelar_agendamentos=true', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(bloqueiosPendentes)
+                });
+
+                if (response.ok) {
+                    fecharModalConflitos();
+                    mostrarMensagem('Bloqueio criado e agendamentos cancelados', 'success');
+                    document.getElementById('formBloqueio').reset();
+                    await carregarBloqueios();
+                } else {
+                    mostrarMensagem('Erro ao criar bloqueio', 'error');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarMensagem('Erro ao criar bloqueio', 'error');
+            }
+        }
+
+        async function excluirBloqueio(id) {
+            if (!confirm('Deseja realmente excluir este bloqueio?')) return;
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/api/bloqueios/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    mostrarMensagem('Bloqueio excluído com sucesso!', 'success');
+                    await carregarBloqueios();
+                } else {
+                    mostrarMensagem('Erro ao excluir bloqueio', 'error');
+                }
+            } catch (error) {
+                console.error('Erro ao excluir bloqueio:', error);
+                mostrarMensagem('Erro ao excluir bloqueio', 'error');
+            }
+        }
+
+        // ==================== VALORES E CONVÊNIOS ====================
+        async function carregarValores() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const perfil = await response.json();
+
+                    if (perfil.valor_consulta_particular) {
+                        document.getElementById('valor_particular').value = perfil.valor_consulta_particular;
+                    }
+
+                    // Carregar convênios com valores
+                    if (perfil.convenios_aceitos) {
+                        // Converter formato antigo (array de strings) para novo formato (array de objetos)
+                        convenios = perfil.convenios_aceitos.map(c => {
+                            if (typeof c === 'string') {
+                                return { nome: c, valor: 0, codigo: '' };
+                            }
+                            return c;
+                        });
+                        renderizarConvenios();
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar valores:', error);
+            }
+        }
+
+        function renderizarConvenios() {
+            const container = document.getElementById('listaConvenios');
+
+            if (convenios.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-8 text-gray-500">
+                        <i class="fas fa-file-contract text-4xl mb-3 opacity-50"></i>
+                        <p>Nenhum convênio cadastrado</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = convenios.map((c, index) => `
+                <div class="convenio-card bg-gray-50 rounded-lg p-4 border">
+                    <div class="flex justify-between items-start mb-2">
+                        <h4 class="font-medium text-gray-800">${c.nome}</h4>
+                        <button onclick="removerConvenio(${index})" class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <p class="text-green-600 font-bold text-lg">R$ ${(c.valor || 0).toFixed(2)}</p>
+                    ${c.codigo ? `<p class="text-xs text-gray-500 mt-1">Cód: ${c.codigo}</p>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function abrirModalConvenio() {
+            document.getElementById('modalConvenio').classList.remove('hidden');
+            document.getElementById('nome_convenio').focus();
+        }
+
+        function fecharModalConvenio() {
+            document.getElementById('modalConvenio').classList.add('hidden');
+            document.getElementById('formConvenio').reset();
+        }
+
+        document.getElementById('formConvenio').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const novoConvenio = {
+                nome: document.getElementById('nome_convenio').value,
+                valor: parseFloat(document.getElementById('valor_convenio').value) || 0,
+                codigo: document.getElementById('codigo_convenio').value
+            };
+
+            convenios.push(novoConvenio);
+            renderizarConvenios();
+            fecharModalConvenio();
+            mostrarMensagem('Convênio adicionado! Clique em "Salvar Valores" para confirmar.', 'info');
+        });
+
+        function removerConvenio(index) {
+            convenios.splice(index, 1);
+            renderizarConvenios();
+        }
+
+        async function salvarValores() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const dados = {
+                    valor_consulta_particular: parseFloat(document.getElementById('valor_particular').value) || null,
+                    convenios_aceitos: convenios
+                };
+
+                const response = await fetch('/api/usuarios/perfil', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                if (response.ok) {
+                    mostrarMensagem('Valores salvos com sucesso!', 'success');
+                } else {
+                    mostrarMensagem('Erro ao salvar valores', 'error');
+                }
+            } catch (error) {
+                console.error('Erro ao salvar valores:', error);
+                mostrarMensagem('Erro ao salvar valores', 'error');
+            }
+        }
+
+        // ==================== LEMBRETES ====================
+        async function carregarLembretes() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/api/configuracao/lembretes/${medicoId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const config = await response.json();
+                    document.getElementById('lembrete_24h').checked = config.lembrete_24h !== false;
+                    document.getElementById('lembrete_2h').checked = config.lembrete_2h !== false;
+                    document.getElementById('pedir_confirmacao').checked = config.pedir_confirmacao !== false;
+                    atualizarPreviewConfirmacao();
+                }
+            } catch (error) {
+                console.error('Erro ao carregar lembretes:', error);
+            }
+        }
+
+        function atualizarPreviewConfirmacao() {
+            const preview = document.getElementById('previewConfirmacao');
+            if (document.getElementById('pedir_confirmacao').checked) {
+                preview.textContent = 'Confirme sua presença respondendo SIM ou NÃO.';
+            } else {
+                preview.textContent = '';
+            }
+        }
+
+        document.getElementById('pedir_confirmacao').addEventListener('change', atualizarPreviewConfirmacao);
+
+        async function salvarLembretes() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const config = {
+                    medico_id: medicoId,
+                    lembrete_24h: document.getElementById('lembrete_24h').checked,
+                    lembrete_2h: document.getElementById('lembrete_2h').checked,
+                    pedir_confirmacao: document.getElementById('pedir_confirmacao').checked
+                };
+
+                const response = await fetch('/api/configuracao/lembretes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                if (response.ok) {
+                    mostrarMensagem('Configurações de lembretes salvas com sucesso!', 'success');
+                } else {
+                    mostrarMensagem('Erro ao salvar lembretes', 'error');
+                }
+            } catch (error) {
+                console.error('Erro ao salvar lembretes:', error);
+                mostrarMensagem('Erro ao salvar lembretes', 'error');
+            }
+        }
+
+        // ==================== EVENTOS ====================
+        document.getElementById('duracao_consulta').addEventListener('change', gerarPreviewHorarios);
+
+        // ==================== INICIALIZAÇÃO ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            initHorariosEventListeners();
+            gerarPreviewHorarios();
+        });
+    </script>
+</body>
+</html>

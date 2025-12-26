@@ -16,6 +16,7 @@ class ConfiguracoesMedico(Base):
     horario_inicio = Column(String(5), default="08:00", comment="Horário de início do atendimento")
     horario_fim = Column(String(5), default="18:00", comment="Horário de fim do atendimento")
     dias_atendimento = Column(Text, comment="JSON com dias da semana [1,2,3,4,5] seg-sex")
+    horarios_por_dia = Column(Text, nullable=True, comment="JSON com horários específicos por dia da semana")
     
     # Intervalo de almoço/pausa
     intervalo_almoco_inicio = Column(String(5), nullable=True, comment="Início do intervalo de almoço")

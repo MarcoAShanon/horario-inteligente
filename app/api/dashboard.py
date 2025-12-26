@@ -194,11 +194,18 @@ async def get_metricas_periodo(
 
     hoje = date.today()
 
+    # Nomes dos meses em português
+    meses_pt = {
+        1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril",
+        5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto",
+        9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
+    }
+
     # Definir período baseado no parâmetro
     if periodo == "mes_atual":
         inicio_periodo = date(hoje.year, hoje.month, 1)
         fim_periodo = hoje
-        mes_ano = hoje.strftime("%B %Y")
+        mes_ano = f"{meses_pt[hoje.month]} {hoje.year}"
 
         # Mês anterior para comparativo
         if hoje.month == 1:
@@ -230,9 +237,7 @@ async def get_metricas_periodo(
             inicio_periodo = date(hoje.year, hoje.month - 1, 1)
             # Último dia do mês anterior
             fim_periodo = date(hoje.year, hoje.month, 1) - timedelta(days=1)
-            meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-                    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
-            mes_ano = f"{meses[hoje.month - 2]} {hoje.year}"
+            mes_ano = f"{meses_pt[hoje.month - 1]} {hoje.year}"
 
             # Dois meses atrás
             if hoje.month == 2:
