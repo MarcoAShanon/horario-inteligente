@@ -81,3 +81,4 @@ openai==1.54.0
 cryptography
 slowapi==0.1.9
 bcrypt==4.2.0
+fastapi-csrf-protect==0.3.4

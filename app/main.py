@@ -2,7 +2,7 @@
 Sistema Horário Inteligente SaaS - API Principal
 Arquivo: app/main.py
 """
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -17,6 +17,11 @@ import os
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+
+# CSRF Protection
+from fastapi_csrf_protect import CsrfProtect
+from fastapi_csrf_protect.exceptions import CsrfProtectError
+from pydantic import BaseModel
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -126,6 +131,32 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         content={
             "detail": "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.",
             "retry_after": "60 segundos"
+        }
+    )
+
+# ==================== CSRF PROTECTION ====================
+class CsrfSettings(BaseModel):
+    secret_key: str = os.getenv("SECRET_KEY", "csrf-secret-key-change-in-production")
+    cookie_name: str = "csrf_token"
+    cookie_secure: bool = os.getenv("ENVIRONMENT") == "production"  # HTTPS only em produção
+    cookie_samesite: str = "lax"  # Proteção contra CSRF cross-site
+    header_name: str = "X-CSRF-Token"
+    token_location: str = "header"  # Token deve vir no header
+
+@CsrfProtect.load_config
+def get_csrf_config():
+    return CsrfSettings()
+
+# Handler para erros CSRF
+@app.exception_handler(CsrfProtectError)
+async def csrf_error_handler(request: Request, exc: CsrfProtectError):
+    """Handler para quando o token CSRF é inválido ou ausente"""
+    logger.warning(f"⚠️ CSRF error: IP={request.client.host}, path={request.url.path}, error={exc.message}")
+    return JSONResponse(
+        status_code=403,
+        content={
+            "detail": "Token CSRF inválido ou ausente. Recarregue a página e tente novamente.",
+            "error": "csrf_error"
         }
     )
 
@@ -339,6 +370,30 @@ except ImportError:
     logger.warning("⚠️ API routes não encontrado, continuando sem ele")
 except Exception as e:
     logger.error(f"❌ Erro ao importar API router: {e}")
+
+# ========================================
+# CSRF TOKEN ENDPOINT
+# ========================================
+
+@app.get("/api/csrf-token", tags=["Segurança"])
+async def get_csrf_token(request: Request, csrf_protect: CsrfProtect = Depends()):
+    """
+    Obtém um token CSRF para uso em formulários
+
+    O token deve ser enviado no header X-CSRF-Token em todas as requisições POST/PUT/DELETE
+    """
+    # Gerar tokens CSRF (signed token para cookie, raw token para header)
+    csrf_token, signed_token = csrf_protect.generate_csrf_tokens()
+
+    response = JSONResponse(content={
+        "detail": "CSRF token gerado com sucesso",
+        "csrf_token": csrf_token  # Token para enviar no header X-CSRF-Token
+    })
+
+    # Definir cookie com token assinado
+    csrf_protect.set_csrf_cookie(signed_token, response)
+
+    return response
 
 # ========================================
 # ROTAS DE STATUS E DEBUG
