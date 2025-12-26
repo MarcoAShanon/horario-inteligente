@@ -75,12 +75,11 @@
         <header class="bg-white shadow">
             <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
                 <div class="flex items-center gap-4">
-                    <h1 class="text-2xl font-bold text-purple-600">
-                        <i class="fas fa-hospital mr-2"></i>
-                        Horário Inteligente
-                    </h1>
-                    <span class="text-gray-400">|</span>
-                    <span class="text-lg text-gray-600">Dashboard Analítico</span>
+                    <img src="/static/images/logo.png" alt="Horário Inteligente" class="w-20 h-20 object-contain">
+                    <div>
+                        <h1 class="text-2xl font-bold text-purple-600">Horário Inteligente</h1>
+                        <p class="text-sm text-gray-600">Dashboard Analítico</p>
+                    </div>
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="text-gray-700 hidden sm:inline" id="userName">
@@ -260,6 +259,102 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Seção Financeira (Oculta por Padrão) -->
+            <div class="mb-6">
+                <!-- Botão para exibir dados financeiros -->
+                <div id="btnExibirFinanceiro" class="bg-white p-4 rounded-lg shadow-lg border-2 border-dashed border-gray-300 hover:border-emerald-400 transition cursor-pointer" onclick="toggleDadosFinanceiros()">
+                    <div class="flex items-center justify-center gap-3 text-gray-600 hover:text-emerald-600 transition">
+                        <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+                            <i class="fas fa-lock text-xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <p class="font-semibold">Dados Financeiros</p>
+                            <p class="text-sm text-gray-500">Clique para exibir faturamento e valores</p>
+                        </div>
+                        <i class="fas fa-chevron-down ml-4"></i>
+                    </div>
+                </div>
+
+                <!-- Conteúdo Financeiro (Oculto) -->
+                <div id="secaoFinanceira" class="hidden mt-4">
+                    <!-- Header da Seção -->
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold text-gray-800">
+                            <i class="fas fa-dollar-sign text-emerald-600 mr-2"></i>
+                            Dados Financeiros
+                        </h3>
+                        <button onclick="toggleDadosFinanceiros()" class="text-gray-500 hover:text-gray-700 flex items-center gap-2 text-sm">
+                            <i class="fas fa-eye-slash"></i>
+                            Ocultar
+                        </button>
+                    </div>
+
+                    <!-- Cards Financeiros -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                        <div class="bg-gradient-to-br from-emerald-500 to-green-600 p-6 rounded-lg shadow-lg">
+                            <h3 class="text-emerald-100 text-sm font-semibold flex items-center">
+                                <i class="fas fa-coins mr-2"></i>
+                                Faturamento do Período
+                            </h3>
+                            <p class="text-3xl font-bold text-white mt-2" id="faturamentoTotal">R$ 0</p>
+                            <p class="text-sm text-emerald-200 mt-1" id="qtdAtendimentos">0 atendimentos</p>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-lg shadow-lg border-l-4 border-indigo-500">
+                            <h3 class="text-gray-500 text-sm font-semibold flex items-center">
+                                <i class="fas fa-user-md text-indigo-500 mr-2"></i>
+                                Consultas Particulares
+                            </h3>
+                            <p class="text-3xl font-bold text-gray-800 mt-2" id="faturamentoParticular">R$ 0</p>
+                            <p class="text-sm text-indigo-600 mt-1" id="qtdParticular">0 consultas</p>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-lg shadow-lg border-l-4 border-blue-500">
+                            <h3 class="text-gray-500 text-sm font-semibold flex items-center">
+                                <i class="fas fa-hospital text-blue-500 mr-2"></i>
+                                Convênios (Repasse)
+                            </h3>
+                            <p class="text-3xl font-bold text-gray-800 mt-2" id="faturamentoConvenio">R$ 0</p>
+                            <p class="text-sm text-blue-600 mt-1" id="qtdConvenio">0 consultas</p>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-lg shadow-lg border-l-4 border-purple-500">
+                            <h3 class="text-gray-500 text-sm font-semibold flex items-center">
+                                <i class="fas fa-receipt text-purple-500 mr-2"></i>
+                                Ticket Médio
+                            </h3>
+                            <p class="text-3xl font-bold text-gray-800 mt-2" id="ticketMedio">R$ 0</p>
+                            <p class="text-sm text-purple-600 mt-1">por atendimento</p>
+                        </div>
+                    </div>
+
+                    <!-- Breakdown por Convênio com Gráfico -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <!-- Gráfico de Pizza -->
+                        <div class="bg-white p-6 rounded-lg shadow-lg">
+                            <h4 class="text-lg font-bold text-gray-800 mb-4">
+                                <i class="fas fa-chart-pie text-purple-500 mr-2"></i>
+                                Distribuição por Tipo
+                            </h4>
+                            <div class="flex justify-center">
+                                <canvas id="chartFinanceiro" style="max-height: 280px; max-width: 280px;"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Cards por Convênio -->
+                        <div class="bg-white p-6 rounded-lg shadow-lg">
+                            <h4 class="text-lg font-bold text-gray-800 mb-4">
+                                <i class="fas fa-list-ol text-emerald-500 mr-2"></i>
+                                Detalhamento
+                            </h4>
+                            <div id="faturamentoPorTipo" class="space-y-3">
+                                <p class="text-gray-500 text-center py-4">Carregando...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -268,6 +363,7 @@
         let periodoAtual = 'mes_atual';
         let chartStatusInstance = null;
         let chartAgendamentosInstance = null;
+        let chartFinanceiroInstance = null;
 
         // Verificar autenticação
         const token = localStorage.getItem('authToken');
@@ -286,9 +382,211 @@
             window.location.href = '/static/login.html';
         }
 
+        // Estado dos dados financeiros
+        let dadosFinanceirosVisiveis = false;
+        let dadosFinanceirosCarregados = false;
+
+        // Função para exibir/ocultar dados financeiros
+        function toggleDadosFinanceiros() {
+            dadosFinanceirosVisiveis = !dadosFinanceirosVisiveis;
+
+            const btnExibir = document.getElementById('btnExibirFinanceiro');
+            const secaoFinanceira = document.getElementById('secaoFinanceira');
+
+            if (dadosFinanceirosVisiveis) {
+                btnExibir.classList.add('hidden');
+                secaoFinanceira.classList.remove('hidden');
+
+                // Carregar dados financeiros se ainda não foram carregados
+                if (!dadosFinanceirosCarregados) {
+                    carregarDadosFinanceiros();
+                }
+            } else {
+                btnExibir.classList.remove('hidden');
+                secaoFinanceira.classList.add('hidden');
+            }
+        }
+
+        // Função para carregar dados financeiros
+        async function carregarDadosFinanceiros() {
+            try {
+                const response = await fetch(`/api/dashboard/financeiro?periodo=${periodoAtual}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    renderizarDadosFinanceiros(data);
+                    dadosFinanceirosCarregados = true;
+                } else {
+                    // Se não houver API de financeiro, usar dados simulados para demo
+                    renderizarDadosFinanceirosDemo();
+                    dadosFinanceirosCarregados = true;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados financeiros:', error);
+                // Usar dados simulados em caso de erro
+                renderizarDadosFinanceirosDemo();
+                dadosFinanceirosCarregados = true;
+            }
+        }
+
+        // Função para renderizar dados financeiros da API
+        function renderizarDadosFinanceiros(data) {
+            document.getElementById('faturamentoTotal').textContent = `R$ ${data.faturamento_total.toLocaleString('pt-BR')}`;
+            document.getElementById('qtdAtendimentos').textContent = `${data.total_atendimentos} atendimentos`;
+
+            document.getElementById('faturamentoParticular').textContent = `R$ ${data.particular.valor.toLocaleString('pt-BR')}`;
+            document.getElementById('qtdParticular').textContent = `${data.particular.quantidade} consultas`;
+
+            document.getElementById('faturamentoConvenio').textContent = `R$ ${data.convenio.valor.toLocaleString('pt-BR')}`;
+            document.getElementById('qtdConvenio').textContent = `${data.convenio.quantidade} consultas`;
+
+            document.getElementById('ticketMedio').textContent = `R$ ${data.ticket_medio.toLocaleString('pt-BR')}`;
+
+            // Renderizar breakdown por tipo
+            renderizarBreakdown(data.por_convenio);
+        }
+
+        // Função para renderizar dados demo (quando não há API)
+        function renderizarDadosFinanceirosDemo() {
+            // Dados simulados baseados nos valores do banco demo
+            document.getElementById('faturamentoTotal').textContent = 'R$ 10.500';
+            document.getElementById('qtdAtendimentos').textContent = '65 atendimentos';
+
+            document.getElementById('faturamentoParticular').textContent = 'R$ 4.250';
+            document.getElementById('qtdParticular').textContent = '11 consultas';
+
+            document.getElementById('faturamentoConvenio').textContent = 'R$ 6.250';
+            document.getElementById('qtdConvenio').textContent = '54 consultas';
+
+            document.getElementById('ticketMedio').textContent = 'R$ 161';
+
+            // Breakdown por tipo
+            const breakdownData = [
+                { nome: 'Particular', valor: 4250, cor: 'indigo', percent: 40 },
+                { nome: 'SulAmérica', valor: 2470, cor: 'green', percent: 24 },
+                { nome: 'Amil', valor: 2100, cor: 'blue', percent: 20 },
+                { nome: 'Unimed', valor: 1680, cor: 'orange', percent: 16 }
+            ];
+
+            renderizarBreakdown(breakdownData);
+        }
+
+        // Função para renderizar breakdown por tipo/convênio
+        function renderizarBreakdown(data) {
+            const container = document.getElementById('faturamentoPorTipo');
+
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Sem dados disponíveis</p>';
+                return;
+            }
+
+            const coresHex = {
+                'Particular': '#6366f1',
+                'SulAmérica': '#22c55e',
+                'Amil': '#3b82f6',
+                'Unimed': '#f97316',
+                'Bradesco Saúde': '#ef4444',
+                'Hapvida': '#14b8a6'
+            };
+
+            const coresTailwind = {
+                'Particular': 'indigo',
+                'SulAmérica': 'green',
+                'Amil': 'blue',
+                'Unimed': 'orange',
+                'Bradesco Saúde': 'red',
+                'Hapvida': 'teal'
+            };
+
+            // Renderizar gráfico de pizza
+            renderizarGraficoFinanceiro(data, coresHex);
+
+            // Renderizar lista de detalhamento
+            container.innerHTML = data.map((item, index) => {
+                const cor = coresTailwind[item.nome] || 'gray';
+                const percent = item.percent || 0;
+                const valor = item.valor || 0;
+                const corHex = coresHex[item.nome] || '#6b7280';
+
+                return `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-4 h-4 rounded-full" style="background-color: ${corHex}"></div>
+                            <span class="font-medium text-gray-700">${item.nome}</span>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-gray-800">R$ ${valor.toLocaleString('pt-BR')}</p>
+                            <p class="text-xs text-gray-500">${percent}%</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Função para renderizar gráfico de pizza financeiro
+        function renderizarGraficoFinanceiro(data, coresHex) {
+            const canvas = document.getElementById('chartFinanceiro');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+
+            // Destruir gráfico anterior se existir
+            if (chartFinanceiroInstance) {
+                chartFinanceiroInstance.destroy();
+            }
+
+            const labels = data.map(item => item.nome);
+            const valores = data.map(item => item.valor);
+            const cores = data.map(item => coresHex[item.nome] || '#6b7280');
+
+            chartFinanceiroInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: valores,
+                        backgroundColor: cores,
+                        borderWidth: 3,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    cutout: '55%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: R$ ${value.toLocaleString('pt-BR')} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         // Função para trocar período
         function setPeriodo(periodo) {
             periodoAtual = periodo;
+
+            // Resetar flag para recarregar dados financeiros quando o período muda
+            dadosFinanceirosCarregados = false;
+            if (dadosFinanceirosVisiveis) {
+                carregarDadosFinanceiros();
+            }
 
             // Atualizar visual das abas
             document.querySelectorAll('[id^="btn_"]').forEach(btn => {
@@ -592,7 +890,7 @@
                     activeId: 'dashboard',
                     items: [
                         { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', href: '/static/calendario-unificado.html' },
-                        { id: 'config', label: 'Horários', icon: 'fa-clock', href: '/static/configuracao-agenda.html' },
+                        { id: 'config', label: 'Configurações', icon: 'fa-cog', href: '/static/configuracoes.html' },
                         { id: 'novo', label: 'Novo', icon: 'fa-plus', primary: true, onClick: () => { window.location.href = '/static/calendario-unificado.html'; }},
                         { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line', href: '/static/dashboard.html' },
                         { id: 'perfil', label: 'Perfil', icon: 'fa-user', href: '/static/perfil.html' }

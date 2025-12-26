@@ -43,9 +43,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                        <i class="fas fa-heartbeat text-white text-xl"></i>
-                    </div>
+                    <img src="/static/images/logo.png" alt="Horário Inteligente" class="w-20 h-20 object-contain">
                     <div>
                         <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Horário Inteligente</h1>
                         <p class="text-xs sm:text-sm text-gray-600">Meu Perfil</p>
@@ -804,7 +802,7 @@
                     activeId: 'perfil',
                     items: [
                         { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', href: '/static/calendario-unificado.html' },
-                        { id: 'config', label: 'Horários', icon: 'fa-clock', href: '/static/configuracao-agenda.html' },
+                        { id: 'config', label: 'Configurações', icon: 'fa-cog', href: '/static/configuracoes.html' },
                         { id: 'novo', label: 'Novo', icon: 'fa-plus', primary: true, onClick: () => { window.location.href = '/static/calendario-unificado.html'; }},
                         { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line', href: '/static/dashboard.html' },
                         { id: 'perfil', label: 'Perfil', icon: 'fa-user', href: '/static/perfil.html' }
