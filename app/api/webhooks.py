@@ -18,9 +18,13 @@ from sqlalchemy import text
 logger = logging.getLogger(__name__)
 
 # Configuração da Evolution API
-EVOLUTION_API_URL = "http://localhost:8080"
-EVOLUTION_API_KEY = "evolution-api-prosaude-123"
+EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "http://localhost:8080")
+EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
+EVOLUTION_WEBHOOK_TOKEN = os.getenv("EVOLUTION_WEBHOOK_TOKEN", "")
 # INSTANCE_NAME será dinâmico baseado no cliente
+
+# IPs confiáveis (localhost/internal)
+TRUSTED_IPS = {"127.0.0.1", "::1", "localhost"}
 
 # Importar database e serviços
 from app.database import SessionLocal
@@ -78,16 +82,50 @@ def get_cliente_id_from_instance(instance_name: str) -> int:
     finally:
         db.close()
 
+def verify_webhook_auth(request: Request) -> bool:
+    """
+    Verifica autenticação do webhook.
+    Aceita:
+    - Requisições de IPs confiáveis (localhost)
+    - Requisições com token válido no header X-Webhook-Token
+    """
+    # Verificar IP de origem
+    client_ip = request.client.host if request.client else None
+    if client_ip in TRUSTED_IPS:
+        return True
+
+    # Verificar token no header
+    if EVOLUTION_WEBHOOK_TOKEN:
+        token = request.headers.get("X-Webhook-Token", "")
+        if token == EVOLUTION_WEBHOOK_TOKEN:
+            return True
+        # Também aceitar no Authorization header
+        auth = request.headers.get("Authorization", "")
+        if auth == f"Bearer {EVOLUTION_WEBHOOK_TOKEN}":
+            return True
+
+    return False
+
 @router.post("/whatsapp/{instance_name}")
 async def webhook_whatsapp(instance_name: str, request: Request):
     """
     Webhook principal com IA Claude 3.5 Sonnet integrada
     """
     try:
+        # SEGURANÇA: Verificar autenticação do webhook
+        if not verify_webhook_auth(request):
+            logger.warning(f"⚠️ Webhook não autenticado de {request.client.host if request.client else 'unknown'}")
+            return JSONResponse(
+                status_code=401,
+                content={"status": "error", "message": "Unauthorized"}
+            )
+
         # Receber dados
         webhook_data = await request.json()
         logger.info(f"📨 Webhook recebido para {instance_name}")
-        logger.info(f"🔍 DEBUG - Dados recebidos: {json.dumps(webhook_data, indent=2)}")
+        # SEGURANÇA: Não logar dados completos em produção
+        if os.getenv("DEBUG", "False").lower() == "true":
+            logger.debug(f"🔍 DEBUG - Dados recebidos: {json.dumps(webhook_data, indent=2)}")
 
         # Extrair informações da mensagem
         message_info = extract_message_info(webhook_data)
