@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Painel Admin - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background: #0f172a;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/admin/dashboard.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-teal-500">
+                    <i class="fas fa-chart-line text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Analytics</h1>
+                    <p class="text-sm text-gray-400">Monitoramento de Visitantes</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- Seletor de Período -->
+                <select id="periodoSelect" class="bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700 focus:border-green-500 focus:outline-none">
+                    <option value="1d">Hoje</option>
+                    <option value="7d" selected>Últimos 7 dias</option>
+                    <option value="30d">Últimos 30 dias</option>
+                    <option value="90d">Últimos 90 dias</option>
+                </select>
+                <button onclick="carregarDados()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Cards de Métricas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <!-- Total Pageviews -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-eye text-3xl text-blue-500"></i>
+                    <span class="text-2xl font-bold text-white" id="totalPageviews">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Total Pageviews</p>
+                <p class="text-xs text-gray-500 mt-1">
+                    Hoje: <span id="pageviewsHoje">-</span>
+                </p>
+            </div>
+
+            <!-- Visitantes Únicos -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-users text-3xl text-green-500"></i>
+                    <span class="text-2xl font-bold text-white" id="visitantesUnicos">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Visitantes Únicos</p>
+                <p class="text-xs text-gray-500 mt-1">
+                    Hoje: <span id="visitantesHoje">-</span>
+                </p>
+            </div>
+
+            <!-- Cliques Demo -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-mouse-pointer text-3xl text-purple-500"></i>
+                    <span class="text-2xl font-bold text-white" id="cliquesDemo">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Cliques no Demo</p>
+                <p class="text-xs text-gray-500 mt-1">
+                    Taxa: <span id="taxaConversao">-</span>%
+                </p>
+            </div>
+
+            <!-- Tempo Médio -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-clock text-3xl text-yellow-500"></i>
+                    <span class="text-2xl font-bold text-white" id="tempoMedio">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Tempo Médio</p>
+                <p class="text-xs text-gray-500 mt-1">segundos por página</p>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Gráfico de Evolução -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i class="fas fa-chart-area text-green-500 mr-2"></i>
+                    Evolução de Acessos
+                </h3>
+                <div class="h-64">
+                    <canvas id="graficoEvolucao"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico de Dispositivos -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i class="fas fa-mobile-alt text-blue-500 mr-2"></i>
+                    Dispositivos
+                </h3>
+                <div class="h-64">
+                    <canvas id="graficoDispositivos"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabelas -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Distribuição por Página -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i class="fas fa-file-alt text-purple-500 mr-2"></i>
+                    Páginas Mais Visitadas
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-800">
+                                <th class="text-left py-2 text-gray-400 text-sm">Página</th>
+                                <th class="text-right py-2 text-gray-400 text-sm">Pageviews</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaPaginas">
+                            <tr>
+                                <td colspan="2" class="py-4 text-center text-gray-500">
+                                    <i class="fas fa-spinner fa-spin"></i> Carregando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Origens de Tráfego -->
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i class="fas fa-globe text-teal-500 mr-2"></i>
+                    Origens de Tráfego
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-800">
+                                <th class="text-left py-2 text-gray-400 text-sm">Origem</th>
+                                <th class="text-right py-2 text-gray-400 text-sm">Visitantes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaOrigens">
+                            <tr>
+                                <td colspan="2" class="py-4 text-center text-gray-500">
+                                    <i class="fas fa-spinner fa-spin"></i> Carregando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Funil de Conversão -->
+        <div class="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
+            <h3 class="text-lg font-semibold text-white mb-4">
+                <i class="fas fa-filter text-orange-500 mr-2"></i>
+                Funil de Conversão
+            </h3>
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex-1 text-center p-4 bg-gray-800 rounded-lg">
+                    <div class="text-3xl font-bold text-blue-400" id="funilLanding">-</div>
+                    <div class="text-sm text-gray-400">Landing Page</div>
+                    <div class="text-xs text-gray-500">100%</div>
+                </div>
+                <i class="fas fa-chevron-right text-gray-600 hidden md:block"></i>
+                <i class="fas fa-chevron-down text-gray-600 md:hidden"></i>
+                <div class="flex-1 text-center p-4 bg-gray-800 rounded-lg">
+                    <div class="text-3xl font-bold text-green-400" id="funilDemo">-</div>
+                    <div class="text-sm text-gray-400">Página Demo</div>
+                    <div class="text-xs text-gray-500" id="funilDemoPercent">-</div>
+                </div>
+                <i class="fas fa-chevron-right text-gray-600 hidden md:block"></i>
+                <i class="fas fa-chevron-down text-gray-600 md:hidden"></i>
+                <div class="flex-1 text-center p-4 bg-gray-800 rounded-lg">
+                    <div class="text-3xl font-bold text-purple-400" id="funilClickDemo">-</div>
+                    <div class="text-sm text-gray-400">Clicou Demo</div>
+                    <div class="text-xs text-gray-500" id="funilClickDemoPercent">-</div>
+                </div>
+                <i class="fas fa-chevron-right text-gray-600 hidden md:block"></i>
+                <i class="fas fa-chevron-down text-gray-600 md:hidden"></i>
+                <div class="flex-1 text-center p-4 bg-gray-800 rounded-lg">
+                    <div class="text-3xl font-bold text-yellow-400" id="funilContato">-</div>
+                    <div class="text-sm text-gray-400">Clicou Contato</div>
+                    <div class="text-xs text-gray-500" id="funilContatoPercent">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Visitantes Recentes -->
+        <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+            <h3 class="text-lg font-semibold text-white mb-4">
+                <i class="fas fa-user-clock text-pink-500 mr-2"></i>
+                Visitantes Recentes
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-800">
+                            <th class="text-left py-3 px-2 text-gray-400 text-sm">Visitante</th>
+                            <th class="text-left py-3 px-2 text-gray-400 text-sm">Dispositivo</th>
+                            <th class="text-left py-3 px-2 text-gray-400 text-sm">Páginas</th>
+                            <th class="text-left py-3 px-2 text-gray-400 text-sm">Sessões</th>
+                            <th class="text-left py-3 px-2 text-gray-400 text-sm">Última Visita</th>
+                            <th class="text-left py-3 px-2 text-gray-400 text-sm">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaVisitantes">
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Carregando visitantes...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = null;
+        let graficoEvolucao = null;
+        let graficoDispositivos = null;
+
+        // Verificar autenticação ao carregar
+        document.addEventListener('DOMContentLoaded', async function() {
+            adminToken = localStorage.getItem('adminToken');
+
+            if (!adminToken) {
+                window.location.href = '/static/admin/login.html';
+                return;
+            }
+
+            // Carregar dados iniciais
+            await carregarDados();
+
+            // Atualizar ao mudar período
+            document.getElementById('periodoSelect').addEventListener('change', carregarDados);
+        });
+
+        async function carregarDados() {
+            const periodo = document.getElementById('periodoSelect').value;
+
+            try {
+                // Carregar todas as métricas em paralelo
+                const [resumo, grafico, origens, eventos, visitantes] = await Promise.all([
+                    fetchAPI(`/api/admin/analytics/resumo?periodo=${periodo}`),
+                    fetchAPI(`/api/admin/analytics/grafico?periodo=${periodo}`),
+                    fetchAPI(`/api/admin/analytics/origens?periodo=${periodo}`),
+                    fetchAPI(`/api/admin/analytics/eventos?periodo=${periodo}`),
+                    fetchAPI(`/api/admin/analytics/visitantes?periodo=${periodo}`)
+                ]);
+
+                // Atualizar cards
+                atualizarCards(resumo);
+
+                // Atualizar gráficos
+                atualizarGraficoEvolucao(grafico);
+                atualizarGraficoDispositivos(resumo.distribuicao_dispositivos);
+
+                // Atualizar tabelas
+                atualizarTabelaPaginas(resumo.distribuicao_paginas);
+                atualizarTabelaOrigens(origens.referrers);
+
+                // Atualizar funil
+                atualizarFunil(eventos.funil);
+
+                // Atualizar visitantes
+                atualizarTabelaVisitantes(visitantes.visitantes);
+
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                if (error.message === 'Unauthorized') {
+                    localStorage.removeItem('adminToken');
+                    window.location.href = '/static/admin/login.html';
+                }
+            }
+        }
+
+        async function fetchAPI(url) {
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${adminToken}`
+                }
+            });
+
+            if (response.status === 401) {
+                throw new Error('Unauthorized');
+            }
+
+            if (!response.ok) {
+                throw new Error('Erro na requisição');
+            }
+
+            return response.json();
+        }
+
+        function atualizarCards(data) {
+            document.getElementById('totalPageviews').textContent = formatNumber(data.metricas.total_pageviews);
+            document.getElementById('pageviewsHoje').textContent = formatNumber(data.metricas.pageviews_hoje);
+            document.getElementById('visitantesUnicos').textContent = formatNumber(data.metricas.visitantes_unicos);
+            document.getElementById('visitantesHoje').textContent = formatNumber(data.metricas.visitantes_hoje);
+            document.getElementById('cliquesDemo').textContent = formatNumber(data.metricas.cliques_demo);
+            document.getElementById('taxaConversao').textContent = data.metricas.taxa_conversao;
+            document.getElementById('tempoMedio').textContent = formatNumber(data.metricas.tempo_medio_segundos);
+        }
+
+        function atualizarGraficoEvolucao(data) {
+            const ctx = document.getElementById('graficoEvolucao').getContext('2d');
+
+            if (graficoEvolucao) {
+                graficoEvolucao.destroy();
+            }
+
+            const labels = data.dados.map(d => {
+                const date = new Date(d.dia);
+                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            });
+
+            graficoEvolucao = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Pageviews',
+                            data: data.dados.map(d => d.pageviews),
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Visitantes',
+                            data: data.dados.map(d => d.visitantes),
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#9ca3af' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#374151' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        y: {
+                            grid: { color: '#374151' },
+                            ticks: { color: '#9ca3af' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function atualizarGraficoDispositivos(dados) {
+            const ctx = document.getElementById('graficoDispositivos').getContext('2d');
+
+            if (graficoDispositivos) {
+                graficoDispositivos.destroy();
+            }
+
+            const cores = {
+                'desktop': '#3b82f6',
+                'mobile': '#10b981',
+                'tablet': '#f59e0b',
+                'Desconhecido': '#6b7280'
+            };
+
+            graficoDispositivos = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: dados.map(d => d.dispositivo),
+                    datasets: [{
+                        data: dados.map(d => d.total),
+                        backgroundColor: dados.map(d => cores[d.dispositivo] || '#6b7280'),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: { color: '#9ca3af' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function atualizarTabelaPaginas(dados) {
+            const tbody = document.getElementById('tabelaPaginas');
+
+            if (!dados || dados.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="2" class="py-4 text-center text-gray-500">
+                            Nenhum dado disponível
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const nomePaginas = {
+                'landing': 'Landing Page',
+                'demo': 'Página Demo',
+                'demo_dashboard': 'Dashboard Demo',
+                'precos': 'Preços',
+                'contato': 'Contato',
+                'outro': 'Outras'
+            };
+
+            tbody.innerHTML = dados.map(item => `
+                <tr class="border-b border-gray-800">
+                    <td class="py-3 text-white">
+                        <i class="fas fa-file-alt text-gray-500 mr-2"></i>
+                        ${escapeHtml(nomePaginas[item.pagina] || item.pagina)}
+                    </td>
+                    <td class="py-3 text-right text-gray-300">${formatNumber(item.total)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function atualizarTabelaOrigens(dados) {
+            const tbody = document.getElementById('tabelaOrigens');
+
+            if (!dados || dados.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="2" class="py-4 text-center text-gray-500">
+                            Nenhum dado disponível
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const icones = {
+                'Direto': 'fa-link',
+                'Google': 'fa-google',
+                'Facebook': 'fa-facebook',
+                'Instagram': 'fa-instagram',
+                'LinkedIn': 'fa-linkedin',
+                'Twitter/X': 'fa-twitter',
+                'YouTube': 'fa-youtube',
+                'Outros': 'fa-globe'
+            };
+
+            tbody.innerHTML = dados.map(item => `
+                <tr class="border-b border-gray-800">
+                    <td class="py-3 text-white">
+                        <i class="fab ${icones[item.origem] || 'fa-globe'} text-gray-500 mr-2"></i>
+                        ${escapeHtml(item.origem)}
+                    </td>
+                    <td class="py-3 text-right text-gray-300">${formatNumber(item.visitantes)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function atualizarFunil(dados) {
+            document.getElementById('funilLanding').textContent = formatNumber(dados.landing_page);
+            document.getElementById('funilDemo').textContent = formatNumber(dados.pagina_demo);
+            document.getElementById('funilClickDemo').textContent = formatNumber(dados.click_demo);
+            document.getElementById('funilContato').textContent = formatNumber(dados.click_contato);
+
+            // Calcular percentuais
+            const total = dados.landing_page || 1;
+            document.getElementById('funilDemoPercent').textContent =
+                Math.round((dados.pagina_demo / total) * 100) + '%';
+            document.getElementById('funilClickDemoPercent').textContent =
+                Math.round((dados.click_demo / total) * 100) + '%';
+            document.getElementById('funilContatoPercent').textContent =
+                Math.round((dados.click_contato / total) * 100) + '%';
+        }
+
+        function atualizarTabelaVisitantes(dados) {
+            const tbody = document.getElementById('tabelaVisitantes');
+
+            if (!dados || dados.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-gray-500">
+                            <i class="fas fa-user-slash text-3xl mb-2"></i>
+                            <p>Nenhum visitante no período</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const iconeDispositivo = {
+                'desktop': 'fa-desktop',
+                'mobile': 'fa-mobile-alt',
+                'tablet': 'fa-tablet-alt'
+            };
+
+            tbody.innerHTML = dados.map(v => `
+                <tr class="border-b border-gray-800 hover:bg-gray-800/50">
+                    <td class="py-3 px-2">
+                        <span class="text-gray-400 font-mono text-sm">${escapeHtml(v.visitor_id)}</span>
+                    </td>
+                    <td class="py-3 px-2">
+                        <span class="text-white">
+                            <i class="fas ${iconeDispositivo[v.dispositivo] || 'fa-question'} text-gray-500 mr-1"></i>
+                            ${escapeHtml(v.navegador) || 'N/A'}
+                        </span>
+                        <div class="text-xs text-gray-500">${escapeHtml(v.sistema_operacional) || ''}</div>
+                    </td>
+                    <td class="py-3 px-2">
+                        <div class="flex flex-wrap gap-1">
+                            ${(v.paginas_visitadas || []).slice(0, 3).map(p => `
+                                <span class="px-2 py-0.5 bg-gray-700 text-gray-300 rounded text-xs">${escapeHtml(p)}</span>
+                            `).join('')}
+                            ${(v.paginas_visitadas || []).length > 3 ? `<span class="text-gray-500 text-xs">+${v.paginas_visitadas.length - 3}</span>` : ''}
+                        </div>
+                    </td>
+                    <td class="py-3 px-2 text-gray-300">${escapeHtml(v.sessoes)}</td>
+                    <td class="py-3 px-2 text-gray-400 text-sm">
+                        ${formatDate(v.ultima_visita)}
+                    </td>
+                    <td class="py-3 px-2">
+                        ${v.clicou_demo ? '<span class="text-green-400" title="Clicou em Demo"><i class="fas fa-check-circle"></i></span>' : ''}
+                        ${v.clicou_contato ? '<span class="text-blue-400 ml-1" title="Clicou em Contato"><i class="fas fa-envelope"></i></span>' : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Função para escapar HTML e prevenir XSS
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '-';
+            return new Intl.NumberFormat('pt-BR').format(num);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>

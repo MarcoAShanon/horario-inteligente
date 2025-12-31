@@ -271,11 +271,13 @@ try:
     from app.api.parceiros_comerciais import router as parceiros_comerciais_router
     from app.api.custos_operacionais import router as custos_operacionais_router
     from app.api.planos import router as planos_router
+    from app.api.analytics import router as analytics_router
 
     app.include_router(usuarios_internos_router, tags=["Usuarios Internos"])
     app.include_router(parceiros_comerciais_router, tags=["Parceiros Comerciais"])
     app.include_router(custos_operacionais_router, tags=["Custos Operacionais"])
     app.include_router(planos_router, tags=["Planos e Assinaturas"])
+    app.include_router(analytics_router, tags=["Analytics"])
 
     logger.info("✅ Routers principais registrados com sucesso (incluindo Admin, Financeiro e Gestão Interna)")
     
