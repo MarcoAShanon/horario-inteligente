@@ -59,40 +59,65 @@ async def criar_agendamento(
         """), {"tel": telefone_normalizado, "cli_id": cliente_id}).fetchone()
 
         if not paciente:
-            # Criar paciente com campos opcionais (usa cliente_id do usuário)
-            result = db.execute(text("""
-            INSERT INTO pacientes (nome, telefone, cpf, email, data_nascimento, cliente_id, convenio, criado_em, atualizado_em)
-            VALUES (:nome, :tel, :cpf, :email, :data_nasc, :cli_id, 'Particular', NOW(), NOW())
-            RETURNING id
-            """), {
-                "nome": dados.paciente_nome,
-                "tel": telefone_normalizado,  # Usa telefone normalizado
-                "cpf": dados.paciente_cpf,
-                "email": dados.paciente_email,
-                "data_nasc": dados.paciente_data_nascimento,
-                "cli_id": cliente_id
-            })
-            paciente_id = result.scalar()
+            # Verificar se telefone já existe (pode ser de outro cliente)
+            paciente_existente = db.execute(text("""
+                SELECT id, cliente_id FROM pacientes WHERE telefone = :tel LIMIT 1
+            """), {"tel": telefone_normalizado}).fetchone()
+
+            if paciente_existente:
+                # Telefone já existe - usar o paciente existente
+                paciente_id = paciente_existente.id
+            else:
+                # Criar paciente novo
+                try:
+                    result = db.execute(text("""
+                    INSERT INTO pacientes (nome, telefone, cpf, email, data_nascimento, cliente_id, convenio, preferencia_audio, criado_em, atualizado_em)
+                    VALUES (:nome, :tel, :cpf, :email, :data_nasc, :cli_id, 'Particular', 'auto', NOW(), NOW())
+                    RETURNING id
+                    """), {
+                        "nome": dados.paciente_nome,
+                        "tel": telefone_normalizado,
+                        "cpf": getattr(dados, 'paciente_cpf', None),
+                        "email": getattr(dados, 'paciente_email', None),
+                        "data_nasc": getattr(dados, 'paciente_data_nascimento', None),
+                        "cli_id": cliente_id
+                    })
+                    paciente_id = result.scalar()
+                except Exception as sql_error:
+                    db.rollback()
+                    return {"sucesso": False, "erro": f"Erro ao criar paciente: {str(sql_error)}"}
         else:
             paciente_id = paciente.id
             # Atualizar paciente se campos adicionais foram fornecidos
-            if dados.paciente_cpf or dados.paciente_email or dados.paciente_data_nascimento:
+            cpf = getattr(dados, 'paciente_cpf', None)
+            email = getattr(dados, 'paciente_email', None)
+            data_nasc = getattr(dados, 'paciente_data_nascimento', None)
+            if cpf or email or data_nasc:
                 db.execute(text("""
-                    UPDATE pacientes 
+                    UPDATE pacientes
                     SET cpf = COALESCE(:cpf, cpf),
                         email = COALESCE(:email, email),
                         data_nascimento = COALESCE(:data_nasc, data_nascimento),
                         atualizado_em = NOW()
                     WHERE id = :pac_id
                 """), {
-                    "cpf": dados.paciente_cpf,
-                    "email": dados.paciente_email,
-                    "data_nasc": dados.paciente_data_nascimento,
+                    "cpf": cpf,
+                    "email": email,
+                    "data_nasc": data_nasc,
                     "pac_id": paciente_id
                 })
         
         # Criar agendamento - TIMEZONE-AWARE (horário de Brasília)
         data_hora_tz = parse_datetime_brazil(dados.data, dados.hora)
+
+        # VALIDAÇÃO: Não permitir agendamentos no passado
+        from datetime import datetime
+        import pytz
+        tz_brazil = pytz.timezone('America/Sao_Paulo')
+        agora = datetime.now(tz_brazil)
+
+        if data_hora_tz < agora:
+            return {"sucesso": False, "erro": "Não é possível agendar para datas ou horários passados"}
 
         result = db.execute(text("""
             INSERT INTO agendamentos
@@ -362,6 +387,15 @@ async def atualizar_agendamento(
         if dados.data and dados.hora:
             # Realocação de data/hora (timezone-aware)
             nova_data_hora_tz = parse_datetime_brazil(dados.data, dados.hora)
+
+            # VALIDAÇÃO: Não permitir reagendamento para o passado
+            from datetime import datetime
+            import pytz
+            tz_brazil = pytz.timezone('America/Sao_Paulo')
+            agora = datetime.now(tz_brazil)
+
+            if nova_data_hora_tz < agora:
+                return {"sucesso": False, "erro": "Não é possível reagendar para datas ou horários passados"}
 
             # Verificar disponibilidade do novo horário
             if dados.medico_id or agendamento.medico_id:

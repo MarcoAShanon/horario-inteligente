@@ -41,7 +41,7 @@ class AgendamentoService:
 
         agendamento_conflitante = self.db.query(Agendamento).filter(
             Agendamento.medico_id == medico_id,
-            Agendamento.status.in_(['agendado', 'confirmado']),
+            Agendamento.status.in_(['agendado', 'agendada', 'confirmado', 'confirmada', 'pendente']),
             or_(
                 # Novo agendamento começa durante um existente
                 and_(

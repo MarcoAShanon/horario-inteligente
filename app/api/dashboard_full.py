@@ -116,7 +116,7 @@ async def get_dashboard_stats(
     proxima = db.query(Agendamento).join(Paciente).filter(
         Agendamento.medico_id == medico.id,
         Agendamento.data_hora >= datetime.now(),
-        Agendamento.status == 'confirmado'
+        Agendamento.status.in_(['confirmado', 'confirmada', 'agendada'])
     ).order_by(Agendamento.data_hora).first()
 
     proxima_consulta = None
@@ -220,7 +220,7 @@ async def update_status_agendamento(
     if not agendamento:
         raise HTTPException(status_code=404, detail="Agendamento não encontrado")
     
-    status_validos = ['confirmado', 'cancelado', 'em_atendimento', 'concluido', 'faltou']
+    status_validos = ['confirmado', 'confirmada', 'cancelado', 'cancelada', 'em_atendimento', 'concluido', 'concluida', 'realizada', 'faltou', 'agendada']
     if status not in status_validos:
         raise HTTPException(status_code=400, detail=f"Status inválido. Use: {status_validos}")
     

@@ -110,7 +110,7 @@ async def get_stats(
             JOIN pacientes p ON a.paciente_id = p.id
             WHERE a.medico_id = :medico_id
             AND a.data_hora >= NOW()
-            AND a.status = 'confirmado'
+            AND a.status IN ('confirmado', 'confirmada', 'agendada')
             AND p.cliente_id = :cliente_id
             ORDER BY a.data_hora
             LIMIT 1
@@ -121,7 +121,7 @@ async def get_stats(
             FROM agendamentos a
             JOIN pacientes p ON a.paciente_id = p.id
             WHERE a.data_hora >= NOW()
-            AND a.status = 'confirmado'
+            AND a.status IN ('confirmado', 'confirmada', 'agendada')
             AND p.cliente_id = :cliente_id
             ORDER BY a.data_hora
             LIMIT 1
@@ -258,12 +258,13 @@ async def get_metricas_periodo(
     filtro_medico = "AND a.medico_id = :medico_id" if medico_id else ""
 
     # Total de agendamentos no período
+    # Nota: 'realizada' implica que foi 'confirmada' antes, então conta em ambos
     query_total = text(f"""
         SELECT
             COUNT(*) as total,
-            SUM(CASE WHEN a.status = 'confirmado' THEN 1 ELSE 0 END) as confirmados,
-            SUM(CASE WHEN a.status = 'concluido' THEN 1 ELSE 0 END) as concluidos,
-            SUM(CASE WHEN a.status = 'cancelado' THEN 1 ELSE 0 END) as cancelados,
+            SUM(CASE WHEN a.status IN ('confirmado', 'confirmada', 'realizada', 'concluido', 'concluida') THEN 1 ELSE 0 END) as confirmados,
+            SUM(CASE WHEN a.status IN ('concluido', 'concluida', 'realizada') THEN 1 ELSE 0 END) as concluidos,
+            SUM(CASE WHEN a.status IN ('cancelado', 'cancelada') THEN 1 ELSE 0 END) as cancelados,
             SUM(CASE WHEN a.status = 'remarcado' THEN 1 ELSE 0 END) as remarcados,
             SUM(CASE WHEN a.status = 'faltou' THEN 1 ELSE 0 END) as faltou
         FROM agendamentos a
