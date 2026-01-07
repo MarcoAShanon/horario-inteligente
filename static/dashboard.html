@@ -329,6 +329,59 @@
                         </div>
                     </div>
 
+                    <!-- Gráfico Previsto vs Realizado -->
+                    <div class="bg-white p-6 rounded-lg shadow-lg mb-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-lg font-bold text-gray-800">
+                                <i class="fas fa-chart-bar text-emerald-500 mr-2"></i>
+                                Previsto vs Realizado
+                            </h4>
+                            <select id="mesFaturamentoPrevisto" class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-emerald-500" onchange="carregarPrevistoRealizado()">
+                                <!-- Opções serão preenchidas dinamicamente -->
+                            </select>
+                        </div>
+
+                        <!-- Cards de resumo -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <div class="bg-blue-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-blue-600 font-medium">Previsto</p>
+                                <p class="text-lg font-bold text-blue-700" id="previstoValor">R$ 0</p>
+                                <p class="text-xs text-blue-500" id="previstoQtd">0 consultas</p>
+                            </div>
+                            <div class="bg-green-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-green-600 font-medium">Realizado</p>
+                                <p class="text-lg font-bold text-green-700" id="realizadoValor">R$ 0</p>
+                                <p class="text-xs text-green-500" id="realizadoQtd">0 consultas</p>
+                            </div>
+                            <div class="bg-yellow-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-yellow-600 font-medium">Pendente</p>
+                                <p class="text-lg font-bold text-yellow-700" id="pendenteValor">R$ 0</p>
+                                <p class="text-xs text-yellow-500" id="pendenteQtd">0 consultas</p>
+                            </div>
+                            <div class="bg-red-50 rounded-lg p-3 text-center">
+                                <p class="text-xs text-red-600 font-medium">Perdido</p>
+                                <p class="text-lg font-bold text-red-700" id="perdidoValor">R$ 0</p>
+                                <p class="text-xs text-red-500" id="perdidoQtd">0 consultas</p>
+                            </div>
+                        </div>
+
+                        <!-- Gráfico de barras -->
+                        <div class="relative" style="height: 250px;">
+                            <canvas id="chartPrevistoRealizado"></canvas>
+                        </div>
+
+                        <!-- Barra de progresso -->
+                        <div class="mt-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-gray-600">Realizado vs Previsto</span>
+                                <span class="text-sm font-bold text-emerald-600" id="percentualRealizadoFinanceiro">0%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                <div class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full transition-all duration-500" id="barraProgressoFinanceiro" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Breakdown por Convênio com Gráfico -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <!-- Gráfico de Pizza -->
@@ -364,6 +417,7 @@
         let chartStatusInstance = null;
         let chartAgendamentosInstance = null;
         let chartFinanceiroInstance = null;
+        let chartPrevistoRealizadoInstance = null;
 
         // Verificar autenticação
         const token = localStorage.getItem('authToken');
@@ -431,6 +485,10 @@
                 renderizarDadosFinanceirosDemo();
                 dadosFinanceirosCarregados = true;
             }
+
+            // Inicializar e carregar gráfico Previsto vs Realizado
+            inicializarSeletorMesPrevisto();
+            carregarPrevistoRealizado();
         }
 
         // Função para renderizar dados financeiros da API
@@ -571,6 +629,168 @@
                                     const percentage = ((value / total) * 100).toFixed(1);
                                     return `${label}: R$ ${value.toLocaleString('pt-BR')} (${percentage}%)`;
                                 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // GRÁFICO PREVISTO VS REALIZADO
+        // ==========================================
+        function inicializarSeletorMesPrevisto() {
+            const select = document.getElementById('mesFaturamentoPrevisto');
+            if (!select) return;
+
+            const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            const hoje = new Date();
+            const anoAtual = hoje.getFullYear();
+            const mesAtual = hoje.getMonth();
+
+            // Opções: 3 meses anteriores + mês atual + 2 próximos meses
+            for (let i = -3; i <= 2; i++) {
+                let mes = mesAtual + i;
+                let ano = anoAtual;
+                if (mes < 0) { mes += 12; ano--; }
+                if (mes > 11) { mes -= 12; ano++; }
+
+                const option = document.createElement('option');
+                option.value = `${ano}-${mes + 1}`;
+                option.textContent = `${meses[mes]} ${ano}`;
+                if (i === 0) option.selected = true;
+                select.appendChild(option);
+            }
+        }
+
+        async function carregarPrevistoRealizado() {
+            const select = document.getElementById('mesFaturamentoPrevisto');
+            if (!select || !select.value) return;
+
+            const [ano, mes] = select.value.split('-').map(Number);
+
+            try {
+                const response = await fetch(`/api/dashboard/financeiro/resumo?mes=${mes}&ano=${ano}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar dados');
+
+                const data = await response.json();
+                atualizarUIPrevistoRealizado(data);
+                renderizarGraficoPrevistoRealizado(data);
+
+            } catch (error) {
+                console.error('Erro ao carregar previsto/realizado:', error);
+                // Mostrar dados zerados em caso de erro
+                atualizarUIPrevistoRealizado({
+                    previsto: { total_consultas: 0, valor: 0 },
+                    realizado: { total_consultas: 0, valor: 0 },
+                    pendente: { total_consultas: 0, valor: 0 },
+                    perdido: { total_consultas: 0, valor: 0 },
+                    percentual_realizado: 0
+                });
+            }
+        }
+
+        function formatarMoedaBR(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor || 0);
+        }
+
+        function atualizarUIPrevistoRealizado(data) {
+            // Atualizar cards
+            document.getElementById('previstoValor').textContent = formatarMoedaBR(data.previsto?.valor);
+            document.getElementById('previstoQtd').textContent = `${data.previsto?.total_consultas || 0} consultas`;
+
+            document.getElementById('realizadoValor').textContent = formatarMoedaBR(data.realizado?.valor);
+            document.getElementById('realizadoQtd').textContent = `${data.realizado?.total_consultas || 0} consultas`;
+
+            document.getElementById('pendenteValor').textContent = formatarMoedaBR(data.pendente?.valor);
+            document.getElementById('pendenteQtd').textContent = `${data.pendente?.total_consultas || 0} consultas`;
+
+            document.getElementById('perdidoValor').textContent = formatarMoedaBR(data.perdido?.valor);
+            document.getElementById('perdidoQtd').textContent = `${data.perdido?.total_consultas || 0} consultas`;
+
+            // Atualizar barra de progresso
+            const percentual = Math.min(100, data.percentual_realizado || 0);
+            document.getElementById('percentualRealizadoFinanceiro').textContent = `${percentual.toFixed(1)}%`;
+            document.getElementById('barraProgressoFinanceiro').style.width = `${percentual}%`;
+        }
+
+        function renderizarGraficoPrevistoRealizado(data) {
+            const canvas = document.getElementById('chartPrevistoRealizado');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+
+            // Destruir gráfico anterior se existir
+            if (chartPrevistoRealizadoInstance) {
+                chartPrevistoRealizadoInstance.destroy();
+            }
+
+            chartPrevistoRealizadoInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Previsto', 'Realizado', 'Pendente', 'Perdido'],
+                    datasets: [{
+                        label: 'Valor (R$)',
+                        data: [
+                            data.previsto?.valor || 0,
+                            data.realizado?.valor || 0,
+                            data.pendente?.valor || 0,
+                            data.perdido?.valor || 0
+                        ],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.8)',   // Azul - Previsto
+                            'rgba(34, 197, 94, 0.8)',   // Verde - Realizado
+                            'rgba(234, 179, 8, 0.8)',   // Amarelo - Pendente
+                            'rgba(239, 68, 68, 0.8)'    // Vermelho - Perdido
+                        ],
+                        borderColor: [
+                            'rgb(59, 130, 246)',
+                            'rgb(34, 197, 94)',
+                            'rgb(234, 179, 8)',
+                            'rgb(239, 68, 68)'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        barThickness: 50
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return formatarMoedaBR(context.raw);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'R$ ' + value.toLocaleString('pt-BR');
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
                             }
                         }
                     }

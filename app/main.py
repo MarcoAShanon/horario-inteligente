@@ -2,6 +2,9 @@
 Sistema Horário Inteligente SaaS - API Principal
 Arquivo: app/main.py
 """
+# Versão dos assets estáticos - incrementar para forçar atualização do cache nos navegadores
+STATIC_VERSION = "20260107"
+
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
@@ -426,14 +429,14 @@ async def root(request: Request):
         # Servir o site comercial (landing page)
         return FileResponse("static/index.html")
     elif is_admin or subdomain == 'admin':
-        # Redirecionar para login admin
-        return RedirectResponse(url="/static/admin/login.html", status_code=302)
+        # Redirecionar para login admin (com versão para cache bust)
+        return RedirectResponse(url=f"/static/admin/login.html?v={STATIC_VERSION}", status_code=302)
     elif is_demo or subdomain == 'demo':
-        # Redirecionar para página de demo
-        return RedirectResponse(url="/static/demo/index.html", status_code=302)
+        # Redirecionar para página de demo (com versão para cache bust)
+        return RedirectResponse(url=f"/static/demo/index.html?v={STATIC_VERSION}", status_code=302)
     else:
-        # Redirecionar para login do cliente (subdomínios)
-        return RedirectResponse(url="/static/login.html", status_code=302)
+        # Redirecionar para login do cliente (com versão para cache bust)
+        return RedirectResponse(url=f"/static/login.html?v={STATIC_VERSION}", status_code=302)
 
 @app.get("/sistema/status", tags=["Status"])
 async def status_sistema():

@@ -513,3 +513,155 @@ async def get_horarios():
         {"dia_semana": 3, "dia": "Quinta", "inicio": "08:00", "fim": "18:00", "ativo": True},
         {"dia_semana": 4, "dia": "Sexta", "inicio": "08:00", "fim": "18:00", "ativo": True},
     ]
+
+
+@router.get("/financeiro/resumo")
+async def get_resumo_financeiro(
+    mes: Optional[int] = None,
+    ano: Optional[int] = None,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna resumo financeiro: Previsto vs Realizado
+
+    - Previsto: soma dos valores de todos os agendamentos do mês (exceto cancelados)
+    - Realizado: soma dos valores de agendamentos realizados/confirmados
+    """
+    # Determinar mês/ano (padrão: mês atual)
+    hoje = date.today()
+    mes = mes or hoje.month
+    ano = ano or hoje.year
+
+    # Primeiro e último dia do mês
+    primeiro_dia = date(ano, mes, 1)
+    if mes == 12:
+        ultimo_dia = date(ano + 1, 1, 1) - timedelta(days=1)
+    else:
+        ultimo_dia = date(ano, mes + 1, 1) - timedelta(days=1)
+
+    # Filtro por médico (se for médico, vê apenas seus dados)
+    user_type = current_user.get("tipo")
+    user_id = current_user.get("id")
+    cliente_id = current_user.get("cliente_id")
+    medico_id = user_id if user_type == "medico" else None
+
+    # Query base
+    medico_filter = "AND a.medico_id = :medico_id" if medico_id else ""
+
+    # PREVISTO: todos os agendamentos do mês (exceto cancelados)
+    result_previsto = db.execute(text(f"""
+        SELECT
+            COUNT(*) as total_consultas,
+            COALESCE(SUM(CAST(NULLIF(a.valor_consulta, '') AS DECIMAL)), 0) as valor_total
+        FROM agendamentos a
+        JOIN pacientes p ON a.paciente_id = p.id
+        WHERE DATE(a.data_hora) >= :primeiro_dia
+        AND DATE(a.data_hora) <= :ultimo_dia
+        AND a.status NOT IN ('cancelado', 'cancelada')
+        AND p.cliente_id = :cliente_id
+        {medico_filter}
+    """), {
+        "primeiro_dia": primeiro_dia,
+        "ultimo_dia": ultimo_dia,
+        "cliente_id": cliente_id,
+        "medico_id": medico_id
+    }).fetchone()
+
+    total_previsto = int(result_previsto[0]) if result_previsto[0] else 0
+    valor_previsto = float(result_previsto[1]) if result_previsto[1] else 0.0
+
+    # REALIZADO: apenas agendamentos efetivamente realizados
+    # (status 'realizado' ou 'realizada' indica que a consulta de fato aconteceu)
+    result_realizado = db.execute(text(f"""
+        SELECT
+            COUNT(*) as total_consultas,
+            COALESCE(SUM(CAST(NULLIF(a.valor_consulta, '') AS DECIMAL)), 0) as valor_total
+        FROM agendamentos a
+        JOIN pacientes p ON a.paciente_id = p.id
+        WHERE DATE(a.data_hora) >= :primeiro_dia
+        AND DATE(a.data_hora) <= :ultimo_dia
+        AND a.status IN ('realizado', 'realizada', 'concluido', 'concluida')
+        AND p.cliente_id = :cliente_id
+        {medico_filter}
+    """), {
+        "primeiro_dia": primeiro_dia,
+        "ultimo_dia": ultimo_dia,
+        "cliente_id": cliente_id,
+        "medico_id": medico_id
+    }).fetchone()
+
+    total_realizado = int(result_realizado[0]) if result_realizado[0] else 0
+    valor_realizado = float(result_realizado[1]) if result_realizado[1] else 0.0
+
+    # PENDENTES: agendados/confirmados mas ainda não realizados
+    # (incluindo consultas confirmadas que ainda não aconteceram ou não foram marcadas como realizadas)
+    result_pendente = db.execute(text(f"""
+        SELECT
+            COUNT(*) as total_consultas,
+            COALESCE(SUM(CAST(NULLIF(a.valor_consulta, '') AS DECIMAL)), 0) as valor_total
+        FROM agendamentos a
+        JOIN pacientes p ON a.paciente_id = p.id
+        WHERE DATE(a.data_hora) >= :primeiro_dia
+        AND DATE(a.data_hora) <= :ultimo_dia
+        AND a.status IN ('agendado', 'agendada', 'pendente', 'confirmado', 'confirmada')
+        AND p.cliente_id = :cliente_id
+        {medico_filter}
+    """), {
+        "primeiro_dia": primeiro_dia,
+        "ultimo_dia": ultimo_dia,
+        "cliente_id": cliente_id,
+        "medico_id": medico_id
+    }).fetchone()
+
+    total_pendente = int(result_pendente[0]) if result_pendente[0] else 0
+    valor_pendente = float(result_pendente[1]) if result_pendente[1] else 0.0
+
+    # CANCELADOS/FALTAS
+    result_perdido = db.execute(text(f"""
+        SELECT
+            COUNT(*) as total_consultas,
+            COALESCE(SUM(CAST(NULLIF(a.valor_consulta, '') AS DECIMAL)), 0) as valor_total
+        FROM agendamentos a
+        JOIN pacientes p ON a.paciente_id = p.id
+        WHERE DATE(a.data_hora) >= :primeiro_dia
+        AND DATE(a.data_hora) <= :ultimo_dia
+        AND a.status IN ('cancelado', 'cancelada', 'faltou')
+        AND p.cliente_id = :cliente_id
+        {medico_filter}
+    """), {
+        "primeiro_dia": primeiro_dia,
+        "ultimo_dia": ultimo_dia,
+        "cliente_id": cliente_id,
+        "medico_id": medico_id
+    }).fetchone()
+
+    total_perdido = int(result_perdido[0]) if result_perdido[0] else 0
+    valor_perdido = float(result_perdido[1]) if result_perdido[1] else 0.0
+
+    # Calcular percentual realizado
+    percentual_realizado = (valor_realizado / valor_previsto * 100) if valor_previsto > 0 else 0
+
+    return {
+        "mes": mes,
+        "ano": ano,
+        "mes_nome": ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes],
+        "previsto": {
+            "total_consultas": total_previsto,
+            "valor": round(valor_previsto, 2)
+        },
+        "realizado": {
+            "total_consultas": total_realizado,
+            "valor": round(valor_realizado, 2)
+        },
+        "pendente": {
+            "total_consultas": total_pendente,
+            "valor": round(valor_pendente, 2)
+        },
+        "perdido": {
+            "total_consultas": total_perdido,
+            "valor": round(valor_perdido, 2)
+        },
+        "percentual_realizado": round(percentual_realizado, 1)
+    }
