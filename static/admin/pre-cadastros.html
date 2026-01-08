@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pré-Cadastros - Admin - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: #0f172a;
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/admin/dashboard.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-teal-500">
+                    <i class="fas fa-user-plus text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Pré-Cadastros</h1>
+                    <p class="text-sm text-gray-400">Leads do Pré-Lançamento</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button
+                    onclick="exportarCSV()"
+                    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                >
+                    <i class="fas fa-download"></i>
+                    <span class="hidden sm:inline">Exportar CSV</span>
+                </button>
+                <button
+                    onclick="logout()"
+                    class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center gap-2"
+                >
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="hidden sm:inline">Sair</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Estatísticas -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            <!-- Total -->
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-users text-2xl text-blue-500"></i>
+                    <span class="text-2xl font-bold text-white" id="statTotal">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Total</p>
+            </div>
+
+            <!-- Hoje -->
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-calendar-day text-2xl text-green-500"></i>
+                    <span class="text-2xl font-bold text-white" id="statHoje">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Hoje</p>
+            </div>
+
+            <!-- Últimos 7 dias -->
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-chart-line text-2xl text-purple-500"></i>
+                    <span class="text-2xl font-bold text-white" id="stat7Dias">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">7 dias</p>
+            </div>
+
+            <!-- Pendentes -->
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-clock text-2xl text-yellow-500"></i>
+                    <span class="text-2xl font-bold text-white" id="statPendentes">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Pendentes</p>
+            </div>
+
+            <!-- Confirmados -->
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-check-circle text-2xl text-teal-500"></i>
+                    <span class="text-2xl font-bold text-white" id="statConfirmados">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Confirmados</p>
+            </div>
+
+            <!-- Convertidos -->
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-star text-2xl text-pink-500"></i>
+                    <span class="text-2xl font-bold text-white" id="statConvertidos">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Convertidos</p>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="bg-gray-900 rounded-lg p-4 border border-gray-800 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Profissão -->
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Profissão</label>
+                    <select id="filtroProfissao" onchange="carregarDados()" class="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Todas</option>
+                        <option value="Médico(a)">Médico(a)</option>
+                        <option value="Dentista">Dentista</option>
+                        <option value="Psicólogo(a)">Psicólogo(a)</option>
+                        <option value="Fisioterapeuta">Fisioterapeuta</option>
+                        <option value="Nutricionista">Nutricionista</option>
+                        <option value="Fonoaudiólogo(a)">Fonoaudiólogo(a)</option>
+                        <option value="Outro profissional de saúde">Outro</option>
+                    </select>
+                </div>
+
+                <!-- Origem -->
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Origem</label>
+                    <select id="filtroOrigem" onchange="carregarDados()" class="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Todas</option>
+                        <option value="Instagram">Instagram</option>
+                        <option value="Facebook">Facebook</option>
+                        <option value="Indicação de colega">Indicação</option>
+                        <option value="Google">Google</option>
+                        <option value="Demo">Demo</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+
+                <!-- Status -->
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Status</label>
+                    <select id="filtroStatus" onchange="carregarDados()" class="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm">
+                        <option value="">Todos</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="confirmado">Confirmado</option>
+                        <option value="convertido">Convertido</option>
+                    </select>
+                </div>
+
+                <!-- Busca -->
+                <div>
+                    <label class="block text-gray-400 text-sm mb-1">Buscar</label>
+                    <input
+                        type="text"
+                        id="filtroBusca"
+                        placeholder="Nome ou email..."
+                        onkeyup="filtrarLocal()"
+                        class="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 text-sm"
+                    >
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela -->
+        <div class="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Nome</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Contato</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase hidden md:table-cell">Profissão</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase hidden lg:table-cell">Cidade</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase hidden lg:table-cell">Origem</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Status</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase hidden md:table-cell">Data</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaBody" class="divide-y divide-gray-800">
+                        <!-- Dados serão inseridos aqui -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            <div class="bg-gray-800 px-4 py-3 flex items-center justify-between">
+                <div class="text-sm text-gray-400">
+                    Mostrando <span id="mostrando">0</span> de <span id="totalRegistros">0</span> registros
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="paginaAnterior()" id="btnAnterior" disabled class="bg-gray-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="text-white px-3 py-1">Página <span id="paginaAtual">1</span></span>
+                    <button onclick="proximaPagina()" id="btnProxima" class="bg-gray-700 text-white px-3 py-1 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos por Profissão e Origem -->
+        <div class="grid md:grid-cols-2 gap-6 mt-8">
+            <!-- Por Profissão -->
+            <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i class="fas fa-user-md mr-2 text-blue-500"></i>Por Profissão
+                </h3>
+                <div id="chartProfissao" class="space-y-3">
+                    <!-- Barras serão inseridas aqui -->
+                </div>
+            </div>
+
+            <!-- Por Origem -->
+            <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">
+                    <i class="fas fa-chart-pie mr-2 text-purple-500"></i>Por Origem
+                </h3>
+                <div id="chartOrigem" class="space-y-3">
+                    <!-- Barras serão inseridas aqui -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Estado da aplicação
+        let dados = [];
+        let paginaAtualNum = 1;
+        const itensPorPagina = 20;
+
+        // Verificar autenticação
+        const token = localStorage.getItem('adminToken');
+        if (!token) {
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Logout
+        function logout() {
+            localStorage.removeItem('adminToken');
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Carregar dados
+        async function carregarDados() {
+            try {
+                // Construir query params
+                const params = new URLSearchParams();
+                params.append('limit', '200');
+
+                const profissao = document.getElementById('filtroProfissao').value;
+                const origem = document.getElementById('filtroOrigem').value;
+                const status = document.getElementById('filtroStatus').value;
+
+                if (profissao) params.append('profissao', profissao);
+                if (origem) params.append('origem', origem);
+                if (status) params.append('status', status);
+
+                const response = await fetch(`/api/v1/pre-cadastros?${params.toString()}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    logout();
+                    return;
+                }
+
+                dados = await response.json();
+                paginaAtualNum = 1;
+                renderizarTabela();
+                carregarEstatisticas();
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+            }
+        }
+
+        // Carregar estatísticas
+        async function carregarEstatisticas() {
+            try {
+                const response = await fetch('/api/v1/pre-cadastros/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) return;
+
+                const stats = await response.json();
+
+                document.getElementById('statTotal').textContent = stats.total || 0;
+                document.getElementById('statHoje').textContent = stats.hoje || 0;
+                document.getElementById('stat7Dias').textContent = stats.ultimos_7_dias || 0;
+                document.getElementById('statPendentes').textContent = stats.por_status?.pendente || 0;
+                document.getElementById('statConfirmados').textContent = stats.por_status?.confirmado || 0;
+                document.getElementById('statConvertidos').textContent = stats.por_status?.convertido || 0;
+
+                // Renderizar gráficos
+                renderizarGrafico('chartProfissao', stats.por_profissao || {}, ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899']);
+                renderizarGrafico('chartOrigem', stats.por_origem || {}, ['#EC4899', '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4']);
+            } catch (error) {
+                console.error('Erro ao carregar estatísticas:', error);
+            }
+        }
+
+        // Renderizar gráfico de barras simples
+        function renderizarGrafico(containerId, data, colors) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            const entries = Object.entries(data).sort((a, b) => b[1] - a[1]);
+            const max = entries.length > 0 ? entries[0][1] : 1;
+
+            entries.forEach(([label, value], index) => {
+                const percentage = (value / max) * 100;
+                const color = colors[index % colors.length];
+
+                container.innerHTML += `
+                    <div class="flex items-center gap-3">
+                        <div class="w-24 text-sm text-gray-400 truncate" title="${label}">${label}</div>
+                        <div class="flex-1 bg-gray-800 rounded-full h-4 overflow-hidden">
+                            <div class="h-full rounded-full transition-all duration-500" style="width: ${percentage}%; background-color: ${color}"></div>
+                        </div>
+                        <div class="w-8 text-sm text-white text-right">${value}</div>
+                    </div>
+                `;
+            });
+
+            if (entries.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">Sem dados</p>';
+            }
+        }
+
+        // Renderizar tabela
+        function renderizarTabela() {
+            const busca = document.getElementById('filtroBusca').value.toLowerCase();
+            let dadosFiltrados = dados;
+
+            if (busca) {
+                dadosFiltrados = dados.filter(d =>
+                    d.nome.toLowerCase().includes(busca) ||
+                    d.email.toLowerCase().includes(busca)
+                );
+            }
+
+            const inicio = (paginaAtualNum - 1) * itensPorPagina;
+            const fim = inicio + itensPorPagina;
+            const dadosPagina = dadosFiltrados.slice(inicio, fim);
+
+            const tbody = document.getElementById('tabelaBody');
+            tbody.innerHTML = '';
+
+            if (dadosPagina.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                            <i class="fas fa-inbox text-4xl mb-2"></i>
+                            <p>Nenhum pré-cadastro encontrado</p>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                dadosPagina.forEach(item => {
+                    const statusClass = {
+                        'pendente': 'bg-yellow-500/20 text-yellow-400',
+                        'confirmado': 'bg-teal-500/20 text-teal-400',
+                        'convertido': 'bg-pink-500/20 text-pink-400'
+                    }[item.status] || 'bg-gray-500/20 text-gray-400';
+
+                    const dataFormatada = new Date(item.data_cadastro).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-gray-800/50 transition animate-fadeIn">
+                            <td class="px-4 py-3">
+                                <div class="text-white font-medium">${item.nome}</div>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="text-sm text-gray-300">${item.email}</div>
+                                <div class="text-xs text-gray-500">${item.whatsapp}</div>
+                            </td>
+                            <td class="px-4 py-3 hidden md:table-cell">
+                                <span class="text-sm text-gray-300">${item.profissao}</span>
+                            </td>
+                            <td class="px-4 py-3 hidden lg:table-cell">
+                                <span class="text-sm text-gray-400">${item.cidade_estado}</span>
+                            </td>
+                            <td class="px-4 py-3 hidden lg:table-cell">
+                                <span class="text-sm text-gray-400">${item.origem || '-'}</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">
+                                    ${item.status}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 hidden md:table-cell">
+                                <span class="text-xs text-gray-500">${dataFormatada}</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <div class="flex gap-1">
+                                    <button onclick="abrirWhatsApp('${item.whatsapp}')" class="p-2 text-green-500 hover:bg-green-500/20 rounded transition" title="WhatsApp">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </button>
+                                    <button onclick="alterarStatus(${item.id}, '${item.status}')" class="p-2 text-blue-500 hover:bg-blue-500/20 rounded transition" title="Alterar Status">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Atualizar info de paginação
+            document.getElementById('mostrando').textContent = dadosPagina.length;
+            document.getElementById('totalRegistros').textContent = dadosFiltrados.length;
+            document.getElementById('paginaAtual').textContent = paginaAtualNum;
+
+            // Atualizar botões de paginação
+            document.getElementById('btnAnterior').disabled = paginaAtualNum <= 1;
+            document.getElementById('btnProxima').disabled = fim >= dadosFiltrados.length;
+        }
+
+        // Filtrar localmente (busca)
+        function filtrarLocal() {
+            paginaAtualNum = 1;
+            renderizarTabela();
+        }
+
+        // Navegação de páginas
+        function paginaAnterior() {
+            if (paginaAtualNum > 1) {
+                paginaAtualNum--;
+                renderizarTabela();
+            }
+        }
+
+        function proximaPagina() {
+            const busca = document.getElementById('filtroBusca').value.toLowerCase();
+            let dadosFiltrados = dados;
+            if (busca) {
+                dadosFiltrados = dados.filter(d =>
+                    d.nome.toLowerCase().includes(busca) ||
+                    d.email.toLowerCase().includes(busca)
+                );
+            }
+
+            if (paginaAtualNum * itensPorPagina < dadosFiltrados.length) {
+                paginaAtualNum++;
+                renderizarTabela();
+            }
+        }
+
+        // Abrir WhatsApp
+        function abrirWhatsApp(numero) {
+            const numeroLimpo = numero.replace(/\D/g, '');
+            const numeroCompleto = numeroLimpo.startsWith('55') ? numeroLimpo : '55' + numeroLimpo;
+            window.open(`https://wa.me/${numeroCompleto}`, '_blank');
+        }
+
+        // Alterar Status
+        async function alterarStatus(id, statusAtual) {
+            const opcoes = ['pendente', 'confirmado', 'convertido'];
+            const novoStatus = prompt(`Status atual: ${statusAtual}\n\nDigite o novo status:\n- pendente\n- confirmado\n- convertido`);
+
+            if (!novoStatus || !opcoes.includes(novoStatus.toLowerCase())) {
+                if (novoStatus) alert('Status inválido. Use: pendente, confirmado ou convertido');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/pre-cadastros/${id}/status?novo_status=${novoStatus.toLowerCase()}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    carregarDados();
+                } else {
+                    alert('Erro ao atualizar status');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao atualizar status');
+            }
+        }
+
+        // Exportar CSV
+        function exportarCSV() {
+            window.open(`/api/v1/pre-cadastros/export?formato=csv`, '_blank');
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarDados();
+        });
+    </script>
+</body>
+</html>

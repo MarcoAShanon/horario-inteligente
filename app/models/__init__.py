@@ -26,6 +26,7 @@ from app.models.parceiro_comercial import ParceiroComercial
 from app.models.cliente_parceiro import ClienteParceiro
 from app.models.custo_operacional import CustoOperacional
 from app.models.log_auditoria import LogAuditoria
+from app.models.pre_cadastro import PreCadastro
 
 __all__ = [
     "Base",
@@ -49,5 +50,7 @@ __all__ = [
     "LogAuditoria",
     # Models de Planos e Assinaturas
     "Plano",
-    "Assinatura"
+    "Assinatura",
+    # Model de Pré-Cadastro
+    "PreCadastro"
 ]

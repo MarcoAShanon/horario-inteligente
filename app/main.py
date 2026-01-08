@@ -282,6 +282,11 @@ try:
     app.include_router(planos_router, tags=["Planos e Assinaturas"])
     app.include_router(analytics_router, tags=["Analytics"])
 
+    # Router de Pré-Cadastro (leads de lançamento)
+    from app.api.pre_cadastro import router as pre_cadastro_router
+    app.include_router(pre_cadastro_router, tags=["Pre-Cadastro"])
+    logger.info("✅ Router de pré-cadastro registrado")
+
     logger.info("✅ Routers principais registrados com sucesso (incluindo Admin, Financeiro e Gestão Interna)")
     
 except Exception as e:

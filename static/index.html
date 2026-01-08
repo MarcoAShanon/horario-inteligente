@@ -801,12 +801,242 @@
                 Automatize seus agendamentos com tecnologia de ponta
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="#contato" class="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition">
-                    <i class="fas fa-rocket mr-2"></i>Começar Agora
+                <a href="#pre-cadastro" class="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-gray-100 transition">
+                    <i class="fas fa-rocket mr-2"></i>Garantir Desconto
                 </a>
                 <a href="https://wa.me/5524988493257?text=Olá!%20Quero%20conhecer%20o%20Horário%20Inteligente" target="_blank" class="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-blue-600 transition">
                     <i class="fab fa-whatsapp mr-2"></i>Falar com Vendas
                 </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pre-Cadastro Section -->
+    <section id="pre-cadastro" class="py-20" style="background: linear-gradient(180deg, #EFF6FF 0%, #DBEAFE 100%);">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto">
+                <!-- Header -->
+                <div class="text-center mb-12">
+                    <span class="inline-block bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-semibold mb-4">
+                        <i class="fas fa-gift mr-2"></i>OFERTA EXCLUSIVA DE LANÇAMENTO
+                    </span>
+                    <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+                        Garanta Condições Especiais
+                    </h2>
+                    <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                        Cadastre-se agora e seja o primeiro a saber quando lançarmos - com desconto exclusivo!
+                    </p>
+                </div>
+
+                <!-- Form Card -->
+                <div class="bg-white rounded-2xl shadow-xl p-8 md:p-12">
+                    <form id="pre-cadastro-form" class="space-y-6">
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <!-- Nome -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    Nome Completo <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="pc-nome"
+                                    required
+                                    minlength="3"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    placeholder="Dr. João Silva"
+                                >
+                            </div>
+
+                            <!-- Email -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    Email <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="email"
+                                    id="pc-email"
+                                    required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    placeholder="seu@email.com"
+                                >
+                            </div>
+
+                            <!-- WhatsApp -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    WhatsApp <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="tel"
+                                    id="pc-whatsapp"
+                                    required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    placeholder="(21) 99999-9999"
+                                    maxlength="15"
+                                >
+                            </div>
+
+                            <!-- Profissão -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    Profissão <span class="text-red-500">*</span>
+                                </label>
+                                <select
+                                    id="pc-profissao"
+                                    required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
+                                >
+                                    <option value="">Selecione sua profissão</option>
+                                    <option value="Médico(a)">Médico(a)</option>
+                                    <option value="Dentista">Dentista</option>
+                                    <option value="Psicólogo(a)">Psicólogo(a)</option>
+                                    <option value="Fisioterapeuta">Fisioterapeuta</option>
+                                    <option value="Nutricionista">Nutricionista</option>
+                                    <option value="Fonoaudiólogo(a)">Fonoaudiólogo(a)</option>
+                                    <option value="Outro profissional de saúde">Outro profissional de saúde</option>
+                                </select>
+                            </div>
+
+                            <!-- Cidade/Estado -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    Cidade/Estado <span class="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    id="pc-cidade"
+                                    required
+                                    minlength="3"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    placeholder="São Paulo/SP"
+                                >
+                            </div>
+
+                            <!-- Usa Sistema -->
+                            <div>
+                                <label class="block text-gray-700 font-semibold mb-2">
+                                    Já usa algum sistema de gestão?
+                                </label>
+                                <select
+                                    id="pc-usa-sistema"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
+                                    onchange="toggleSistemaAtual()"
+                                >
+                                    <option value="">Selecione uma opção</option>
+                                    <option value="Não uso nenhum">Não uso nenhum</option>
+                                    <option value="Sim, uso outro sistema">Sim, uso outro sistema</option>
+                                    <option value="Uso planilhas/papel">Uso planilhas/papel</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Nome do Sistema Atual (condicional) -->
+                        <div id="sistema-atual-wrapper" class="hidden">
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Qual sistema você usa atualmente?
+                            </label>
+                            <input
+                                type="text"
+                                id="pc-sistema-atual"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                placeholder="Nome do sistema"
+                            >
+                        </div>
+
+                        <!-- Origem -->
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Como conheceu o Horário Inteligente?
+                            </label>
+                            <select
+                                id="pc-origem"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white"
+                            >
+                                <option value="">Selecione uma opção</option>
+                                <option value="Instagram">Instagram</option>
+                                <option value="Facebook">Facebook</option>
+                                <option value="Indicação de colega">Indicação de colega</option>
+                                <option value="Google">Google</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                        </div>
+
+                        <!-- Aceite -->
+                        <div class="flex items-start gap-3">
+                            <input
+                                type="checkbox"
+                                id="pc-aceite"
+                                required
+                                class="w-5 h-5 mt-1 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            >
+                            <label for="pc-aceite" class="text-gray-600 text-sm">
+                                Aceito receber comunicações sobre o lançamento e concordo com a
+                                <a href="/static/politica-privacidade.html" target="_blank" class="text-blue-600 hover:underline">Política de Privacidade</a>
+                                <span class="text-red-500">*</span>
+                            </label>
+                        </div>
+
+                        <!-- Botão Submit -->
+                        <button
+                            type="submit"
+                            id="pc-submit-btn"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg transition transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                            style="background-color: #10B981;"
+                        >
+                            <i class="fas fa-gift"></i>
+                            QUERO GARANTIR MEU DESCONTO
+                        </button>
+
+                        <!-- Segurança -->
+                        <p class="text-center text-gray-500 text-sm">
+                            <i class="fas fa-lock mr-1"></i>
+                            Seus dados estão seguros. Não enviamos spam.
+                        </p>
+                    </form>
+
+                    <!-- Mensagem de Sucesso (hidden) -->
+                    <div id="pc-success" class="hidden text-center py-8">
+                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="fas fa-check text-green-600 text-4xl"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-4">Cadastro Realizado!</h3>
+                        <p class="text-gray-600 mb-6">
+                            Você está na lista VIP! Verifique seu email para confirmar.<br>
+                            Em breve entraremos em contato com as condições especiais.
+                        </p>
+                        <a href="https://demo.horariointeligente.com.br" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                            <i class="fas fa-play mr-2"></i>Explorar Demo
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Benefícios -->
+                <div class="grid md:grid-cols-4 gap-6 mt-12">
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow">
+                            <i class="fas fa-percent text-green-600 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-gray-800">Desconto na Ativação</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow">
+                            <i class="fas fa-tag text-blue-600 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-gray-800">Preço Promocional</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow">
+                            <i class="fas fa-headset text-purple-600 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-gray-800">Suporte Prioritário</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow">
+                            <i class="fas fa-gift text-pink-600 text-xl"></i>
+                        </div>
+                        <p class="font-semibold text-gray-800">Bônus Exclusivo</p>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -1079,6 +1309,109 @@
                 navigator.serviceWorker.register('/static/service-worker.js')
                     .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
                     .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
+            });
+        }
+
+        // ==================== PRÉ-CADASTRO ====================
+
+        // Máscara de WhatsApp
+        const whatsappInput = document.getElementById('pc-whatsapp');
+        if (whatsappInput) {
+            whatsappInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length > 11) value = value.slice(0, 11);
+
+                if (value.length > 0) {
+                    if (value.length <= 2) {
+                        value = '(' + value;
+                    } else if (value.length <= 7) {
+                        value = '(' + value.slice(0, 2) + ') ' + value.slice(2);
+                    } else {
+                        value = '(' + value.slice(0, 2) + ') ' + value.slice(2, 7) + '-' + value.slice(7);
+                    }
+                }
+
+                e.target.value = value;
+            });
+        }
+
+        // Toggle campo de sistema atual
+        function toggleSistemaAtual() {
+            const usaSistema = document.getElementById('pc-usa-sistema').value;
+            const wrapper = document.getElementById('sistema-atual-wrapper');
+
+            if (usaSistema === 'Sim, uso outro sistema') {
+                wrapper.classList.remove('hidden');
+            } else {
+                wrapper.classList.add('hidden');
+                document.getElementById('pc-sistema-atual').value = '';
+            }
+        }
+
+        // Formulário de Pré-Cadastro
+        const preCadastroForm = document.getElementById('pre-cadastro-form');
+        if (preCadastroForm) {
+            preCadastroForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const submitBtn = document.getElementById('pc-submit-btn');
+                const originalBtnText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processando...';
+                submitBtn.disabled = true;
+
+                const formData = {
+                    nome: document.getElementById('pc-nome').value.trim(),
+                    email: document.getElementById('pc-email').value.trim().toLowerCase(),
+                    whatsapp: document.getElementById('pc-whatsapp').value.trim(),
+                    profissao: document.getElementById('pc-profissao').value,
+                    cidade_estado: document.getElementById('pc-cidade').value.trim(),
+                    usa_sistema: document.getElementById('pc-usa-sistema').value || null,
+                    nome_sistema_atual: document.getElementById('pc-sistema-atual').value.trim() || null,
+                    origem: document.getElementById('pc-origem').value || null,
+                    aceite_comunicacao: document.getElementById('pc-aceite').checked
+                };
+
+                try {
+                    const response = await fetch('/api/v1/pre-cadastro', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        // Sucesso - mostrar mensagem
+                        preCadastroForm.classList.add('hidden');
+                        document.getElementById('pc-success').classList.remove('hidden');
+
+                        // Scroll para mensagem de sucesso
+                        document.getElementById('pc-success').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else if (response.status === 409) {
+                        // Email duplicado
+                        alert('Este email já está cadastrado para o pré-lançamento. Verifique seu email para mais informações!');
+                        submitBtn.innerHTML = originalBtnText;
+                        submitBtn.disabled = false;
+                    } else if (response.status === 429) {
+                        // Rate limit
+                        alert('Muitas tentativas. Aguarde alguns minutos e tente novamente.');
+                        submitBtn.innerHTML = originalBtnText;
+                        submitBtn.disabled = false;
+                    } else {
+                        // Erro de validação ou outro
+                        const errorMsg = data.detail?.message || data.detail || 'Erro ao processar cadastro. Verifique os dados e tente novamente.';
+                        alert(errorMsg);
+                        submitBtn.innerHTML = originalBtnText;
+                        submitBtn.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    alert('Erro de conexão. Verifique sua internet e tente novamente.');
+                    submitBtn.innerHTML = originalBtnText;
+                    submitBtn.disabled = false;
+                }
             });
         }
     </script>
