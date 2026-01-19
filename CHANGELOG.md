@@ -2,6 +2,41 @@
 
 ## [3.6.0] - 2026-01-19
 
+### 🆕 Adicionado
+- **Models de Conversas WhatsApp**: Persistência de conversas e mensagens no PostgreSQL
+  - `Conversa`: cliente_id, paciente_telefone, paciente_nome, status, atendente_id
+  - `Mensagem`: conversa_id, direcao, remetente, tipo, conteudo, midia_url
+  - Enums: `StatusConversa`, `DirecaoMensagem`, `RemetenteMensagem`, `TipoMensagem`
+  - Arquivos: `app/models/conversa.py`, `app/models/mensagem.py`
+
+- **ConversaService**: Service para gerenciar conversas e mensagens
+  - `criar_ou_recuperar_conversa()`: Busca ou cria conversa ativa
+  - `adicionar_mensagem()`: Adiciona mensagem à conversa
+  - `assumir_conversa()`: Atendente assume (desativa IA)
+  - `devolver_para_ia()`: Devolve para IA
+  - `encerrar_conversa()`: Encerra a conversa
+  - `listar_conversas()`: Lista por cliente/status
+  - `buscar_mensagens()`: Mensagens de uma conversa
+  - `marcar_mensagens_como_lidas()`: Marca como lidas
+  - `contar_nao_lidas()`: Conta não lidas
+  - Arquivo: `app/services/conversa_service.py`
+
+- **API REST de Conversas**: Endpoints para painel de atendimento
+  - `GET /api/conversas`: Lista conversas do cliente
+  - `GET /api/conversas/stats`: Estatísticas (ativas, assumidas, não lidas)
+  - `GET /api/conversas/{id}`: Detalhes com mensagens
+  - `POST /api/conversas/{id}/mensagens`: Enviar mensagem (atendente)
+  - `PUT /api/conversas/{id}/assumir`: Assumir conversa
+  - `PUT /api/conversas/{id}/devolver-ia`: Devolver para IA
+  - `PUT /api/conversas/{id}/encerrar`: Encerrar conversa
+  - Arquivo: `app/api/conversas.py`
+
+### 🔒 Segurança
+- **Migração de senhas para bcrypt**: Script para migrar senhas em texto plano
+  - Arquivo: `scripts/hash_medicos_passwords.py`
+- **Removido fallback de texto plano**: `verify_password()` agora rejeita senhas não-bcrypt
+  - Arquivo: `app/api/auth.py`
+
 ### ✅ Corrigido
 - **Webhook WhatsApp API Oficial (Meta Cloud API)**: Corrigido problema de mensagens não chegando ao sistema
   - App não estava assinado na WABA - executado POST em `/subscribed_apps` para assinar

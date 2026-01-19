@@ -287,6 +287,11 @@ try:
     app.include_router(pre_cadastro_router, tags=["Pre-Cadastro"])
     logger.info("✅ Router de pré-cadastro registrado")
 
+    # Router de Conversas WhatsApp (painel de atendimento)
+    from app.api.conversas import router as conversas_router
+    app.include_router(conversas_router, tags=["Conversas WhatsApp"])
+    logger.info("✅ Router de conversas WhatsApp registrado")
+
     logger.info("✅ Routers principais registrados com sucesso (incluindo Admin, Financeiro e Gestão Interna)")
     
 except Exception as e:
