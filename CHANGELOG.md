@@ -60,6 +60,11 @@
   - Item no menu mobile (HiBottomNav)
   - Arquivo: `static/dashboard.html`
 
+- **Script de Seed para Testes**: Dados de teste para validação do sistema
+  - Cria usuários de teste: Ana Silva, Dr. Carlos, Dra. Maria
+  - Trata duplicatas graciosamente (atualiza em vez de falhar)
+  - Arquivo: `scripts/seed_prosaude.py`
+
 ### 🔒 Segurança
 - **Migração de senhas para bcrypt**: Script para migrar senhas em texto plano
   - Arquivo: `scripts/hash_medicos_passwords.py`
@@ -67,6 +72,27 @@
   - Arquivo: `app/api/auth.py`
 
 ### ✅ Corrigido
+- **Envio de mensagem pelo painel**: Corrigido erro `missing positional argument`
+  - Trocado `WhatsAppService` por `WhatsAppOfficialService` (API Meta)
+  - Usa `send_text(to, message)` com assinatura correta
+  - Arquivo: `app/api/conversas.py`
+
+- **Duplicação de mensagens no frontend**: Mensagens do atendente apareciam 2x
+  - Adicionado `data-msg-id` em cada mensagem HTML
+  - Verificação de duplicata antes de inserir via WebSocket
+  - Arquivo: `static/conversas.html`
+
+- **Token de autenticação no painel**: Chave incorreta no localStorage
+  - Corrigido `token` → `authToken` (consistente com dashboard)
+  - Arquivo: `static/conversas.html`
+
+- **Acesso a current_user como dict**: API retorna dict, não objeto
+  - Corrigido `current_user.cliente_id` → `current_user["cliente_id"]`
+  - Arquivo: `app/api/conversas.py`
+
+- **Tipo de mensagem no webhook**: Atributo incorreto
+  - Corrigido `message.type` → `message.message_type`
+  - Arquivo: `app/api/webhook_official.py`
 - **Webhook WhatsApp API Oficial (Meta Cloud API)**: Corrigido problema de mensagens não chegando ao sistema
   - App não estava assinado na WABA - executado POST em `/subscribed_apps` para assinar
   - WABA_ID correto identificado: `1567749557793633` (era usado ID incorreto `214443058942535`)
@@ -88,6 +114,11 @@
 - **Processamento com IA**: Claude processando mensagens via API Anthropic
 - **Envio de respostas**: Respostas sendo enviadas via Graph API do WhatsApp
 - **Persistência de contexto**: Conversas sendo salvas no Redis
+- **Painel de Conversas**: Interface web funcionando com WebSocket em tempo real
+- **Assumir Conversa**: Atendente assume e IA para de responder
+- **Devolver para IA**: Conversa volta para atendimento automático
+- **Envio manual**: Atendente pode enviar mensagens pelo painel
+- **Sem duplicatas**: Mensagens não duplicam mais no frontend
 
 ### 📝 Observações Técnicas
 - **App ID**: `1902202273996968` (Horario Inteligente API)
