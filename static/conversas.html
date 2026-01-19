@@ -682,7 +682,7 @@
             };
 
             return `
-                <div class="mensagem ${isEntrada ? 'entrada' : 'saida'} ${m.remetente === 'atendente' ? 'atendente' : ''}">
+                <div class="mensagem ${isEntrada ? 'entrada' : 'saida'} ${m.remetente === 'atendente' ? 'atendente' : ''}" data-msg-id="${m.id}">
                     <div class="remetente ${m.remetente}">${remetenteLabel[m.remetente] || m.remetente}</div>
                     <div class="conteudo">${escapeHtml(m.conteudo)}</div>
                     <div class="timestamp">${formatarHora(m.timestamp)}</div>
@@ -692,6 +692,12 @@
 
         function adicionarMensagemUI(mensagem) {
             const container = document.getElementById('chatMessages');
+
+            // Evitar duplicatas - verificar se mensagem já existe pelo ID
+            if (mensagem.id && container.querySelector(`[data-msg-id="${mensagem.id}"]`)) {
+                console.log(`[WS] Mensagem ${mensagem.id} já existe, ignorando duplicata`);
+                return;
+            }
 
             // Remover empty state se existir
             const emptyState = container.querySelector('.empty-state');
