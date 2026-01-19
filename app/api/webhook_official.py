@@ -23,6 +23,13 @@ from app.models.mensagem import DirecaoMensagem, RemetenteMensagem, TipoMensagem
 # Import para notificações WebSocket em tempo real
 from app.services.websocket_manager import websocket_manager
 
+# Imports para criação de agendamentos
+from datetime import datetime
+import re
+from app.models.agendamento import Agendamento
+from app.models.paciente import Paciente
+from app.models.medico import Medico
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -232,9 +239,24 @@ async def process_message(message: WhatsAppMessage):
             cliente_id=cliente_id
         )
 
-        # 11. Envia resposta pelo WhatsApp
+        # 11. Processar ações especiais baseadas na resposta da IA
         proxima_acao = resposta.get("proxima_acao", "")
+        dados_coletados = resposta.get("dados_coletados", {})
 
+        # 11.1 Se a IA sinalizou que deve agendar, criar o agendamento
+        if proxima_acao == "agendar":
+            agendamento_criado = await criar_agendamento_from_ia(
+                db=db,
+                cliente_id=cliente_id,
+                telefone=message.sender,
+                dados_coletados=dados_coletados
+            )
+            if agendamento_criado:
+                logger.info(f"[Webhook Official] ✅ Agendamento criado: ID {agendamento_criado.id}")
+            else:
+                logger.warning(f"[Webhook Official] ⚠️ Falha ao criar agendamento com dados: {dados_coletados}")
+
+        # 11.2 Envia resposta pelo WhatsApp
         if proxima_acao == "escolher_especialidade":
             # Envia com botões de especialidade
             from app.services.whatsapp_interface import InteractiveButton
@@ -270,6 +292,133 @@ async def process_message(message: WhatsAppMessage):
 
     finally:
         db.close()
+
+
+async def criar_agendamento_from_ia(
+    db: Session,
+    cliente_id: int,
+    telefone: str,
+    dados_coletados: dict
+) -> Agendamento:
+    """
+    Cria um agendamento a partir dos dados coletados pela IA.
+
+    Espera dados_coletados com:
+    - nome: str (nome do paciente)
+    - especialidade: str (opcional)
+    - medico_id: int (ID do médico)
+    - convenio: str (nome do convênio ou "particular")
+    - data_preferida: str (formato "DD/MM/YYYY HH:MM" ou "DD/MM/YYYY")
+    """
+    try:
+        nome = dados_coletados.get("nome")
+        medico_id = dados_coletados.get("medico_id")
+        convenio = dados_coletados.get("convenio", "particular")
+        data_str = dados_coletados.get("data_preferida")
+        especialidade = dados_coletados.get("especialidade", "")
+
+        # Validar dados mínimos
+        if not nome or not medico_id or not data_str:
+            logger.warning(f"[Agendamento] Dados insuficientes: nome={nome}, medico_id={medico_id}, data={data_str}")
+            return None
+
+        # Parsear data/hora
+        data_hora = None
+        formatos = [
+            "%d/%m/%Y %H:%M",
+            "%d/%m/%Y %Hh",
+            "%d/%m/%Y %H",
+            "%d/%m/%Y"
+        ]
+
+        for fmt in formatos:
+            try:
+                data_hora = datetime.strptime(data_str.strip(), fmt)
+                break
+            except ValueError:
+                continue
+
+        if not data_hora:
+            # Tentar extrair data e hora separadamente
+            match = re.search(r'(\d{2}/\d{2}/\d{4})', data_str)
+            if match:
+                data_hora = datetime.strptime(match.group(1), "%d/%m/%Y")
+                # Procurar hora
+                hora_match = re.search(r'(\d{1,2})[h:]?(\d{0,2})?', data_str.replace(match.group(1), ''))
+                if hora_match:
+                    hora = int(hora_match.group(1))
+                    minuto = int(hora_match.group(2)) if hora_match.group(2) else 0
+                    data_hora = data_hora.replace(hour=hora, minute=minuto)
+
+        if not data_hora:
+            logger.warning(f"[Agendamento] Não foi possível parsear data: {data_str}")
+            return None
+
+        # Se não tem hora, definir 9h como padrão
+        if data_hora.hour == 0 and data_hora.minute == 0:
+            data_hora = data_hora.replace(hour=9, minute=0)
+
+        # Verificar se médico existe
+        medico = db.query(Medico).filter(
+            Medico.id == medico_id,
+            Medico.cliente_id == cliente_id
+        ).first()
+
+        if not medico:
+            logger.warning(f"[Agendamento] Médico {medico_id} não encontrado para cliente {cliente_id}")
+            return None
+
+        # Buscar ou criar paciente
+        telefone_limpo = re.sub(r'[^\d]', '', telefone)
+        paciente = db.query(Paciente).filter(
+            Paciente.cliente_id == cliente_id,
+            Paciente.telefone.like(f"%{telefone_limpo[-8:]}%")
+        ).first()
+
+        if not paciente:
+            # Criar novo paciente
+            paciente = Paciente(
+                cliente_id=cliente_id,
+                nome=nome,
+                telefone=telefone_limpo,
+                convenio=convenio if convenio.lower() != "particular" else None
+            )
+            db.add(paciente)
+            db.flush()  # Para obter o ID
+            logger.info(f"[Agendamento] Novo paciente criado: {paciente.id} - {nome}")
+        else:
+            # Atualizar nome se necessário
+            if paciente.nome != nome:
+                paciente.nome = nome
+
+        # Determinar valor (particular = R$ 300)
+        valor = 300.00 if convenio.lower() == "particular" else None
+
+        # Criar agendamento
+        agendamento = Agendamento(
+            cliente_id=cliente_id,
+            medico_id=medico_id,
+            paciente_id=paciente.id,
+            data_hora=data_hora,
+            status="agendado",
+            tipo_atendimento="consulta",
+            valor_consulta=valor,
+            motivo_consulta=especialidade,
+            observacoes=f"Agendado via WhatsApp IA. Convênio: {convenio}"
+        )
+        db.add(agendamento)
+        db.commit()
+        db.refresh(agendamento)
+
+        logger.info(f"[Agendamento] ✅ Criado: ID={agendamento.id}, Paciente={nome}, Médico={medico.nome}, Data={data_hora}")
+        return agendamento
+
+    except Exception as e:
+        logger.error(f"[Agendamento] Erro ao criar: {e}")
+        import traceback
+        logger.error(f"[Agendamento] Traceback: {traceback.format_exc()}")
+        db.rollback()
+        return None
 
 
 def get_cliente_id_from_phone(phone: str, db: Session) -> int:
