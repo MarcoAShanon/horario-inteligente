@@ -3,7 +3,7 @@ Sistema Horário Inteligente SaaS - API Principal
 Arquivo: app/main.py
 """
 # Versão dos assets estáticos - incrementar para forçar atualização do cache nos navegadores
-STATIC_VERSION = "20260107"
+STATIC_VERSION = "20260119"
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
