@@ -35,6 +35,7 @@ class Cliente(BaseModel):
     pacientes = relationship("Paciente", back_populates="cliente", cascade="all, delete-orphan")
     configuracao = relationship("Configuracao", back_populates="cliente", uselist=False, cascade="all, delete-orphan")
     convenios = relationship("Convenio", back_populates="cliente", cascade="all, delete-orphan")
+    conversas = relationship("Conversa", back_populates="cliente", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Cliente(nome='{self.nome}', plano='{self.plano}')>"

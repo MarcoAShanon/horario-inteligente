@@ -28,6 +28,10 @@ from app.models.custo_operacional import CustoOperacional
 from app.models.log_auditoria import LogAuditoria
 from app.models.pre_cadastro import PreCadastro
 
+# Models de Conversas WhatsApp
+from app.models.conversa import Conversa, StatusConversa
+from app.models.mensagem import Mensagem, DirecaoMensagem, RemetenteMensagem, TipoMensagem
+
 __all__ = [
     "Base",
     "BaseModel",
@@ -52,5 +56,12 @@ __all__ = [
     "Plano",
     "Assinatura",
     # Model de Pré-Cadastro
-    "PreCadastro"
+    "PreCadastro",
+    # Models de Conversas WhatsApp
+    "Conversa",
+    "StatusConversa",
+    "Mensagem",
+    "DirecaoMensagem",
+    "RemetenteMensagem",
+    "TipoMensagem",
 ]
