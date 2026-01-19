@@ -103,17 +103,23 @@ async def get_current_user(
     }
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica senha com bcrypt ou texto simples (legado)"""
+    """
+    Verifica senha usando bcrypt.
+
+    SEGURANÇA: Apenas senhas com hash bcrypt são aceitas.
+    Senhas em texto plano são rejeitadas.
+    """
     if not hashed_password:
         return False
-    # Tentar verificar com bcrypt primeiro
-    if hashed_password.startswith('$2'):
-        try:
-            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
-        except Exception:
-            return False
-    # Fallback: comparação direta (senhas legadas)
-    return plain_password == hashed_password
+
+    # Rejeitar senhas que não são hash bcrypt
+    if not hashed_password.startswith('$2'):
+        return False
+
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except Exception:
+        return False
 
 
 @router.post("/login", response_model=Token)
