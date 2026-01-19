@@ -4,15 +4,23 @@ Endpoint separado para facilitar migração gradual
 """
 
 import os
+import logging
 from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, SessionLocal
 from app.services.whatsapp_official_service import WhatsAppOfficialService
 from app.services.whatsapp_interface import WhatsAppMessage
 from app.services.anthropic_service import AnthropicService
 from app.services.conversation_manager import ConversationManager
+
+# Imports para persistência de conversas no PostgreSQL
+from app.services.conversa_service import ConversaService
+from app.models.conversa import Conversa, StatusConversa
+from app.models.mensagem import DirecaoMensagem, RemetenteMensagem, TipoMensagem
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -90,32 +98,65 @@ async def receive_webhook(request: Request):
 async def process_message(message: WhatsAppMessage):
     """
     Processa mensagem recebida usando IA.
+    Persiste conversas no PostgreSQL e mantém contexto no Redis.
     """
-
-    from app.database import SessionLocal
 
     db = SessionLocal()
 
     try:
-        # Determina o cliente_id
-        # Na API oficial, podemos usar um cliente padrão ou buscar pelo número
+        # 1. Determina o cliente_id (tenant)
         cliente_id = get_cliente_id_from_phone(message.sender, db)
 
-        # Obtém contexto da conversa
+        # 2. Criar ou recuperar conversa no PostgreSQL
+        conversa = ConversaService.criar_ou_recuperar_conversa(
+            db=db,
+            cliente_id=cliente_id,
+            telefone=message.sender
+        )
+        logger.info(f"[Webhook Official] Conversa {conversa.id} - Status: {conversa.status.value}")
+
+        # 3. Determinar tipo da mensagem
+        tipo_mensagem = TipoMensagem.TEXTO
+        if message.type == "audio":
+            tipo_mensagem = TipoMensagem.AUDIO
+        elif message.type == "image":
+            tipo_mensagem = TipoMensagem.IMAGEM
+        elif message.type == "document":
+            tipo_mensagem = TipoMensagem.DOCUMENTO
+
+        # 4. Salvar mensagem do paciente no PostgreSQL
+        ConversaService.adicionar_mensagem(
+            db=db,
+            conversa_id=conversa.id,
+            direcao=DirecaoMensagem.ENTRADA,
+            remetente=RemetenteMensagem.PACIENTE,
+            conteudo=message.text,
+            tipo=tipo_mensagem,
+            midia_url=message.media_url if hasattr(message, 'media_url') else None
+        )
+        logger.info(f"[Webhook Official] Mensagem do paciente salva no PostgreSQL")
+
+        # 5. Verificar se IA está ativa para esta conversa
+        if conversa.status == StatusConversa.HUMANO_ASSUMIU:
+            logger.info(f"[Webhook Official] Conversa {conversa.id} está sendo atendida por humano. IA não responderá.")
+            # TODO: Notificar via WebSocket para o painel de atendimento
+            return
+
+        # 6. Obtém contexto da conversa do Redis
         contexto = conversation_manager.get_context(
             phone=message.sender,
             limit=10,
             cliente_id=cliente_id
         )
 
-        # Se for resposta de botão/lista, usa o ID como texto
+        # 7. Se for resposta de botão/lista, usa o ID como texto
         texto_para_processar = message.text
         if message.button_reply_id:
             texto_para_processar = message.button_reply_id
         elif message.list_reply_id:
             texto_para_processar = message.list_reply_id
 
-        # Processa com IA
+        # 8. Processa com IA
         anthropic_service = AnthropicService(db, cliente_id)
         resposta = anthropic_service.processar_mensagem(
             mensagem=texto_para_processar,
@@ -123,7 +164,20 @@ async def process_message(message: WhatsAppMessage):
             contexto_conversa=contexto
         )
 
-        # Salva contexto
+        texto_resposta = resposta.get("resposta", "Desculpe, não entendi.")
+
+        # 9. Salvar resposta da IA no PostgreSQL
+        ConversaService.adicionar_mensagem(
+            db=db,
+            conversa_id=conversa.id,
+            direcao=DirecaoMensagem.SAIDA,
+            remetente=RemetenteMensagem.IA,
+            conteudo=texto_resposta,
+            tipo=TipoMensagem.TEXTO
+        )
+        logger.info(f"[Webhook Official] Resposta da IA salva no PostgreSQL")
+
+        # 10. Salva contexto no Redis (para a IA ter histórico rápido)
         conversation_manager.add_message(
             phone=message.sender,
             message_type="user",
@@ -136,16 +190,13 @@ async def process_message(message: WhatsAppMessage):
         conversation_manager.add_message(
             phone=message.sender,
             message_type="assistant",
-            text=resposta.get("resposta", ""),
+            text=texto_resposta,
             intencao=resposta.get("intencao", ""),
             dados_coletados=resposta.get("dados_coletados", {}),
             cliente_id=cliente_id
         )
 
-        # Envia resposta
-        texto_resposta = resposta.get("resposta", "Desculpe, não entendi.")
-
-        # Verifica se deve enviar com botões
+        # 11. Envia resposta pelo WhatsApp
         proxima_acao = resposta.get("proxima_acao", "")
 
         if proxima_acao == "escolher_especialidade":
@@ -171,7 +222,7 @@ async def process_message(message: WhatsAppMessage):
             )
 
     except Exception as e:
-        print(f"[Webhook Official] Erro ao processar: {e}")
+        logger.error(f"[Webhook Official] Erro ao processar: {e}")
 
         # Envia mensagem de erro amigável
         await whatsapp_service.send_text(
