@@ -39,7 +39,10 @@ class WebSocketManager:
     async def broadcast_to_tenant(self, cliente_id: int, message: dict):
         """Envia mensagem para todos os WebSockets de um tenant"""
         if cliente_id not in self.active_connections:
+            logger.debug(f"[WebSocket] Cliente {cliente_id} não tem conexões ativas")
             return
+
+        logger.debug(f"[WebSocket] Broadcast para {len(self.active_connections[cliente_id])} conexões do cliente {cliente_id}")
 
         dead_connections = set()
         message_json = json.dumps(message, default=str)
@@ -57,11 +60,19 @@ class WebSocketManager:
 
     async def send_nova_mensagem(self, cliente_id: int, conversa_id: int, mensagem: dict):
         """Notifica nova mensagem em uma conversa"""
+        connections = self.get_connection_count(cliente_id)
+        logger.info(f"[WebSocket] Notificando nova_mensagem para cliente {cliente_id} (conversa {conversa_id}) - {connections} conexões ativas")
+
+        if connections == 0:
+            logger.warning(f"[WebSocket] Nenhuma conexão ativa para cliente {cliente_id}. Mensagem não será entregue em tempo real.")
+            return
+
         await self.broadcast_to_tenant(cliente_id, {
             "tipo": "nova_mensagem",
             "conversa_id": conversa_id,
             "mensagem": mensagem
         })
+        logger.info(f"[WebSocket] Mensagem broadcast enviada com sucesso")
 
     async def send_conversa_atualizada(self, cliente_id: int, conversa_id: int, status: str):
         """Notifica mudança de status de uma conversa"""

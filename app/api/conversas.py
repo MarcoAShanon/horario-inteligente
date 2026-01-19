@@ -16,6 +16,7 @@ from app.services.conversa_service import ConversaService
 from app.models.conversa import Conversa, StatusConversa
 from app.models.mensagem import Mensagem, DirecaoMensagem, RemetenteMensagem, TipoMensagem
 from app.api.auth import get_current_user
+from app.services.websocket_manager import websocket_manager
 
 
 router = APIRouter(prefix="/api/conversas", tags=["Conversas WhatsApp"])
@@ -208,12 +209,16 @@ async def enviar_mensagem(
     if not conversa:
         raise HTTPException(status_code=404, detail="Conversa não encontrada")
 
-    # Enviar via WhatsApp
-    from app.services.whatsapp_service import WhatsAppService
-    whatsapp = WhatsAppService()
+    # Enviar via WhatsApp (API Oficial Meta)
+    from app.services.whatsapp_official_service import WhatsAppOfficialService
+    whatsapp = WhatsAppOfficialService()
 
     try:
-        await whatsapp.send_message(conversa.paciente_telefone, request.conteudo)
+        result = await whatsapp.send_text(to=conversa.paciente_telefone, message=request.conteudo)
+        if not result.success:
+            raise HTTPException(status_code=500, detail=f"Erro ao enviar WhatsApp: {result.error}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao enviar WhatsApp: {str(e)}")
 
@@ -225,6 +230,20 @@ async def enviar_mensagem(
         remetente=RemetenteMensagem.ATENDENTE,
         conteudo=request.conteudo,
         tipo=TipoMensagem(request.tipo)
+    )
+
+    # Notificar via WebSocket (para outros atendentes vendo a mesma conversa)
+    await websocket_manager.send_nova_mensagem(
+        cliente_id=current_user["cliente_id"],
+        conversa_id=conversa_id,
+        mensagem={
+            "id": mensagem.id,
+            "direcao": "saida",
+            "remetente": "atendente",
+            "tipo": request.tipo,
+            "conteudo": request.conteudo,
+            "timestamp": mensagem.timestamp.isoformat()
+        }
     )
 
     return {
