@@ -31,6 +31,35 @@
   - `PUT /api/conversas/{id}/encerrar`: Encerrar conversa
   - Arquivo: `app/api/conversas.py`
 
+- **WebSocket para Tempo Real**: Notificações instantâneas no painel
+  - `WebSocketManager`: Gerenciador de conexões por tenant
+  - `WS /ws/conversas?token=JWT`: Endpoint WebSocket autenticado
+  - `GET /ws/status`: Status das conexões (debug)
+  - Eventos: `nova_mensagem`, `conversa_atualizada`, `nova_conversa`
+  - Arquivos: `app/services/websocket_manager.py`, `app/api/websocket.py`
+
+- **Webhook Integrado com PostgreSQL**: Persistência de mensagens
+  - Salva mensagem do paciente no banco ao receber
+  - Salva resposta da IA no banco após processar
+  - Verifica status da conversa (se humano assumiu, IA não responde)
+  - Notifica via WebSocket em tempo real
+  - Arquivo: `app/api/webhook_official.py`
+
+- **Painel de Conversas WhatsApp** (Frontend): Interface completa
+  - Layout responsivo (sidebar + chat)
+  - Lista de conversas com busca, filtros e badges
+  - Chat estilo WhatsApp (bolhas coloridas por remetente)
+  - Conexão WebSocket para atualizações em tempo real
+  - Botões: Assumir, Devolver para IA, Encerrar
+  - Som de notificação para novas mensagens
+  - Arquivo: `static/conversas.html`
+
+- **Link no Dashboard**: Acesso rápido ao painel de conversas
+  - Botão verde "Conversas" no header
+  - Badge dinâmico com contador de não lidas
+  - Item no menu mobile (HiBottomNav)
+  - Arquivo: `static/dashboard.html`
+
 ### 🔒 Segurança
 - **Migração de senhas para bcrypt**: Script para migrar senhas em texto plano
   - Arquivo: `scripts/hash_medicos_passwords.py`

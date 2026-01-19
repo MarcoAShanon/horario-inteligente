@@ -94,6 +94,14 @@
                         <span class="hidden sm:inline">Calendário</span>
                     </button>
                     <button
+                        onclick="window.location.href = '/static/conversas.html'"
+                        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2 relative"
+                    >
+                        <i class="fas fa-comments"></i>
+                        <span class="hidden sm:inline">Conversas</span>
+                        <span id="badgeConversas" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
+                    </button>
+                    <button
                         onclick="logout()"
                         class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center gap-2"
                     >
@@ -435,6 +443,30 @@
             localStorage.clear();
             window.location.href = '/static/login.html';
         }
+
+        // Carregar badge de conversas não lidas
+        async function carregarBadgeConversas() {
+            try {
+                const response = await fetch('/api/conversas/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const stats = await response.json();
+                    const badge = document.getElementById('badgeConversas');
+                    if (stats.total_nao_lidas > 0) {
+                        badge.textContent = stats.total_nao_lidas > 9 ? '9+' : stats.total_nao_lidas;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
+            } catch (e) {
+                console.log('Erro ao carregar badge conversas:', e);
+            }
+        }
+        // Carregar badge ao iniciar e a cada 30 segundos
+        carregarBadgeConversas();
+        setInterval(carregarBadgeConversas, 30000);
 
         // Estado dos dados financeiros
         let dadosFinanceirosVisiveis = false;
@@ -1110,7 +1142,7 @@
                     activeId: 'dashboard',
                     items: [
                         { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', href: '/static/calendario-unificado.html' },
-                        { id: 'config', label: 'Configurações', icon: 'fa-cog', href: '/static/configuracoes.html' },
+                        { id: 'conversas', label: 'Conversas', icon: 'fa-comments', href: '/static/conversas.html' },
                         { id: 'novo', label: 'Novo', icon: 'fa-plus', primary: true, onClick: () => { window.location.href = '/static/calendario-unificado.html'; }},
                         { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line', href: '/static/dashboard.html' },
                         { id: 'perfil', label: 'Perfil', icon: 'fa-user', href: '/static/perfil.html' }
