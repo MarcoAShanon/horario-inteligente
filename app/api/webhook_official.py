@@ -120,24 +120,29 @@ async def process_message(message: WhatsAppMessage):
 
         # 3. Determinar tipo da mensagem
         tipo_mensagem = TipoMensagem.TEXTO
-        if message.type == "audio":
+        if message.message_type == "audio":
             tipo_mensagem = TipoMensagem.AUDIO
-        elif message.type == "image":
+        elif message.message_type == "image":
             tipo_mensagem = TipoMensagem.IMAGEM
-        elif message.type == "document":
+        elif message.message_type == "document":
             tipo_mensagem = TipoMensagem.DOCUMENTO
 
         # 4. Salvar mensagem do paciente no PostgreSQL
+        logger.info(f"[Webhook Official] Salvando mensagem: text='{message.text}', type={message.message_type}")
+
+        # Garantir que temos conteúdo válido
+        conteudo = message.text or "[Mensagem sem texto]"
+
         mensagem_paciente = ConversaService.adicionar_mensagem(
             db=db,
             conversa_id=conversa.id,
             direcao=DirecaoMensagem.ENTRADA,
             remetente=RemetenteMensagem.PACIENTE,
-            conteudo=message.text,
+            conteudo=conteudo,
             tipo=tipo_mensagem,
             midia_url=message.media_url if hasattr(message, 'media_url') else None
         )
-        logger.info(f"[Webhook Official] Mensagem do paciente salva no PostgreSQL")
+        logger.info(f"[Webhook Official] Mensagem do paciente salva no PostgreSQL (ID: {mensagem_paciente.id})")
 
         # 4.1 Notificar via WebSocket (nova mensagem do paciente)
         await websocket_manager.send_nova_mensagem(
@@ -253,7 +258,9 @@ async def process_message(message: WhatsAppMessage):
             )
 
     except Exception as e:
+        import traceback
         logger.error(f"[Webhook Official] Erro ao processar: {e}")
+        logger.error(f"[Webhook Official] Traceback: {traceback.format_exc()}")
 
         # Envia mensagem de erro amigável
         await whatsapp_service.send_text(

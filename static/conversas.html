@@ -317,7 +317,7 @@
 
     <script>
         // ==================== STATE ====================
-        let token = localStorage.getItem('token');
+        let token = localStorage.getItem('authToken');
         let conversas = [];
         let conversaAtual = null;
         let ws = null;
@@ -824,7 +824,7 @@
         }
 
         function logout() {
-            localStorage.removeItem('token');
+            localStorage.removeItem('authToken');
             window.location.href = '/static/login.html';
         }
 

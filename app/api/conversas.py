@@ -77,7 +77,7 @@ async def listar_conversas(
     current_user = Depends(get_current_user)
 ):
     """Lista todas as conversas do cliente (tenant)"""
-    cliente_id = current_user.cliente_id
+    cliente_id = current_user["cliente_id"]
 
     status_enum = None
     if status:
@@ -125,7 +125,7 @@ async def get_stats(
     current_user = Depends(get_current_user)
 ):
     """Estatísticas das conversas"""
-    cliente_id = current_user.cliente_id
+    cliente_id = current_user["cliente_id"]
 
     total_ativas = db.query(Conversa).filter(
         Conversa.cliente_id == cliente_id,
@@ -155,7 +155,7 @@ async def get_conversa(
     """Detalhes de uma conversa com mensagens"""
     conversa = db.query(Conversa).filter(
         Conversa.id == conversa_id,
-        Conversa.cliente_id == current_user.cliente_id
+        Conversa.cliente_id == current_user["cliente_id"]
     ).first()
 
     if not conversa:
@@ -202,7 +202,7 @@ async def enviar_mensagem(
     """Envia mensagem manual (atendente)"""
     conversa = db.query(Conversa).filter(
         Conversa.id == conversa_id,
-        Conversa.cliente_id == current_user.cliente_id
+        Conversa.cliente_id == current_user["cliente_id"]
     ).first()
 
     if not conversa:
@@ -248,13 +248,13 @@ async def assumir_conversa(
     """Atendente assume a conversa (desativa IA)"""
     conversa = db.query(Conversa).filter(
         Conversa.id == conversa_id,
-        Conversa.cliente_id == current_user.cliente_id
+        Conversa.cliente_id == current_user["cliente_id"]
     ).first()
 
     if not conversa:
         raise HTTPException(status_code=404, detail="Conversa não encontrada")
 
-    conversa = ConversaService.assumir_conversa(db, conversa_id, current_user.id)
+    conversa = ConversaService.assumir_conversa(db, conversa_id, current_user["id"])
 
     return {"message": "Conversa assumida com sucesso", "status": conversa.status.value}
 
@@ -268,7 +268,7 @@ async def devolver_para_ia(
     """Devolve a conversa para a IA"""
     conversa = db.query(Conversa).filter(
         Conversa.id == conversa_id,
-        Conversa.cliente_id == current_user.cliente_id
+        Conversa.cliente_id == current_user["cliente_id"]
     ).first()
 
     if not conversa:
@@ -288,7 +288,7 @@ async def encerrar_conversa(
     """Encerra a conversa"""
     conversa = db.query(Conversa).filter(
         Conversa.id == conversa_id,
-        Conversa.cliente_id == current_user.cliente_id
+        Conversa.cliente_id == current_user["cliente_id"]
     ).first()
 
     if not conversa:
