@@ -292,6 +292,11 @@ try:
     app.include_router(conversas_router, tags=["Conversas WhatsApp"])
     logger.info("✅ Router de conversas WhatsApp registrado")
 
+    # Router WebSocket (notificações em tempo real)
+    from app.api.websocket import router as websocket_router
+    app.include_router(websocket_router, tags=["WebSocket"])
+    logger.info("✅ Router WebSocket registrado")
+
     logger.info("✅ Routers principais registrados com sucesso (incluindo Admin, Financeiro e Gestão Interna)")
     
 except Exception as e:

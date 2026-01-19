@@ -20,6 +20,9 @@ from app.services.conversa_service import ConversaService
 from app.models.conversa import Conversa, StatusConversa
 from app.models.mensagem import DirecaoMensagem, RemetenteMensagem, TipoMensagem
 
+# Import para notificações WebSocket em tempo real
+from app.services.websocket_manager import websocket_manager
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -125,7 +128,7 @@ async def process_message(message: WhatsAppMessage):
             tipo_mensagem = TipoMensagem.DOCUMENTO
 
         # 4. Salvar mensagem do paciente no PostgreSQL
-        ConversaService.adicionar_mensagem(
+        mensagem_paciente = ConversaService.adicionar_mensagem(
             db=db,
             conversa_id=conversa.id,
             direcao=DirecaoMensagem.ENTRADA,
@@ -136,10 +139,24 @@ async def process_message(message: WhatsAppMessage):
         )
         logger.info(f"[Webhook Official] Mensagem do paciente salva no PostgreSQL")
 
+        # 4.1 Notificar via WebSocket (nova mensagem do paciente)
+        await websocket_manager.send_nova_mensagem(
+            cliente_id=cliente_id,
+            conversa_id=conversa.id,
+            mensagem={
+                "id": mensagem_paciente.id,
+                "direcao": "entrada",
+                "remetente": "paciente",
+                "tipo": tipo_mensagem.value,
+                "conteudo": message.text,
+                "timestamp": mensagem_paciente.timestamp.isoformat()
+            }
+        )
+
         # 5. Verificar se IA está ativa para esta conversa
         if conversa.status == StatusConversa.HUMANO_ASSUMIU:
             logger.info(f"[Webhook Official] Conversa {conversa.id} está sendo atendida por humano. IA não responderá.")
-            # TODO: Notificar via WebSocket para o painel de atendimento
+            # Mensagem já foi notificada acima, atendente verá no painel
             return
 
         # 6. Obtém contexto da conversa do Redis
@@ -167,7 +184,7 @@ async def process_message(message: WhatsAppMessage):
         texto_resposta = resposta.get("resposta", "Desculpe, não entendi.")
 
         # 9. Salvar resposta da IA no PostgreSQL
-        ConversaService.adicionar_mensagem(
+        mensagem_ia = ConversaService.adicionar_mensagem(
             db=db,
             conversa_id=conversa.id,
             direcao=DirecaoMensagem.SAIDA,
@@ -176,6 +193,20 @@ async def process_message(message: WhatsAppMessage):
             tipo=TipoMensagem.TEXTO
         )
         logger.info(f"[Webhook Official] Resposta da IA salva no PostgreSQL")
+
+        # 9.1 Notificar via WebSocket (resposta da IA)
+        await websocket_manager.send_nova_mensagem(
+            cliente_id=cliente_id,
+            conversa_id=conversa.id,
+            mensagem={
+                "id": mensagem_ia.id,
+                "direcao": "saida",
+                "remetente": "ia",
+                "tipo": "texto",
+                "conteudo": texto_resposta,
+                "timestamp": mensagem_ia.timestamp.isoformat()
+            }
+        )
 
         # 10. Salva contexto no Redis (para a IA ter histórico rápido)
         conversation_manager.add_message(
