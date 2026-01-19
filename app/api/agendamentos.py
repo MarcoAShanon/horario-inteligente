@@ -192,7 +192,8 @@ async def listar_calendario(
             # Usuário é secretária - pode filtrar por médico ou ver todos
             final_medico_id = medico_id if medico_id else 0
 
-        # Buscar agendamentos
+        # Buscar agendamentos (filtrado por cliente_id para multi-tenant)
+        cliente_id = current_user.get("cliente_id")
         result = db.execute(text("""
             SELECT
                 a.id,
@@ -209,9 +210,10 @@ async def listar_calendario(
             JOIN pacientes p ON a.paciente_id = p.id
             JOIN medicos m ON a.medico_id = m.id
             WHERE (:medico_id = 0 OR a.medico_id = :medico_id)
+            AND m.cliente_id = :cliente_id
             AND a.data_hora >= CURRENT_DATE - INTERVAL '30 days'
             ORDER BY a.data_hora
-        """), {"medico_id": final_medico_id})
+        """), {"medico_id": final_medico_id, "cliente_id": cliente_id})
         
         agendamentos = []
         for row in result:
@@ -262,13 +264,14 @@ async def listar_medicos(
                 WHERE id = :medico_id AND ativo = true
             """), {"medico_id": medico_filter})
         else:
-            # Secretária vê todos
+            # Secretária vê todos os médicos DO SEU CLIENTE
+            cliente_id = current_user.get("cliente_id")
             result = db.execute(text("""
                 SELECT id, nome, especialidade, crm
                 FROM medicos
-                WHERE ativo = true
+                WHERE ativo = true AND cliente_id = :cliente_id
                 ORDER BY nome
-            """))
+            """), {"cliente_id": cliente_id})
 
         medicos = []
         for row in result:

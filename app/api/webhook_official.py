@@ -29,6 +29,7 @@ import re
 from app.models.agendamento import Agendamento
 from app.models.paciente import Paciente
 from app.models.medico import Medico
+from app.utils.timezone_helper import make_aware_brazil
 
 logger = logging.getLogger(__name__)
 
@@ -359,6 +360,10 @@ async def criar_agendamento_from_ia(
         # Se não tem hora, definir 9h como padrão
         if data_hora.hour == 0 and data_hora.minute == 0:
             data_hora = data_hora.replace(hour=9, minute=0)
+
+        # Converter para timezone de Brasília (UTC-3)
+        data_hora = make_aware_brazil(data_hora)
+        logger.info(f"[Agendamento] Data/hora com timezone: {data_hora}")
 
         # Verificar se médico existe
         medico = db.query(Medico).filter(
