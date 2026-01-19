@@ -1674,8 +1674,10 @@
                 cor = '#ef4444';
             } else if (evento.extendedProps?.status === 'faltou') {
                 cor = '#f59e0b';
-            } else if (evento.extendedProps?.status === 'cancelado') {
+            } else if (['cancelado', 'cancelada'].includes(evento.extendedProps?.status)) {
                 cor = '#9ca3af';
+            } else if (['realizado', 'realizada', 'concluido', 'concluida'].includes(evento.extendedProps?.status)) {
+                cor = '#10b981';
             } else if (evento.medico_id) {
                 cor = getCorMedico(evento.medico_id);
             }
@@ -1827,8 +1829,10 @@
                 cor = '#ef4444';
             } else if (evento.extendedProps?.status === 'faltou') {
                 cor = '#f59e0b';
-            } else if (evento.extendedProps?.status === 'cancelado') {
+            } else if (['cancelado', 'cancelada'].includes(evento.extendedProps?.status)) {
                 cor = '#9ca3af';
+            } else if (['realizado', 'realizada', 'concluido', 'concluida'].includes(evento.extendedProps?.status)) {
+                cor = '#10b981';
             } else if (evento.medico_id) {
                 cor = getCorMedico(evento.medico_id);
             }
@@ -1930,8 +1934,10 @@
                 cor = '#ef4444';
             } else if (evento.extendedProps?.status === 'faltou') {
                 cor = '#f59e0b';
-            } else if (evento.extendedProps?.status === 'cancelado') {
+            } else if (['cancelado', 'cancelada'].includes(evento.extendedProps?.status)) {
                 cor = '#9ca3af';
+            } else if (['realizado', 'realizada', 'concluido', 'concluida'].includes(evento.extendedProps?.status)) {
+                cor = '#10b981';
             } else if (evento.medico_id) {
                 cor = getCorMedico(evento.medico_id);
             }
@@ -1949,10 +1955,12 @@
             const status = evento.extendedProps?.status || '';
 
             let statusIcon = '';
-            if (status === 'confirmado') statusIcon = '<i class="fas fa-check-circle ml-2"></i>';
-            else if (status === 'pendente' || status === 'agendado') statusIcon = '<i class="fas fa-clock ml-2"></i>';
-            else if (status === 'cancelado') statusIcon = '<i class="fas fa-times-circle ml-2"></i>';
+            if (['confirmado', 'confirmada'].includes(status)) statusIcon = '<i class="fas fa-check-circle ml-2"></i>';
+            else if (['pendente', 'agendado', 'agendada'].includes(status)) statusIcon = '<i class="fas fa-clock ml-2"></i>';
+            else if (['realizado', 'realizada', 'concluido', 'concluida'].includes(status)) statusIcon = '<i class="fas fa-check-double ml-2 text-green-600"></i>';
+            else if (['cancelado', 'cancelada'].includes(status)) statusIcon = '<i class="fas fa-times-circle ml-2"></i>';
             else if (status === 'faltou') statusIcon = '<i class="fas fa-user-slash ml-2"></i>';
+            else if (status === 'remarcado') statusIcon = '<i class="fas fa-calendar-alt ml-2"></i>';
 
             div.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -2437,10 +2445,17 @@
                     const statusTexto = agendamentoAtual.status || 'agendado';
                     const statusConfig = {
                         'agendado': { icon: 'fa-clock', texto: 'Agendado', classe: 'status-agendado' },
+                        'agendada': { icon: 'fa-clock', texto: 'Agendado', classe: 'status-agendado' },
                         'pendente': { icon: 'fa-clock', texto: 'Pendente', classe: 'status-pendente' },
                         'confirmado': { icon: 'fa-check-circle', texto: 'Confirmado', classe: 'status-confirmado' },
+                        'confirmada': { icon: 'fa-check-circle', texto: 'Confirmado', classe: 'status-confirmado' },
                         'realizado': { icon: 'fa-check-double', texto: 'Realizado', classe: 'status-realizado' },
+                        'realizada': { icon: 'fa-check-double', texto: 'Realizado', classe: 'status-realizado' },
+                        'concluido': { icon: 'fa-check-double', texto: 'Concluído', classe: 'status-realizado' },
+                        'concluida': { icon: 'fa-check-double', texto: 'Concluído', classe: 'status-realizado' },
                         'cancelado': { icon: 'fa-times-circle', texto: 'Cancelado', classe: 'status-cancelado' },
+                        'cancelada': { icon: 'fa-times-circle', texto: 'Cancelado', classe: 'status-cancelado' },
+                        'remarcado': { icon: 'fa-calendar-alt', texto: 'Remarcado', classe: 'status-pendente' },
                         'faltou': { icon: 'fa-user-slash', texto: 'Faltou', classe: 'status-faltou' }
                     };
                     const config = statusConfig[statusTexto] || statusConfig['agendado'];
@@ -2455,7 +2470,8 @@
                     btnMarcarFalta.innerHTML = '<i class="fas fa-user-times mr-1 sm:mr-2"></i><span class="hidden sm:inline">Marcar Falta</span><span class="sm:hidden">Falta</span>';
 
                     // Ocultar botão se status não permite marcar falta
-                    if (['faltou', 'realizado', 'cancelado'].includes(statusTexto)) {
+                    const statusFinais = ['faltou', 'realizado', 'realizada', 'concluido', 'concluida', 'cancelado', 'cancelada', 'remarcado'];
+                    if (statusFinais.includes(statusTexto)) {
                         btnMarcarFalta.style.display = 'none';
                     } else {
                         btnMarcarFalta.style.display = '';

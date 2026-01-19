@@ -220,7 +220,7 @@ async def update_status_agendamento(
     if not agendamento:
         raise HTTPException(status_code=404, detail="Agendamento não encontrado")
     
-    status_validos = ['confirmado', 'confirmada', 'cancelado', 'cancelada', 'em_atendimento', 'concluido', 'concluida', 'realizada', 'faltou', 'agendada']
+    status_validos = ['agendado', 'agendada', 'confirmado', 'confirmada', 'cancelado', 'cancelada', 'em_atendimento', 'concluido', 'concluida', 'realizado', 'realizada', 'faltou', 'remarcado']
     if status not in status_validos:
         raise HTTPException(status_code=400, detail=f"Status inválido. Use: {status_validos}")
     

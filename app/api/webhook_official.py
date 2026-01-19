@@ -104,7 +104,7 @@ async def process_message(message: WhatsAppMessage):
         # Obtém contexto da conversa
         contexto = conversation_manager.get_context(
             phone=message.sender,
-            limite=10,
+            limit=10,
             cliente_id=cliente_id
         )
 
@@ -126,19 +126,19 @@ async def process_message(message: WhatsAppMessage):
         # Salva contexto
         conversation_manager.add_message(
             phone=message.sender,
-            tipo="user",
-            texto=message.text,
+            message_type="user",
+            text=message.text,
             intencao="",
-            dados={},
+            dados_coletados={},
             cliente_id=cliente_id
         )
 
         conversation_manager.add_message(
             phone=message.sender,
-            tipo="assistant",
-            texto=resposta.get("resposta", ""),
+            message_type="assistant",
+            text=resposta.get("resposta", ""),
             intencao=resposta.get("intencao", ""),
-            dados=resposta.get("dados_coletados", {}),
+            dados_coletados=resposta.get("dados_coletados", {}),
             cliente_id=cliente_id
         )
 

@@ -1,5 +1,38 @@
 # Changelog - Horário Inteligente SaaS
 
+## [3.6.0] - 2026-01-19
+
+### ✅ Corrigido
+- **Webhook WhatsApp API Oficial (Meta Cloud API)**: Corrigido problema de mensagens não chegando ao sistema
+  - App não estava assinado na WABA - executado POST em `/subscribed_apps` para assinar
+  - WABA_ID correto identificado: `1567749557793633` (era usado ID incorreto `214443058942535`)
+  - Arquivo: `app/api/webhook_official.py`
+
+- **Parâmetros incorretos no webhook_official.py**:
+  - `limite` → `limit` (linha 107)
+  - `tipo` → `message_type` (linhas 129, 138)
+  - `texto` → `text` (linhas 130, 139)
+  - `dados` → `dados_coletados` (linhas 132, 141)
+
+- **Registro do número na Cloud API**: Número +55 21 92367-0092 registrado via endpoint `/register`
+
+### 🔄 Modificado
+- **WHATSAPP_BUSINESS_ACCOUNT_ID**: Atualizado no .env de `214443058942535` para `1567749557793633`
+
+### ✅ Testado e Funcionando
+- **Recebimento de mensagens**: Webhook recebendo POSTs do Facebook corretamente
+- **Processamento com IA**: Claude processando mensagens via API Anthropic
+- **Envio de respostas**: Respostas sendo enviadas via Graph API do WhatsApp
+- **Persistência de contexto**: Conversas sendo salvas no Redis
+
+### 📝 Observações Técnicas
+- **App ID**: `1902202273996968` (Horario Inteligente API)
+- **WABA ID**: `1567749557793633`
+- **Phone ID**: `989612447561309`
+- **Número**: +55 21 92367-0092 (Horário Inteligente)
+
+---
+
 ## [3.5.0] - 2025-12-07
 
 ### ✅ Corrigido

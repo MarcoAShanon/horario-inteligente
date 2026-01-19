@@ -154,24 +154,8 @@
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Valor Consulta Particular (R$)</label>
-                        <input type="number" id="valor_consulta_particular" step="0.01" min="0" placeholder="0.00" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    </div>
-
-                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Biografia/Sobre</label>
                         <textarea id="biografia" rows="4" placeholder="Conte um pouco sobre você e sua experiência profissional..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
-                    </div>
-
-                    <!-- Convênios -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Convênios Aceitos
-                            <button type="button" onclick="adicionarConvenio()" class="ml-2 text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-plus-circle"></i> Adicionar
-                            </button>
-                        </label>
-                        <div id="listaConvenios" class="space-y-2"></div>
                     </div>
 
                     <!-- Procedimentos -->
@@ -317,7 +301,6 @@
 
     <script>
         let perfilAtual = null;
-        let conveniosAtuais = [];
         let procedimentosAtuais = [];
 
         // Carregar perfil ao iniciar
@@ -374,12 +357,7 @@
 
                 document.getElementById('crm').value = perfil.crm || '';
                 document.getElementById('especialidade').value = perfil.especialidade || '';
-                document.getElementById('valor_consulta_particular').value = perfil.valor_consulta_particular || '';
                 document.getElementById('biografia').value = perfil.biografia || '';
-
-                // Convênios
-                conveniosAtuais = perfil.convenios_aceitos || [];
-                renderizarConvenios();
 
                 // Procedimentos
                 procedimentosAtuais = perfil.procedimentos || [];
@@ -391,37 +369,6 @@
             } else {
                 document.getElementById('tipoUsuario').innerHTML = '<i class="fas fa-user-tie mr-1"></i>Secretária';
             }
-        }
-
-        // Gerenciamento de Convênios
-        function adicionarConvenio() {
-            const nome = prompt('Nome do convênio:');
-            if (nome && nome.trim()) {
-                conveniosAtuais.push(nome.trim());
-                renderizarConvenios();
-            }
-        }
-
-        function removerConvenio(index) {
-            conveniosAtuais.splice(index, 1);
-            renderizarConvenios();
-        }
-
-        function renderizarConvenios() {
-            const lista = document.getElementById('listaConvenios');
-            if (conveniosAtuais.length === 0) {
-                lista.innerHTML = '<p class="text-sm text-gray-500">Nenhum convênio cadastrado</p>';
-                return;
-            }
-
-            lista.innerHTML = conveniosAtuais.map((convenio, index) => `
-                <div class="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg">
-                    <span class="text-sm">${convenio}</span>
-                    <button type="button" onclick="removerConvenio(${index})" class="text-red-600 hover:text-red-800">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            `).join('');
         }
 
         // Gerenciamento de Procedimentos
@@ -544,9 +491,7 @@
                 if (perfilAtual.tipo === 'medico' || perfilAtual.user_type === 'medico') {
                     dados.crm = document.getElementById('crm').value || null;
                     dados.especialidade = document.getElementById('especialidade').value || null;
-                    dados.valor_consulta_particular = parseFloat(document.getElementById('valor_consulta_particular').value) || null;
                     dados.biografia = document.getElementById('biografia').value || null;
-                    dados.convenios_aceitos = conveniosAtuais;
                     dados.procedimentos = procedimentosAtuais;
                 }
 

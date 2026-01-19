@@ -57,23 +57,25 @@ async def get_dashboard_stats(
     total_pacientes = result.scalar() or 0
 
     # Consultas hoje
+    # Status válidos (inclui confirmadas, agendadas e realizadas - exclui canceladas e faltas)
+    status_validos = "('confirmado', 'confirmada', 'em_atendimento', 'realizado', 'realizada', 'concluido', 'concluida', 'agendado', 'agendada')"
     if medico_id:
-        result = db.execute(text("""
+        result = db.execute(text(f"""
             SELECT COUNT(*)
             FROM agendamentos a
             JOIN pacientes p ON a.paciente_id = p.id
             WHERE a.medico_id = :medico_id
             AND DATE(a.data_hora) = :hoje
-            AND a.status IN ('confirmado', 'em_atendimento')
+            AND a.status IN {status_validos}
             AND p.cliente_id = :cliente_id
         """), {"medico_id": medico_id, "hoje": hoje, "cliente_id": cliente_id})
     else:
-        result = db.execute(text("""
+        result = db.execute(text(f"""
             SELECT COUNT(*)
             FROM agendamentos a
             JOIN pacientes p ON a.paciente_id = p.id
             WHERE DATE(a.data_hora) = :hoje
-            AND a.status IN ('confirmado', 'em_atendimento')
+            AND a.status IN {status_validos}
             AND p.cliente_id = :cliente_id
         """), {"hoje": hoje, "cliente_id": cliente_id})
 

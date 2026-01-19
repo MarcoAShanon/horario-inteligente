@@ -54,49 +54,50 @@ async def get_stats(
 
     total_pacientes = result.scalar() or 0
 
-    # Consultas hoje
+    # Consultas hoje (inclui confirmadas, em atendimento e realizadas - exclui canceladas e faltas)
+    status_validos = "('confirmado', 'confirmada', 'em_atendimento', 'realizado', 'realizada', 'concluido', 'concluida', 'agendado', 'agendada')"
     if medico_id:
-        result = db.execute(text("""
+        result = db.execute(text(f"""
             SELECT COUNT(*)
             FROM agendamentos a
             JOIN pacientes p ON a.paciente_id = p.id
             WHERE a.medico_id = :medico_id
             AND DATE(a.data_hora) = :hoje
-            AND a.status IN ('confirmado', 'em_atendimento')
+            AND a.status IN {status_validos}
             AND p.cliente_id = :cliente_id
         """), {"medico_id": medico_id, "hoje": hoje, "cliente_id": cliente_id})
     else:
-        result = db.execute(text("""
+        result = db.execute(text(f"""
             SELECT COUNT(*)
             FROM agendamentos a
             JOIN pacientes p ON a.paciente_id = p.id
             WHERE DATE(a.data_hora) = :hoje
-            AND a.status IN ('confirmado', 'em_atendimento')
+            AND a.status IN {status_validos}
             AND p.cliente_id = :cliente_id
         """), {"hoje": hoje, "cliente_id": cliente_id})
 
     consultas_hoje = result.scalar() or 0
 
-    # Consultas na semana
+    # Consultas na semana (inclui confirmadas, em atendimento e realizadas - exclui canceladas e faltas)
     if medico_id:
-        result = db.execute(text("""
+        result = db.execute(text(f"""
             SELECT COUNT(*)
             FROM agendamentos a
             JOIN pacientes p ON a.paciente_id = p.id
             WHERE a.medico_id = :medico_id
             AND DATE(a.data_hora) >= :inicio_semana
             AND DATE(a.data_hora) <= :fim_semana
-            AND a.status IN ('confirmado', 'em_atendimento')
+            AND a.status IN {status_validos}
             AND p.cliente_id = :cliente_id
         """), {"medico_id": medico_id, "inicio_semana": inicio_semana, "fim_semana": fim_semana, "cliente_id": cliente_id})
     else:
-        result = db.execute(text("""
+        result = db.execute(text(f"""
             SELECT COUNT(*)
             FROM agendamentos a
             JOIN pacientes p ON a.paciente_id = p.id
             WHERE DATE(a.data_hora) >= :inicio_semana
             AND DATE(a.data_hora) <= :fim_semana
-            AND a.status IN ('confirmado', 'em_atendimento')
+            AND a.status IN {status_validos}
             AND p.cliente_id = :cliente_id
         """), {"inicio_semana": inicio_semana, "fim_semana": fim_semana, "cliente_id": cliente_id})
 
@@ -204,7 +205,11 @@ async def get_metricas_periodo(
     # Definir período baseado no parâmetro
     if periodo == "mes_atual":
         inicio_periodo = date(hoje.year, hoje.month, 1)
-        fim_periodo = hoje
+        # Último dia do mês atual (para coerência com o financeiro)
+        if hoje.month == 12:
+            fim_periodo = date(hoje.year, 12, 31)
+        else:
+            fim_periodo = date(hoje.year, hoje.month + 1, 1) - timedelta(days=1)
         mes_ano = f"{meses_pt[hoje.month]} {hoje.year}"
 
         # Mês anterior para comparativo

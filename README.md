@@ -1,6 +1,6 @@
 # Horário Inteligente - Sistema de Agendamento para Clínicas
 
-![Version](https://img.shields.io/badge/version-3.5.1-blue)
+![Version](https://img.shields.io/badge/version-3.6.0-blue)
 ![LGPD](https://img.shields.io/badge/LGPD-100%25_conforme-success)
 ![AI](https://img.shields.io/badge/🤖_AI-Claude_Sonnet_4.5-blueviolet)
 ![Audio](https://img.shields.io/badge/🎙️_áudio-OpenAI_Whisper_+_TTS-orange)
@@ -54,7 +54,7 @@ O **Horário Inteligente** é uma plataforma completa de gerenciamento de agenda
 **Atende todos os tipos de profissionais de saúde:** médicos, dentistas, psicólogos, fisioterapeutas, nutricionistas, fonoaudiólogos e outros.
 
 **Última atualização:** 9 de dezembro de 2025
-**Versão:** 3.5.1 🚀 **[NOVA: Documentação Legal Completa - Termos de Uso + Política de Privacidade LGPD]**
+**Versão:** 3.6.0 🚀 **[NOVA: Documentação Legal Completa - Termos de Uso + Política de Privacidade LGPD]**
 **Desenvolvedor:** Marco Aurélio Thiele (com Claude Code)
 
 ---
@@ -1166,6 +1166,6 @@ POST   /api/webhooks/whatsapp               # WhatsApp
 ---
 
 **Última atualização:** 9 de dezembro de 2025
-**Versão:** 3.5.1
+**Versão:** 3.6.0
 **Status:** ✅ Em Produção
 **Conformidade:** ✅ LGPD (Lei 13.709/2018)

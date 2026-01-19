@@ -436,7 +436,18 @@ async def atualizar_agendamento(
             params["medico_id"] = dados.medico_id
 
         if dados.status:
-            if dados.status not in ["agendado", "confirmado", "cancelado", "realizado", "faltou"]:
+            # Status válidos para atualização manual
+            # Permite corrigir status mesmo após atualização automática (ex: marcar falta após "realizada")
+            status_validos = [
+                "agendado", "agendada",
+                "confirmado", "confirmada",
+                "cancelado", "cancelada",
+                "realizado", "realizada",
+                "concluido", "concluida",
+                "faltou",
+                "remarcado"
+            ]
+            if dados.status not in status_validos:
                 raise HTTPException(status_code=400, detail="Status inválido")
             updates.append("status = :status")
             params["status"] = dados.status

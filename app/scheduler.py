@@ -7,6 +7,7 @@ from datetime import datetime
 
 from app.services.reminder_service import reminder_service
 from app.services.whatsapp_monitor import whatsapp_monitor
+from app.services.status_update_service import status_update_service
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,17 @@ class ReminderScheduler:
                 misfire_grace_time=180  # 3 minutos de tolerância
             )
 
+            # Adicionar job para atualizar status de consultas passadas a cada 15 minutos
+            self.scheduler.add_job(
+                self._run_status_update,
+                trigger=IntervalTrigger(minutes=15),
+                id='update_status',
+                name='Atualizar status de consultas passadas',
+                replace_existing=True,
+                max_instances=1,
+                misfire_grace_time=300  # 5 minutos de tolerância
+            )
+
             # Iniciar o scheduler
             self.scheduler.start()
             self.is_running = True
@@ -59,10 +71,12 @@ class ReminderScheduler:
             logger.info("✅ Scheduler de lembretes iniciado com sucesso")
             logger.info("📅 Lembretes serão verificados a cada 10 minutos")
             logger.info("📱 Monitoramento WhatsApp a cada 5 minutos")
+            logger.info("🔄 Atualização de status a cada 15 minutos")
 
             # Executar imediatamente no startup (opcional)
             asyncio.create_task(self._run_reminder_processing())
             asyncio.create_task(self._run_whatsapp_monitoring())
+            asyncio.create_task(self._run_status_update())
 
         except Exception as e:
             logger.error(f"❌ Erro ao iniciar scheduler: {str(e)}")
@@ -132,6 +146,32 @@ class ReminderScheduler:
 
         except Exception as e:
             logger.error(f"❌ Erro ao executar monitoramento WhatsApp: {str(e)}")
+
+    async def _run_status_update(self):
+        """
+        Atualiza automaticamente o status de consultas passadas para 'realizada'.
+        Chamado automaticamente pelo scheduler a cada 15 minutos.
+
+        Consultas confirmadas/agendadas cujas datas já passaram são
+        marcadas como concluídas (status = 'realizada').
+        """
+        try:
+            start_time = datetime.now()
+            logger.info(f"🔄 Iniciando atualização de status - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+            # Atualizar status de consultas passadas
+            stats = await status_update_service.atualizar_status_consultas_passadas()
+
+            end_time = datetime.now()
+            duration = (end_time - start_time).total_seconds()
+
+            logger.info(
+                f"✅ Atualização de status concluída em {duration:.2f}s - "
+                f"Atualizadas: {stats['atualizadas']}"
+            )
+
+        except Exception as e:
+            logger.error(f"❌ Erro ao executar atualização de status: {str(e)}")
 
     def get_status(self):
         """
