@@ -243,6 +243,8 @@ async def process_message(message: WhatsAppMessage):
         proxima_acao = resposta.get("proxima_acao", "")
         dados_coletados = resposta.get("dados_coletados", {})
 
+        logger.info(f"[Webhook Official] proxima_acao={proxima_acao}, dados_coletados={dados_coletados}")
+
         # 11.1 Se a IA sinalizou que deve agendar, criar o agendamento
         if proxima_acao == "agendar":
             agendamento_criado = await criar_agendamento_from_ia(
@@ -394,15 +396,14 @@ async def criar_agendamento_from_ia(
         # Determinar valor (particular = R$ 300)
         valor = 300.00 if convenio.lower() == "particular" else None
 
-        # Criar agendamento
+        # Criar agendamento (cliente_id é inferido pelo medico/paciente)
         agendamento = Agendamento(
-            cliente_id=cliente_id,
             medico_id=medico_id,
             paciente_id=paciente.id,
             data_hora=data_hora,
             status="agendado",
-            tipo_atendimento="consulta",
-            valor_consulta=valor,
+            tipo_atendimento=convenio.lower() if convenio.lower() != "particular" else "particular",
+            valor_consulta=str(valor) if valor else None,
             motivo_consulta=especialidade,
             observacoes=f"Agendado via WhatsApp IA. Convênio: {convenio}"
         )
