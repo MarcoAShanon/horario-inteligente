@@ -56,8 +56,8 @@ class RegisterRequest(BaseModel):
 
     @validator('senha')
     def senha_forte(cls, v):
-        if len(v) < 6:
-            raise ValueError('Senha deve ter no mínimo 6 caracteres')
+        if len(v) < 8:
+            raise ValueError('Senha deve ter no mínimo 8 caracteres')
         return v
 
     @validator('tipo')
@@ -75,8 +75,8 @@ class ResetPasswordRequest(BaseModel):
 
     @validator('nova_senha')
     def senha_forte(cls, v):
-        if len(v) < 6:
-            raise ValueError('Senha deve ter no mínimo 6 caracteres')
+        if len(v) < 8:
+            raise ValueError('Senha deve ter no mínimo 8 caracteres')
         return v
 
 class UpdateProfileRequest(BaseModel):
@@ -95,8 +95,8 @@ class ChangePasswordRequest(BaseModel):
 
     @validator('nova_senha')
     def senha_forte(cls, v):
-        if len(v) < 6:
-            raise ValueError('Senha deve ter no mínimo 6 caracteres')
+        if len(v) < 8:
+            raise ValueError('Senha deve ter no mínimo 8 caracteres')
         return v
 
 

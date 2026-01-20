@@ -11,6 +11,7 @@
     <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
 
     <script src="/static/js/utils/csrf.js"></script>
+    <script src="/static/js/utils/validation.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -24,13 +25,28 @@
 
         <form id="formReset" class="space-y-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Nova Senha (mín. 6 caracteres)</label>
-                <input type="password" id="nova_senha" minlength="6" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Nova Senha (mín. 8 caracteres)</label>
+                <input type="password" id="nova_senha" minlength="8" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <div id="passwordStrengthContainer" class="hidden mt-2">
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 h-2 bg-gray-200 rounded">
+                            <div id="passwordStrengthBar" class="h-2 rounded transition-all duration-300"></div>
+                        </div>
+                        <span id="passwordStrengthLabel" class="text-xs font-medium min-w-[80px]"></span>
+                    </div>
+                    <ul id="passwordRequirements" class="text-xs mt-2 space-y-1 text-gray-600">
+                        <li id="req-length"><i class="fas fa-circle text-[8px] mr-2"></i>Mínimo 8 caracteres</li>
+                        <li id="req-lowercase"><i class="fas fa-circle text-[8px] mr-2"></i>Uma letra minúscula</li>
+                        <li id="req-uppercase"><i class="fas fa-circle text-[8px] mr-2"></i>Uma letra maiúscula</li>
+                        <li id="req-numbers"><i class="fas fa-circle text-[8px] mr-2"></i>Um número</li>
+                        <li id="req-special"><i class="fas fa-circle text-[8px] mr-2"></i>Um caractere especial</li>
+                    </ul>
+                </div>
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Confirmar Nova Senha</label>
-                <input type="password" id="confirmar_senha" minlength="6" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <input type="password" id="confirmar_senha" minlength="8" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
             </div>
 
             <button type="submit" id="btnSubmit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
@@ -58,6 +74,55 @@
             alert('❌ Link inválido ou expirado');
             window.location.href = '/static/esqueci-senha.html';
         }
+
+        // Indicador de força de senha
+        document.getElementById('nova_senha').addEventListener('input', function(e) {
+            const password = e.target.value;
+            const container = document.getElementById('passwordStrengthContainer');
+            const bar = document.getElementById('passwordStrengthBar');
+            const label = document.getElementById('passwordStrengthLabel');
+
+            if (password.length > 0) {
+                container.classList.remove('hidden');
+
+                if (typeof HiValidation !== 'undefined') {
+                    const strength = HiValidation.getPasswordStrength(password);
+
+                    // Atualizar barra
+                    bar.style.width = `${(strength.score / 5) * 100}%`;
+                    bar.style.backgroundColor = strength.color;
+
+                    // Atualizar label
+                    label.textContent = strength.label;
+                    label.style.color = strength.color;
+
+                    // Atualizar requisitos
+                    const updateReq = (id, met) => {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            const icon = el.querySelector('i');
+                            if (met) {
+                                icon.className = 'fas fa-check text-green-500 mr-2';
+                                el.classList.add('text-green-600');
+                                el.classList.remove('text-gray-600');
+                            } else {
+                                icon.className = 'fas fa-circle text-[8px] mr-2';
+                                el.classList.remove('text-green-600');
+                                el.classList.add('text-gray-600');
+                            }
+                        }
+                    };
+
+                    updateReq('req-length', strength.checks.length);
+                    updateReq('req-lowercase', strength.checks.lowercase);
+                    updateReq('req-uppercase', strength.checks.uppercase);
+                    updateReq('req-numbers', strength.checks.numbers);
+                    updateReq('req-special', strength.checks.special);
+                }
+            } else {
+                container.classList.add('hidden');
+            }
+        });
 
         document.getElementById('formReset').addEventListener('submit', async (e) => {
             e.preventDefault();
