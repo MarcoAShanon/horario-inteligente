@@ -20,7 +20,7 @@ Sistema SaaS de agendamento para clínicas (médicos, dentistas, psicólogos, fi
 ## 📑 Índice
 
 1. [📋 Visão Geral](#-visão-geral)
-2. [⚠️ Pendências de Segurança](#️-pendências-de-segurança)
+2. [✅ Segurança](#-segurança-atualizado-em-2026-01-20)
 3. [🚀 Novidades v3.2.0 e v3.3.0](#-novidades-v320-e-v330-novo)
 4. [🌐 Acesso em Produção](#-acesso-em-produção)
 5. [🏢 Multi-Tenant SaaS](#-multi-tenant-saas)
@@ -59,37 +59,41 @@ O **Horário Inteligente** é uma plataforma completa de gerenciamento de agenda
 
 ---
 
-## ⚠️ PENDÊNCIAS DE SEGURANÇA
+## ✅ SEGURANÇA (Atualizado em 2026-01-20)
 
 ### 🔒 Hash de Senhas dos Médicos
 
-**STATUS:** ⚠️ PENDENTE (Crítico para Produção)
+**STATUS:** ✅ RESOLVIDO
 
-**PROBLEMA:**
-- As senhas dos médicos estão armazenadas em **texto plano** no banco de dados
-- Campo `medicos.senha` contém a senha sem hash bcrypt
-- Isso representa um **risco crítico de segurança**
+**Implementado:**
+- ✅ Todas as senhas de médicos estão em **bcrypt** (verificado via script)
+- ✅ Script `scripts/hash_medicos_passwords.py` criado e funcional
+- ✅ Backend rejeita senhas em texto plano (fallback removido em `auth.py`)
 
-**SOLUÇÃO NECESSÁRIA:**
-```bash
-# Antes de ir para produção, executar:
-python scripts/hash_medicos_passwords.py
-```
+### 🔐 Validação de Senha Forte
 
-**IMPACTO:**
-- ✅ Desenvolvimento/Demonstração: OK (facilita testes)
-- ❌ Produção: BLOQUEANTE (deve ser corrigido antes do deploy)
+**STATUS:** ✅ IMPLEMENTADO
 
-**CREDENCIAIS ATUAIS (Apenas Desenvolvimento):**
-- Todos os médicos usam senha: `admin123`
-- Após aplicar hash, as senhas continuam as mesmas, mas serão armazenadas com segurança
+- ✅ Mínimo de **8 caracteres** (backend e frontend)
+- ✅ **Indicador visual de força** em todos os formulários de senha:
+  - Barra de progresso colorida
+  - Checklist de 5 requisitos em tempo real
+  - Páginas: registro, perfil, reset-senha
 
-**TODO:**
-- [ ] Criar script `hash_medicos_passwords.py`
-- [ ] Aplicar hash bcrypt em todas as senhas de médicos
-- [ ] Testar login após aplicação do hash
-- [ ] Adicionar validação de senha forte no frontend
-- [ ] Implementar sistema de "esqueci minha senha" para médicos
+### 🔑 Sistema "Esqueci Minha Senha"
+
+**STATUS:** ✅ FUNCIONAL
+
+- ✅ Página `/static/esqueci-senha.html` operacional
+- ✅ Envio de email com token de recuperação
+- ✅ Página `/static/reset-senha.html` com indicador de força
+- ✅ Links adicionados em todas as páginas de login:
+  - `/static/login.html`
+  - `/static/admin/login.html`
+  - `/static/financeiro/login.html`
+
+**CREDENCIAIS (Desenvolvimento):**
+- Médicos usam senha: `admin123` (armazenada em bcrypt)
 
 ---
 

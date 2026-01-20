@@ -1,5 +1,37 @@
 # Changelog - Horário Inteligente SaaS
 
+## [3.6.1] - 2026-01-20
+
+### 🔒 Segurança
+- **Validação de senha aumentada para 8 caracteres**: Mínimo alterado de 6 para 8
+  - Backend: `RegisterRequest`, `ResetPasswordRequest`, `ChangePasswordRequest`
+  - Frontend: `registro.html`, `perfil.html`, `reset-senha.html`
+  - Arquivo: `app/api/user_management.py`
+
+- **Indicador visual de força de senha**: Adicionado em todos os formulários de senha
+  - Barra de progresso colorida (vermelho → verde)
+  - Label de força: Muito fraca, Fraca, Média, Forte, Muito forte
+  - Checklist de 5 requisitos com atualização em tempo real:
+    - Mínimo 8 caracteres
+    - Uma letra minúscula
+    - Uma letra maiúscula
+    - Um número
+    - Um caractere especial
+  - Integração com `HiValidation.getPasswordStrength()`
+  - Arquivos: `static/registro.html`, `static/perfil.html`, `static/reset-senha.html`
+
+- **Link "Esqueci minha senha" adicionado**: Páginas de login admin e financeiro
+  - `static/admin/login.html` - Estilo adaptado ao tema escuro
+  - `static/financeiro/login.html` - Estilo verde consistente
+  - Redireciona para `/static/esqueci-senha.html` (sistema já existente)
+
+### ✅ Verificado
+- **Hash bcrypt de senhas**: Verificado que todas as 8 senhas de médicos já estão em bcrypt
+  - Script `scripts/hash_medicos_passwords.py --execute` executado
+  - Nenhuma migração necessária (todas já hasheadas)
+
+---
+
 ## [3.6.0] - 2026-01-19
 
 ### 🆕 Adicionado
@@ -206,9 +238,9 @@
 - **README.md**: Adicionado aviso crítico sobre hash de senhas pendente
 - **CHANGELOG.md**: Criado arquivo de histórico de alterações
 
-### ⚠️ Pendências Conhecidas
-- **Segurança**: Senhas dos médicos ainda em texto plano (precisa aplicar hash bcrypt)
-- **TODO**: Criar script `scripts/hash_medicos_passwords.py` antes de produção
+### ⚠️ Pendências Conhecidas (Resolvidas em 3.6.1)
+- ~~**Segurança**: Senhas dos médicos ainda em texto plano~~ → ✅ Verificado: todas já em bcrypt
+- ~~**TODO**: Criar script `scripts/hash_medicos_passwords.py`~~ → ✅ Script criado e executado
 
 ---
 
