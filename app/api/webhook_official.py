@@ -5,6 +5,8 @@ Endpoint separado para facilitar migração gradual
 
 import os
 import logging
+import tempfile
+import base64
 from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
@@ -31,6 +33,10 @@ from app.models.paciente import Paciente
 from app.models.medico import Medico
 from app.utils.timezone_helper import make_aware_brazil
 
+# Imports para áudio (OpenAI Whisper + TTS)
+from app.services.openai_audio_service import get_audio_service
+from app.services.audio_preference_service import deve_enviar_audio, detectar_preferencia_na_mensagem
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -38,6 +44,11 @@ router = APIRouter()
 # Instância do serviço
 whatsapp_service = WhatsAppOfficialService()
 conversation_manager = ConversationManager()
+
+# Configurações de áudio
+ENABLE_AUDIO_INPUT = os.getenv("ENABLE_AUDIO_INPUT", "true").lower() == "true"
+ENABLE_AUDIO_OUTPUT = os.getenv("ENABLE_AUDIO_OUTPUT", "true").lower() == "true"
+AUDIO_OUTPUT_MODE = os.getenv("AUDIO_OUTPUT_MODE", "hybrid")  # text, audio, hybrid
 
 
 @router.get("/webhook/whatsapp-official")
@@ -126,10 +137,51 @@ async def process_message(message: WhatsAppMessage):
         )
         logger.info(f"[Webhook Official] Conversa {conversa.id} - Status: {conversa.status.value}")
 
-        # 3. Determinar tipo da mensagem
+        # 3. Determinar tipo da mensagem e processar áudio se necessário
         tipo_mensagem = TipoMensagem.TEXTO
+        mensagem_foi_audio = False
+        texto_original = message.text
+
         if message.message_type == "audio":
             tipo_mensagem = TipoMensagem.AUDIO
+            mensagem_foi_audio = True
+
+            # Transcrever áudio se habilitado
+            if ENABLE_AUDIO_INPUT and message.audio_url:
+                try:
+                    logger.info(f"[Webhook Official] 🎤 Processando áudio recebido (media_id: {message.audio_url})")
+
+                    # Baixar áudio da API oficial (media_id → bytes)
+                    audio_bytes = await whatsapp_service.download_media(message.audio_url)
+
+                    if audio_bytes:
+                        # Salvar em arquivo temporário
+                        with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as f:
+                            f.write(audio_bytes)
+                            audio_path = f.name
+
+                        logger.info(f"[Webhook Official] 📁 Áudio salvo: {audio_path} ({len(audio_bytes)} bytes)")
+
+                        # Transcrever com Whisper
+                        audio_service = get_audio_service()
+                        if audio_service:
+                            texto_transcrito = await audio_service.transcrever_audio(audio_path)
+                            message.text = texto_transcrito
+                            logger.info(f"[Webhook Official] ✅ Áudio transcrito: {texto_transcrito[:100]}...")
+
+                            # Limpar arquivo temporário
+                            audio_service.limpar_audio(audio_path)
+                        else:
+                            logger.warning("[Webhook Official] ⚠️ Serviço de áudio não disponível")
+                            message.text = "[Áudio recebido - transcrição não disponível]"
+                    else:
+                        logger.warning("[Webhook Official] ⚠️ Falha ao baixar áudio")
+                        message.text = "[Áudio recebido - erro ao baixar]"
+
+                except Exception as e:
+                    logger.error(f"[Webhook Official] ❌ Erro ao processar áudio: {e}")
+                    message.text = "[Áudio recebido - erro na transcrição]"
+
         elif message.message_type == "image":
             tipo_mensagem = TipoMensagem.IMAGEM
         elif message.message_type == "document":
@@ -259,7 +311,20 @@ async def process_message(message: WhatsAppMessage):
             else:
                 logger.warning(f"[Webhook Official] ⚠️ Falha ao criar agendamento com dados: {dados_coletados}")
 
-        # 11.2 Envia resposta pelo WhatsApp
+        # 11.2 Verificar preferência de áudio e enviar resposta
+        enviar_audio = False
+        mensagem_preferencia = None
+
+        if ENABLE_AUDIO_OUTPUT:
+            enviar_audio, mensagem_preferencia = deve_enviar_audio(
+                db=db,
+                telefone=message.sender,
+                mensagem_foi_audio=mensagem_foi_audio,
+                mensagem_texto=message.text
+            )
+            logger.info(f"[Webhook Official] 🔊 Enviar áudio: {enviar_audio} (modo: {AUDIO_OUTPUT_MODE})")
+
+        # 11.3 Envia resposta pelo WhatsApp
         if proxima_acao == "escolher_especialidade":
             # Envia com botões de especialidade
             from app.services.whatsapp_interface import InteractiveButton
@@ -280,6 +345,55 @@ async def process_message(message: WhatsAppMessage):
             await whatsapp_service.send_text(
                 to=message.sender,
                 message=texto_resposta
+            )
+
+        # 11.4 Enviar áudio se habilitado e preferência permitir
+        if enviar_audio and AUDIO_OUTPUT_MODE in ["audio", "hybrid"]:
+            try:
+                audio_service = get_audio_service()
+                if audio_service:
+                    logger.info(f"[Webhook Official] 🎤 Gerando áudio TTS para resposta...")
+
+                    # Gerar áudio com TTS
+                    audio_path = await audio_service.texto_para_audio(texto_resposta)
+
+                    if audio_path:
+                        # Ler arquivo e converter para base64
+                        with open(audio_path, "rb") as f:
+                            audio_base64 = base64.b64encode(f.read()).decode()
+
+                        # Enviar áudio
+                        result = await whatsapp_service.send_audio(
+                            to=message.sender,
+                            audio_base64=audio_base64
+                        )
+
+                        if result.success:
+                            logger.info(f"[Webhook Official] ✅ Áudio enviado com sucesso")
+
+                            # Salvar mensagem de áudio no PostgreSQL
+                            ConversaService.adicionar_mensagem(
+                                db=db,
+                                conversa_id=conversa.id,
+                                direcao=DirecaoMensagem.SAIDA,
+                                remetente=RemetenteMensagem.IA,
+                                conteudo="[Áudio]",
+                                tipo=TipoMensagem.AUDIO
+                            )
+                        else:
+                            logger.warning(f"[Webhook Official] ⚠️ Falha ao enviar áudio: {result.error}")
+
+                        # Limpar arquivo temporário
+                        audio_service.limpar_audio(audio_path)
+
+            except Exception as e:
+                logger.error(f"[Webhook Official] ❌ Erro ao gerar/enviar áudio: {e}")
+
+        # 11.5 Enviar mensagem de confirmação de preferência se houver
+        if mensagem_preferencia:
+            await whatsapp_service.send_text(
+                to=message.sender,
+                message=mensagem_preferencia
             )
 
     except Exception as e:
