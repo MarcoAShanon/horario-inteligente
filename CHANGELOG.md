@@ -2,6 +2,19 @@
 
 ## [3.6.1] - 2026-01-20
 
+### 🆕 Adicionado
+- **Botão de login na landing page**: Habilitado acesso para clientes
+  - Menu desktop: Botão "Entrar" azul no header
+  - Menu mobile: Botão "Entrar" no menu hambúrguer
+  - Footer: Links "Login" e "Criar Conta" na seção Produto
+  - Arquivo: `static/index.html`
+
+- **Link "Ainda não é cliente?" na página de login**
+  - Seção com separador visual após "Esqueci minha senha"
+  - Direciona para formulário de contato da landing page
+  - Facilita conversão de visitantes em leads
+  - Arquivo: `static/login.html`
+
 ### 🔒 Segurança
 - **Validação de senha aumentada para 8 caracteres**: Mínimo alterado de 6 para 8
   - Backend: `RegisterRequest`, `ResetPasswordRequest`, `ChangePasswordRequest`
