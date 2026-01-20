@@ -296,6 +296,11 @@ try:
     app.include_router(conversas_router, tags=["Conversas WhatsApp"])
     logger.info("✅ Router de conversas WhatsApp registrado")
 
+    # Router de Lembretes Inteligentes (IA conversacional)
+    from app.api.lembretes import router as lembretes_router
+    app.include_router(lembretes_router, tags=["Lembretes Inteligentes"])
+    logger.info("✅ Router de lembretes inteligentes registrado")
+
     # Router WebSocket (notificações em tempo real)
     from app.api.websocket import router as websocket_router
     app.include_router(websocket_router, tags=["WebSocket"])

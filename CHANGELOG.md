@@ -1,5 +1,103 @@
 # Changelog - Horário Inteligente SaaS
 
+## [3.6.2] - 2026-01-20
+
+### 🆕 Adicionado
+- **Sistema de Lembretes Inteligentes com IA Conversacional**
+  - Lembretes automáticos de consultas via WhatsApp Business API Oficial (Meta)
+  - IA interpreta respostas naturais dos pacientes (confirmar, remarcar, cancelar, dúvidas)
+  - Respostas conversacionais personalizadas por intenção
+
+- **Modelo Lembrete**: Persistência completa do ciclo de vida de lembretes
+  - Tipos: `24h`, `3h`, `1h` (antes da consulta)
+  - Status: `pendente`, `enviado`, `confirmado`, `remarcar`, `cancelar`, `sem_resposta`, `erro`
+  - Rastreamento: message_id, template usado, resposta do paciente, intenção detectada
+  - Arquivo: `app/models/lembrete.py`
+
+- **LembreteService**: Service completo para gerenciamento de lembretes
+  - `criar_lembretes_para_agendamento()`: Cria lembretes ao agendar
+  - `enviar_lembrete()`: Envia via template Meta (obrigatório fora da janela 24h)
+  - `processar_resposta_lembrete()`: Interpreta resposta com IA Claude
+  - `_interpretar_intencao()`: Classifica intenção (confirmar/remarcar/cancelar/duvida)
+  - `_gerar_resposta_ia()`: Gera resposta conversacional personalizada
+  - `processar_lembretes_pendentes()`: Processamento em lote pelo scheduler
+  - `get_estatisticas()`: Métricas de lembretes
+  - Arquivo: `app/services/lembrete_service.py`
+
+- **Integração no Webhook**: Processamento de respostas a lembretes
+  - Verifica se mensagem é resposta a lembrete antes de processar com IA geral
+  - Atualiza status do agendamento conforme intenção (confirmado/cancelado)
+  - Envia resposta conversacional apropriada
+  - Arquivo: `app/api/webhook_official.py`
+
+- **Integração no Agendamento**: Criação automática de lembretes
+  - Cria lembrete de 24h automaticamente ao criar agendamento
+  - Arquivo: `app/api/agendamentos.py`
+
+- **Job no Scheduler**: Processamento automático a cada 10 minutos
+  - Busca agendamentos na janela de tempo (24h, 3h, 1h antes)
+  - Cria e envia lembretes pendentes
+  - Estatísticas de envio no log
+  - Arquivo: `app/scheduler.py`
+
+- **API REST de Lembretes**: Endpoints para gerenciamento
+  - `GET /api/lembretes`: Lista lembretes com filtros (status, tipo)
+  - `GET /api/lembretes/agendamento/{id}`: Lembretes de um agendamento
+  - `GET /api/lembretes/estatisticas`: Estatísticas gerais
+  - `GET /api/lembretes/{id}`: Detalhes de um lembrete
+  - `POST /api/lembretes`: Criar lembretes manualmente
+  - `POST /api/lembretes/{id}/reenviar`: Reenviar lembrete
+  - `DELETE /api/lembretes/{id}`: Cancelar lembrete pendente
+  - Arquivo: `app/api/lembretes.py`
+
+### 🔧 Configuração
+- **Templates Meta necessários** (aguardando aprovação):
+  - `lembrete_consulta_24h`: Lembrete 24h antes
+  - `lembrete_consulta_3h`: Lembrete 3h antes
+  - `lembrete_consulta_1h`: Lembrete 1h antes
+  - Formato: "Olá {{1}}! Lembrete da sua consulta com {{2}} amanhã às {{3}}. Confirma presença?"
+
+- **Variáveis de ambiente**:
+  ```
+  WHATSAPP_TEMPLATE_LEMBRETE_24H=lembrete_consulta_24h
+  WHATSAPP_TEMPLATE_LEMBRETE_3H=lembrete_consulta_3h
+  WHATSAPP_TEMPLATE_LEMBRETE_1H=lembrete_consulta_1h
+  ```
+
+### 📊 Fluxo de Funcionamento
+1. **Agendamento criado** → Lembrete de 24h criado (status: pendente)
+2. **Scheduler (a cada 10min)** → Verifica agendamentos na janela de tempo
+3. **Envio via template Meta** → Lembrete enviado (status: enviado)
+4. **Paciente responde** → IA interpreta intenção
+5. **Ação automática**:
+   - Confirmar → status agendamento = confirmado
+   - Cancelar → status agendamento = cancelado
+   - Remarcar → inicia fluxo de remarcação
+   - Dúvida → resposta conversacional + aguarda confirmação
+
+### 📝 Tabela no Banco de Dados
+```sql
+CREATE TABLE lembretes (
+    id SERIAL PRIMARY KEY,
+    agendamento_id INTEGER REFERENCES agendamentos(id),
+    tipo VARCHAR(10) NOT NULL,        -- '24h', '3h', '1h'
+    status VARCHAR(20) DEFAULT 'pendente',
+    enviado_em TIMESTAMP,
+    message_id VARCHAR(100),
+    template_usado VARCHAR(100),
+    respondido_em TIMESTAMP,
+    resposta_texto TEXT,
+    intencao_detectada VARCHAR(50),
+    tentativas_envio INTEGER DEFAULT 0,
+    ultimo_erro TEXT,
+    lembrete_1h_solicitado BOOLEAN DEFAULT FALSE,
+    criado_em TIMESTAMP DEFAULT NOW(),
+    atualizado_em TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
 ## [3.6.1] - 2026-01-20
 
 ### 🆕 Adicionado

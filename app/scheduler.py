@@ -8,6 +8,7 @@ from datetime import datetime
 from app.services.reminder_service import reminder_service
 from app.services.whatsapp_monitor import whatsapp_monitor
 from app.services.status_update_service import status_update_service
+from app.services.lembrete_service import lembrete_service
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,17 @@ class ReminderScheduler:
                 misfire_grace_time=300  # 5 minutos de tolerância
             )
 
+            # Adicionar job para processar lembretes inteligentes (API oficial Meta)
+            self.scheduler.add_job(
+                self._run_lembretes_inteligentes,
+                trigger=IntervalTrigger(minutes=10),
+                id='lembretes_inteligentes',
+                name='Processar lembretes inteligentes (API oficial)',
+                replace_existing=True,
+                max_instances=1,
+                misfire_grace_time=300  # 5 minutos de tolerância
+            )
+
             # Iniciar o scheduler
             self.scheduler.start()
             self.is_running = True
@@ -72,11 +84,13 @@ class ReminderScheduler:
             logger.info("📅 Lembretes serão verificados a cada 10 minutos")
             logger.info("📱 Monitoramento WhatsApp a cada 5 minutos")
             logger.info("🔄 Atualização de status a cada 15 minutos")
+            logger.info("🔔 Lembretes inteligentes a cada 10 minutos")
 
             # Executar imediatamente no startup (opcional)
             asyncio.create_task(self._run_reminder_processing())
             asyncio.create_task(self._run_whatsapp_monitoring())
             asyncio.create_task(self._run_status_update())
+            asyncio.create_task(self._run_lembretes_inteligentes())
 
         except Exception as e:
             logger.error(f"❌ Erro ao iniciar scheduler: {str(e)}")
@@ -172,6 +186,49 @@ class ReminderScheduler:
 
         except Exception as e:
             logger.error(f"❌ Erro ao executar atualização de status: {str(e)}")
+
+    async def _run_lembretes_inteligentes(self):
+        """
+        Processa lembretes inteligentes usando a API oficial do WhatsApp (Meta).
+        Envia lembretes via templates e processa respostas com IA.
+
+        Chamado automaticamente pelo scheduler a cada 10 minutos.
+        """
+        try:
+            start_time = datetime.now()
+            logger.info(f"🔔 Iniciando processamento de lembretes inteligentes - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+            # Processar lembretes pendentes
+            stats = await lembrete_service.processar_lembretes_pendentes()
+
+            end_time = datetime.now()
+            duration = (end_time - start_time).total_seconds()
+
+            # Calcular totais
+            total_enviados = (
+                stats.get("24h", {}).get("enviados", 0) +
+                stats.get("3h", {}).get("enviados", 0) +
+                stats.get("1h", {}).get("enviados", 0)
+            )
+            total_erros = (
+                stats.get("24h", {}).get("erros", 0) +
+                stats.get("3h", {}).get("erros", 0) +
+                stats.get("1h", {}).get("erros", 0)
+            )
+
+            logger.info(
+                f"✅ Lembretes inteligentes processados em {duration:.2f}s - "
+                f"Enviados: {total_enviados}, Erros: {total_erros}"
+            )
+
+            if total_enviados > 0:
+                logger.info(
+                    f"   📊 Detalhes: 24h={stats.get('24h', {})}, "
+                    f"3h={stats.get('3h', {})}, 1h={stats.get('1h', {})}"
+                )
+
+        except Exception as e:
+            logger.error(f"❌ Erro ao processar lembretes inteligentes: {str(e)}")
 
     def get_status(self):
         """

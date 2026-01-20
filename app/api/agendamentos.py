@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, date
 from app.database import get_db
 from app.services.agendamento_service import AgendamentoService
 from app.services.notification_service import get_notification_service
+from app.services.lembrete_service import lembrete_service
 from app.api.auth import get_current_user
 from app.utils.auth_middleware import AuthMiddleware, get_medico_filter_dependency
 from app.utils.phone_utils import normalize_phone
@@ -137,6 +138,18 @@ async def criar_agendamento(
         
         agendamento_id = result.scalar()
         db.commit()
+
+        # Criar lembrete de 24h para o agendamento
+        try:
+            lembrete_service.criar_lembretes_para_agendamento(
+                db=db,
+                agendamento_id=agendamento_id,
+                tipos=["24h"]
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Erro ao criar lembrete para agendamento {agendamento_id}: {e}")
 
         # Notificar médico sobre novo agendamento
         try:

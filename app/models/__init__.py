@@ -32,6 +32,9 @@ from app.models.pre_cadastro import PreCadastro
 from app.models.conversa import Conversa, StatusConversa
 from app.models.mensagem import Mensagem, DirecaoMensagem, RemetenteMensagem, TipoMensagem
 
+# Model de Lembretes Inteligentes
+from app.models.lembrete import Lembrete, TipoLembrete, StatusLembrete
+
 __all__ = [
     "Base",
     "BaseModel",
@@ -64,4 +67,8 @@ __all__ = [
     "DirecaoMensagem",
     "RemetenteMensagem",
     "TipoMensagem",
+    # Model de Lembretes Inteligentes
+    "Lembrete",
+    "TipoLembrete",
+    "StatusLembrete",
 ]

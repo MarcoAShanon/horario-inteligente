@@ -37,6 +37,9 @@ from app.utils.timezone_helper import make_aware_brazil
 from app.services.openai_audio_service import get_audio_service
 from app.services.audio_preference_service import deve_enviar_audio, detectar_preferencia_na_mensagem
 
+# Imports para lembretes inteligentes
+from app.services.lembrete_service import lembrete_service
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -222,6 +225,72 @@ async def process_message(message: WhatsAppMessage):
         if conversa.status == StatusConversa.HUMANO_ASSUMIU:
             logger.info(f"[Webhook Official] Conversa {conversa.id} está sendo atendida por humano. IA não responderá.")
             # Mensagem já foi notificada acima, atendente verá no painel
+            return
+
+        # 5.1 Verificar se é resposta a um lembrete de consulta
+        resultado_lembrete = await lembrete_service.processar_resposta_lembrete(
+            db=db,
+            telefone=message.sender,
+            texto_resposta=message.text,
+            cliente_id=cliente_id
+        )
+
+        if resultado_lembrete.get("tem_lembrete_pendente"):
+            logger.info(f"[Webhook Official] 🔔 Resposta de lembrete detectada: {resultado_lembrete.get('intencao')}")
+
+            texto_resposta = resultado_lembrete.get("resposta", "")
+
+            if texto_resposta:
+                # Salvar resposta no PostgreSQL
+                mensagem_ia = ConversaService.adicionar_mensagem(
+                    db=db,
+                    conversa_id=conversa.id,
+                    direcao=DirecaoMensagem.SAIDA,
+                    remetente=RemetenteMensagem.IA,
+                    conteudo=texto_resposta,
+                    tipo=TipoMensagem.TEXTO
+                )
+
+                # Notificar via WebSocket
+                await websocket_manager.send_nova_mensagem(
+                    cliente_id=cliente_id,
+                    conversa_id=conversa.id,
+                    mensagem={
+                        "id": mensagem_ia.id,
+                        "direcao": "saida",
+                        "remetente": "ia",
+                        "tipo": "texto",
+                        "conteudo": texto_resposta,
+                        "timestamp": mensagem_ia.timestamp.isoformat()
+                    }
+                )
+
+                # Enviar resposta pelo WhatsApp
+                await whatsapp_service.send_text(
+                    to=message.sender,
+                    message=texto_resposta
+                )
+
+                # Salvar no contexto Redis
+                conversation_manager.add_message(
+                    phone=message.sender,
+                    message_type="user",
+                    text=message.text,
+                    intencao="resposta_lembrete",
+                    dados_coletados={},
+                    cliente_id=cliente_id
+                )
+                conversation_manager.add_message(
+                    phone=message.sender,
+                    message_type="assistant",
+                    text=texto_resposta,
+                    intencao=resultado_lembrete.get("intencao", ""),
+                    dados_coletados={},
+                    cliente_id=cliente_id
+                )
+
+            # Se ação é aguardar resposta, não processa mais
+            # Se for confirmar/cancelar, já processou
             return
 
         # 6. Obtém contexto da conversa do Redis
