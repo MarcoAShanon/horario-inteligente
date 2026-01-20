@@ -38,6 +38,40 @@
   - `static/financeiro/login.html` - Estilo verde consistente
   - Redireciona para `/static/esqueci-senha.html` (sistema já existente)
 
+### 🎤 Áudio WhatsApp (API Oficial Meta)
+- **Integração completa de áudio no webhook oficial**
+  - Arquivo: `app/api/webhook_official.py`
+
+- **Recebimento de áudio (Speech-to-Text)**
+  - Download de áudio via `media_id` da API oficial Meta
+  - Transcrição automática com OpenAI Whisper
+  - Texto transcrito processado pela IA Claude
+  - Suporte a arquivos `.ogg` (formato padrão WhatsApp)
+
+- **Envio de áudio (Text-to-Speech)**
+  - Geração de áudio com OpenAI TTS
+  - Voz: `nova` (feminina, amigável)
+  - Velocidade: 1.1x (ligeiramente mais rápida)
+  - Upload de mídia para API oficial e envio
+
+- **Preferências inteligentes do paciente**
+  - Modo AUTO (espelho): áudio → resposta com áudio; texto → só texto
+  - Modo SEMPRE: sempre envia texto + áudio
+  - Modo NUNCA: apenas texto
+  - Detecção automática por frases naturais:
+    - "prefiro texto", "sem áudio" → modo NUNCA
+    - "pode mandar áudio", "adorei o áudio" → modo SEMPRE
+  - Integração com `audio_preference_service.py`
+
+- **Configurações `.env`**
+  ```
+  ENABLE_AUDIO_INPUT=true
+  ENABLE_AUDIO_OUTPUT=true
+  AUDIO_OUTPUT_MODE=hybrid
+  TTS_VOICE=nova
+  TTS_SPEED=1.1
+  ```
+
 ### ✅ Verificado
 - **Hash bcrypt de senhas**: Verificado que todas as 8 senhas de médicos já estão em bcrypt
   - Script `scripts/hash_medicos_passwords.py --execute` executado
