@@ -739,7 +739,7 @@
     <div id="modalConvenio" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-md">
             <div class="flex justify-between items-center p-6 border-b">
-                <h3 class="text-lg font-bold text-gray-800">Adicionar Convênio</h3>
+                <h3 id="modalConvenioTitulo" class="text-lg font-bold text-gray-800">Adicionar Convênio</h3>
                 <button onclick="fecharModalConvenio()" class="text-gray-400 hover:text-gray-600">
                     <i class="fas fa-times text-xl"></i>
                 </button>
@@ -765,7 +765,7 @@
                     <button type="button" onclick="fecharModalConvenio()" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition">
                         Cancelar
                     </button>
-                    <button type="submit" class="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 transition">
+                    <button type="submit" id="btnSalvarConvenio" class="flex-1 bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 transition">
                         Adicionar
                     </button>
                 </div>
@@ -1431,9 +1431,14 @@
                 <div class="convenio-card bg-gray-50 rounded-lg p-4 border">
                     <div class="flex justify-between items-start mb-2">
                         <h4 class="font-medium text-gray-800">${c.nome}</h4>
-                        <button onclick="removerConvenio(${index})" class="text-red-500 hover:text-red-700">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <div class="flex gap-2">
+                            <button onclick="editarConvenio(${index})" class="text-blue-500 hover:text-blue-700" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="removerConvenio(${index})" class="text-red-500 hover:text-red-700" title="Remover">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
                     </div>
                     <p class="text-green-600 font-bold text-lg">R$ ${(c.valor || 0).toFixed(2)}</p>
                     ${c.codigo ? `<p class="text-xs text-gray-500 mt-1">Cód: ${c.codigo}</p>` : ''}
@@ -1441,7 +1446,26 @@
             `).join('');
         }
 
+        let convenioEditandoIndex = null; // Índice do convênio sendo editado
+
         function abrirModalConvenio() {
+            convenioEditandoIndex = null;
+            document.getElementById('modalConvenioTitulo').textContent = 'Adicionar Convênio';
+            document.getElementById('btnSalvarConvenio').textContent = 'Adicionar';
+            document.getElementById('modalConvenio').classList.remove('hidden');
+            document.getElementById('nome_convenio').focus();
+        }
+
+        function editarConvenio(index) {
+            convenioEditandoIndex = index;
+            const convenio = convenios[index];
+
+            document.getElementById('nome_convenio').value = convenio.nome;
+            document.getElementById('valor_convenio').value = convenio.valor || 0;
+            document.getElementById('codigo_convenio').value = convenio.codigo || '';
+
+            document.getElementById('modalConvenioTitulo').textContent = 'Editar Convênio';
+            document.getElementById('btnSalvarConvenio').textContent = 'Salvar';
             document.getElementById('modalConvenio').classList.remove('hidden');
             document.getElementById('nome_convenio').focus();
         }
@@ -1449,26 +1473,38 @@
         function fecharModalConvenio() {
             document.getElementById('modalConvenio').classList.add('hidden');
             document.getElementById('formConvenio').reset();
+            convenioEditandoIndex = null;
         }
 
         document.getElementById('formConvenio').addEventListener('submit', (e) => {
             e.preventDefault();
 
-            const novoConvenio = {
+            const convenioData = {
                 nome: document.getElementById('nome_convenio').value,
                 valor: parseFloat(document.getElementById('valor_convenio').value) || 0,
                 codigo: document.getElementById('codigo_convenio').value
             };
 
-            convenios.push(novoConvenio);
+            if (convenioEditandoIndex !== null) {
+                // Modo edição: atualiza o convênio existente
+                convenios[convenioEditandoIndex] = convenioData;
+                mostrarMensagem('Convênio atualizado! Clique em "Salvar Valores" para confirmar.', 'info');
+            } else {
+                // Modo adição: adiciona novo convênio
+                convenios.push(convenioData);
+                mostrarMensagem('Convênio adicionado! Clique em "Salvar Valores" para confirmar.', 'info');
+            }
+
             renderizarConvenios();
             fecharModalConvenio();
-            mostrarMensagem('Convênio adicionado! Clique em "Salvar Valores" para confirmar.', 'info');
         });
 
         function removerConvenio(index) {
-            convenios.splice(index, 1);
-            renderizarConvenios();
+            if (confirm('Deseja remover este convênio?')) {
+                convenios.splice(index, 1);
+                renderizarConvenios();
+                mostrarMensagem('Convênio removido! Clique em "Salvar Valores" para confirmar.', 'info');
+            }
         }
 
         async function salvarValores() {
@@ -1479,7 +1515,7 @@
                     convenios_aceitos: convenios
                 };
 
-                const response = await fetch('/api/usuarios/perfil', {
+                const response = await fetch('/api/perfil', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',

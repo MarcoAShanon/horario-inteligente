@@ -82,3 +82,4 @@ cryptography
 slowapi==0.1.9
 bcrypt==4.2.0
 fastapi-csrf-protect==0.3.4
+pywebpush>=2.2.0

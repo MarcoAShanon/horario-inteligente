@@ -734,7 +734,7 @@
                     </button>
                     <button onclick="window.location.href='/static/dashboard.html'" class="hidden lg:inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 whitespace-nowrap">
                         <i class="fas fa-arrow-left sm:mr-2"></i>
-                        <span class="hidden md:inline">Dashboard</span>
+                        <span class="hidden md:inline">Painel</span>
                     </button>
                     <button onclick="logout()" class="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 whitespace-nowrap">
                         <i class="fas fa-sign-out-alt sm:mr-2"></i>
@@ -2949,7 +2949,7 @@
                         },
                         {
                             id: 'dashboard',
-                            label: 'Dashboard',
+                            label: 'Painel',
                             icon: 'fa-chart-line',
                             href: '/static/dashboard.html'
                         },
@@ -2976,23 +2976,100 @@
                     }
                 });
             }
+
+            // WebSocket para atualizações em tempo real
+            initWebSocket();
         });
+
+        // ==================== WEBSOCKET TEMPO REAL ====================
+        let ws = null;
+        let wsReconnectAttempts = 0;
+        const wsMaxReconnectAttempts = 5;
+
+        function initWebSocket() {
+            const token = localStorage.getItem('authToken');
+            if (!token) return;
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/conversas?token=${token}`;
+
+            try {
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    console.log('📡 WebSocket conectado - atualizações em tempo real ativas');
+                    wsReconnectAttempts = 0;
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        handleWebSocketMessage(data);
+                    } catch (e) {
+                        console.error('Erro ao processar mensagem WebSocket:', e);
+                    }
+                };
+
+                ws.onclose = (event) => {
+                    console.log('WebSocket desconectado:', event.code);
+                    // Tentar reconectar
+                    if (wsReconnectAttempts < wsMaxReconnectAttempts) {
+                        wsReconnectAttempts++;
+                        setTimeout(initWebSocket, 5000 * wsReconnectAttempts);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('Erro WebSocket:', error);
+                };
+
+            } catch (e) {
+                console.error('Erro ao criar WebSocket:', e);
+            }
+        }
+
+        function handleWebSocketMessage(data) {
+            switch (data.tipo) {
+                case 'novo_agendamento':
+                    console.log('📅 Novo agendamento recebido via WebSocket:', data.agendamento);
+                    // Recarregar eventos do calendário
+                    if (typeof carregarEventos === 'function') {
+                        carregarEventos();
+                    }
+                    // Mostrar notificação
+                    if (typeof HiToast !== 'undefined') {
+                        const ag = data.agendamento;
+                        HiToast.info(`Novo agendamento: ${ag.paciente_nome || 'Paciente'}`);
+                    }
+                    break;
+
+                case 'agendamento_atualizado':
+                    console.log('🔄 Agendamento atualizado via WebSocket:', data.agendamento);
+                    if (typeof carregarEventos === 'function') {
+                        carregarEventos();
+                    }
+                    break;
+
+                case 'conectado':
+                    console.log('✅ WebSocket confirmado:', data.message);
+                    break;
+
+                case 'pong':
+                    // Resposta ao ping, não faz nada
+                    break;
+            }
+        }
+
+        // Ping periódico para manter conexão viva
+        setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ tipo: 'ping' }));
+            }
+        }, 30000);
     </script>
 
-    <!-- PWA Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/service-worker.js')
-                    .then(registration => {
-                        console.log('PWA: Service Worker registrado com sucesso!', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('PWA: Falha ao registrar Service Worker:', error);
-                    });
-            });
-        }
-    </script>
+    <!-- PWA Update Manager -->
+    <script src="/static/js/pwa-updater.js?v=1.1.0"></script>
 
     <!-- FAB Nova Consulta -->
     <button id="fab-nova-consulta" class="fab-nova-consulta" onclick="abrirModalAgendamento()" aria-label="Agendar nova consulta">

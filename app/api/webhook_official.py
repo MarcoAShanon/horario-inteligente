@@ -73,10 +73,12 @@ async def verify_webhook(
         result = whatsapp_service.verify_webhook_token(hub_mode, hub_token, hub_challenge)
 
         if result:
+            # Log sem expor dados sensíveis
             print(f"[Webhook Official] Verificação bem-sucedida!")
             return PlainTextResponse(content=result)
         else:
-            print(f"[Webhook Official] Token inválido: {hub_token}")
+            # SEGURANÇA: Não logar tokens - apenas indicar falha
+            print(f"[Webhook Official] Token de verificação inválido")
             raise HTTPException(status_code=403, detail="Token de verificação inválido")
 
     raise HTTPException(status_code=400, detail="Parâmetros de verificação ausentes")
@@ -600,6 +602,21 @@ async def criar_agendamento_from_ia(
         db.refresh(agendamento)
 
         logger.info(f"[Agendamento] ✅ Criado: ID={agendamento.id}, Paciente={nome}, Médico={medico.nome}, Data={data_hora}")
+
+        # Notificar via WebSocket para atualizar calendários em tempo real
+        try:
+            await websocket_manager.send_novo_agendamento(cliente_id, {
+                "id": agendamento.id,
+                "paciente_nome": nome,
+                "medico_id": medico_id,
+                "medico_nome": medico.nome,
+                "data_hora": data_hora.isoformat(),
+                "status": "agendado",
+                "tipo_atendimento": agendamento.tipo_atendimento
+            })
+        except Exception as ws_error:
+            logger.warning(f"[WebSocket] Erro ao notificar novo agendamento: {ws_error}")
+
         return agendamento
 
     except Exception as e:

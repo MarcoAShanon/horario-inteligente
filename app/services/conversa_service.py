@@ -77,12 +77,13 @@ class ConversaService:
         return mensagem
 
     @staticmethod
-    def assumir_conversa(db: Session, conversa_id: int, atendente_id: int) -> Optional[Conversa]:
+    def assumir_conversa(db: Session, conversa_id: int, atendente_id: int, atendente_tipo: str = "medico") -> Optional[Conversa]:
         """Atendente assume a conversa (desativa IA)"""
         conversa = db.query(Conversa).filter(Conversa.id == conversa_id).first()
         if conversa and conversa.status != StatusConversa.ENCERRADA:
             conversa.status = StatusConversa.HUMANO_ASSUMIU
             conversa.atendente_id = atendente_id
+            conversa.atendente_tipo = atendente_tipo
             db.commit()
             db.refresh(conversa)
         return conversa
@@ -94,6 +95,7 @@ class ConversaService:
         if conversa and conversa.status == StatusConversa.HUMANO_ASSUMIU:
             conversa.status = StatusConversa.IA_ATIVA
             conversa.atendente_id = None
+            conversa.atendente_tipo = None
             db.commit()
             db.refresh(conversa)
         return conversa

@@ -23,7 +23,9 @@ security = HTTPBearer()
 limiter = Limiter(key_func=get_remote_address)
 
 # Configurações JWT
-SECRET_KEY = os.getenv("SECRET_KEY", "sua-chave-secreta-super-segura-aqui-123")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("ERRO CRÍTICO: SECRET_KEY não configurada. Defina a variável de ambiente SECRET_KEY no arquivo .env")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 horas
 

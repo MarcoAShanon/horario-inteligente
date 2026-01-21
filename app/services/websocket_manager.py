@@ -89,6 +89,22 @@ class WebSocketManager:
             "conversa": conversa
         })
 
+    async def send_novo_agendamento(self, cliente_id: int, agendamento: dict):
+        """Notifica novo agendamento criado (para atualizar calendários)"""
+        logger.info(f"[WebSocket] Notificando novo_agendamento para cliente {cliente_id}")
+        await self.broadcast_to_tenant(cliente_id, {
+            "tipo": "novo_agendamento",
+            "agendamento": agendamento
+        })
+
+    async def send_agendamento_atualizado(self, cliente_id: int, agendamento: dict):
+        """Notifica agendamento atualizado (status, horário, etc)"""
+        logger.info(f"[WebSocket] Notificando agendamento_atualizado para cliente {cliente_id}")
+        await self.broadcast_to_tenant(cliente_id, {
+            "tipo": "agendamento_atualizado",
+            "agendamento": agendamento
+        })
+
     def get_connection_count(self, cliente_id: int) -> int:
         """Retorna número de conexões ativas para um tenant"""
         return len(self.active_connections.get(cliente_id, set()))

@@ -4,8 +4,9 @@ API para Gestão de Usuários Internos (Admin, Financeiro, Suporte)
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from typing import Optional, List
+import re
 from datetime import datetime, timezone
 import bcrypt
 import logging
@@ -26,6 +27,20 @@ class UsuarioInternoCreate(BaseModel):
     perfil: str  # 'admin', 'financeiro', 'suporte'
     telefone: Optional[str] = None
 
+    @validator('senha')
+    def senha_forte(cls, v):
+        if len(v) < 8:
+            raise ValueError('Senha deve ter no mínimo 8 caracteres')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Senha deve conter pelo menos uma letra maiúscula')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Senha deve conter pelo menos uma letra minúscula')
+        if not re.search(r'\d', v):
+            raise ValueError('Senha deve conter pelo menos um número')
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError('Senha deve conter pelo menos um caractere especial (!@#$%^&*)')
+        return v
+
 
 class UsuarioInternoUpdate(BaseModel):
     nome: Optional[str] = None
@@ -38,6 +53,20 @@ class UsuarioInternoUpdate(BaseModel):
 class UsuarioInternoSenha(BaseModel):
     senha_atual: str
     nova_senha: str
+
+    @validator('nova_senha')
+    def senha_forte(cls, v):
+        if len(v) < 8:
+            raise ValueError('Senha deve ter no mínimo 8 caracteres')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Senha deve conter pelo menos uma letra maiúscula')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Senha deve conter pelo menos uma letra minúscula')
+        if not re.search(r'\d', v):
+            raise ValueError('Senha deve conter pelo menos um número')
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError('Senha deve conter pelo menos um caractere especial (!@#$%^&*)')
+        return v
 
 
 class UsuarioInternoLogin(BaseModel):

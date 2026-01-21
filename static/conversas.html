@@ -113,6 +113,62 @@
             font-weight: 600;
         }
 
+        /* Urgency indicators */
+        .urgencia-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 9999px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            animation: urgencia-pulse 2s infinite;
+        }
+        .urgencia-critica {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        .urgencia-atencao {
+            background: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fde68a;
+        }
+        .conversa-item.urgente-critica {
+            border-left-color: #dc2626 !important;
+            background: linear-gradient(90deg, #fef2f2 0%, white 20%);
+        }
+        .conversa-item.urgente-atencao {
+            border-left-color: #f59e0b !important;
+            background: linear-gradient(90deg, #fffbeb 0%, white 20%);
+        }
+        @keyframes urgencia-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .urgencia-counter {
+            background: #dc2626;
+            color: white;
+            font-size: 0.7rem;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+        .filtro-btn.urgente {
+            background: #fef2f2 !important;
+            color: #dc2626 !important;
+            border: 1px solid #fecaca;
+        }
+        .filtro-btn.urgente.active {
+            background: #dc2626 !important;
+            color: white !important;
+        }
+
         /* Scrollbar */
         .chat-messages::-webkit-scrollbar,
         .conversas-list::-webkit-scrollbar {
@@ -195,10 +251,14 @@
                 <span class="text-gray-400">|</span>
                 <span id="statsAtivas" class="text-green-600">0 ativas</span>
                 <span id="statsNaoLidas" class="text-red-600">0 não lidas</span>
+                <span id="statsUrgencias" class="text-red-600 hidden">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="urgenciasCount">0</span> urgentes
+                </span>
             </div>
 
             <!-- Navigation -->
-            <a href="/static/dashboard.html" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Dashboard">
+            <a href="/static/dashboard.html" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Painel">
                 <i class="fas fa-chart-line"></i>
             </a>
             <button onclick="logout()" class="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Sair">
@@ -228,6 +288,9 @@
                     <button onclick="filtrarConversas('humano_assumiu')" class="filtro-btn flex-1 py-1 text-xs rounded bg-gray-200 text-gray-700 hover:bg-gray-300">
                         Humano
                     </button>
+                    <button onclick="filtrarConversas('urgentes')" class="filtro-btn urgente flex-1 py-1 text-xs rounded" id="btnFiltroUrgente">
+                        <i class="fas fa-exclamation-triangle"></i> <span id="filtroUrgenteBadge"></span>
+                    </button>
                 </div>
             </div>
 
@@ -256,6 +319,11 @@
                         <span id="chatStatus" class="status-badge status-ia ml-2">IA Ativa</span>
                     </div>
                     <div class="flex items-center gap-2">
+                        <button id="btnResolverUrgencia" onclick="resolverUrgencia()"
+                            class="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition flex items-center gap-1 hidden">
+                            <i class="fas fa-check-circle"></i>
+                            <span class="hidden sm:inline">Resolver Urgência</span>
+                        </button>
                         <button id="btnAssumir" onclick="assumirConversa()"
                             class="px-3 py-1.5 bg-amber-500 text-white text-sm rounded-lg hover:bg-amber-600 transition flex items-center gap-1">
                             <i class="fas fa-hand-paper"></i>
@@ -322,6 +390,7 @@
         let conversaAtual = null;
         let ws = null;
         let filtroAtual = 'todas';
+        let urgenciasContagem = { critica: 0, atencao: 0, total: 0 };
 
         // ==================== INIT ====================
         document.addEventListener('DOMContentLoaded', () => {
@@ -331,6 +400,7 @@
             }
 
             carregarConversas();
+            carregarAlertasUrgencia();
             conectarWebSocket();
             setupMobileMenu();
         });
@@ -366,6 +436,35 @@
                 document.getElementById('statsNaoLidas').textContent = `${stats.total_nao_lidas} não lidas`;
             } catch (error) {
                 console.error('Erro ao carregar stats:', error);
+            }
+        }
+
+        async function carregarAlertasUrgencia() {
+            try {
+                const response = await fetch('/api/alertas/contagem', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                urgenciasContagem = data.contagem || { critica: 0, atencao: 0, total: 0 };
+
+                // Atualizar indicadores no header
+                const statsUrgencias = document.getElementById('statsUrgencias');
+                const urgenciasCount = document.getElementById('urgenciasCount');
+                const filtroUrgenteBadge = document.getElementById('filtroUrgenteBadge');
+
+                if (urgenciasContagem.total > 0) {
+                    statsUrgencias.classList.remove('hidden');
+                    urgenciasCount.textContent = urgenciasContagem.total;
+                    filtroUrgenteBadge.textContent = urgenciasContagem.total;
+                } else {
+                    statsUrgencias.classList.add('hidden');
+                    filtroUrgenteBadge.textContent = '';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar alertas de urgência:', error);
             }
         }
 
@@ -488,6 +587,44 @@
             }
         }
 
+        async function resolverUrgencia() {
+            if (!conversaAtual) return;
+
+            const nota = prompt('Nota sobre a resolução (opcional):');
+
+            try {
+                const response = await fetch(`/api/alertas/conversa/${conversaAtual.id}/resolver`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ nota: nota || null })
+                });
+
+                if (response.ok) {
+                    // Atualizar conversa local
+                    conversaAtual.urgencia_resolvida = true;
+                    const conv = conversas.find(c => c.id === conversaAtual.id);
+                    if (conv) {
+                        conv.urgencia_resolvida = true;
+                    }
+
+                    atualizarHeader(conversaAtual);
+                    renderizarConversas();
+                    carregarAlertasUrgencia();
+
+                    alert('Urgência resolvida com sucesso!');
+                } else {
+                    const error = await response.json();
+                    alert(error.detail || 'Erro ao resolver urgência');
+                }
+            } catch (error) {
+                console.error('Erro ao resolver urgência:', error);
+                alert('Erro ao resolver urgência');
+            }
+        }
+
         // ==================== WEBSOCKET ====================
         function conectarWebSocket() {
             const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/conversas?token=${token}`;
@@ -545,9 +682,41 @@
                 case 'nova_conversa':
                     handleNovaConversa(data);
                     break;
+                case 'urgencia_detectada':
+                    handleUrgenciaDetectada(data);
+                    break;
                 case 'conectado':
                     console.log('Conexão confirmada:', data.message);
                     break;
+            }
+        }
+
+        function handleUrgenciaDetectada(data) {
+            // Atualizar conversa na lista com urgência
+            const conv = conversas.find(c => c.id === data.conversa_id);
+            if (conv) {
+                conv.urgencia_nivel = data.nivel;
+                conv.urgencia_resolvida = false;
+                conv.urgencia_motivo = data.motivo;
+                renderizarConversas();
+            }
+
+            // Atualizar header se for a conversa atual
+            if (conversaAtual && conversaAtual.id === data.conversa_id) {
+                conversaAtual.urgencia_nivel = data.nivel;
+                conversaAtual.urgencia_resolvida = false;
+                atualizarHeader(conversaAtual);
+            }
+
+            // Recarregar contagem de alertas
+            carregarAlertasUrgencia();
+
+            // Tocar notificação para urgências
+            if (data.nivel === 'critica') {
+                tocarNotificacao();
+                // Alerta visual extra para críticas
+                document.title = '🚨 URGÊNCIA - Painel de Conversas';
+                setTimeout(() => { document.title = 'Painel de Conversas - Horário Inteligente'; }, 5000);
             }
         }
 
@@ -608,7 +777,11 @@
             let lista = conversas;
 
             // Aplicar filtro
-            if (filtroAtual !== 'todas') {
+            if (filtroAtual === 'urgentes') {
+                lista = conversas.filter(c =>
+                    c.urgencia_nivel && c.urgencia_nivel !== 'normal' && !c.urgencia_resolvida
+                );
+            } else if (filtroAtual !== 'todas') {
                 lista = conversas.filter(c => c.status === filtroAtual);
             }
 
@@ -631,19 +804,28 @@
                 return;
             }
 
-            container.innerHTML = lista.map(conv => `
-                <div class="conversa-item p-3 cursor-pointer ${conv.id === conversaAtual?.id ? 'active' : ''} ${conv.status === 'humano_assumiu' ? 'humano' : ''}"
+            container.innerHTML = lista.map(conv => {
+                const isUrgente = conv.urgencia_nivel && conv.urgencia_nivel !== 'normal' && !conv.urgencia_resolvida;
+                const urgenciaClass = isUrgente ? (conv.urgencia_nivel === 'critica' ? 'urgente-critica' : 'urgente-atencao') : '';
+                const urgenciaBadge = isUrgente ? getUrgenciaBadge(conv.urgencia_nivel) : '';
+
+                return `
+                <div class="conversa-item p-3 cursor-pointer ${conv.id === conversaAtual?.id ? 'active' : ''} ${conv.status === 'humano_assumiu' ? 'humano' : ''} ${urgenciaClass}"
                      onclick="selecionarConversa(${conv.id})">
                     <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                        <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0 relative">
                             <i class="fas fa-user text-gray-500"></i>
+                            ${isUrgente && conv.urgencia_nivel === 'critica' ? '<span class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>' : ''}
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center justify-between">
                                 <span class="font-medium text-gray-800 truncate">
                                     ${conv.paciente_nome || conv.paciente_telefone}
                                 </span>
-                                ${conv.nao_lidas > 0 ? `<span class="unread-badge">${conv.nao_lidas}</span>` : ''}
+                                <div class="flex items-center gap-1">
+                                    ${urgenciaBadge}
+                                    ${conv.nao_lidas > 0 ? `<span class="unread-badge">${conv.nao_lidas}</span>` : ''}
+                                </div>
                             </div>
                             <p class="text-sm text-gray-500 truncate">${conv.ultima_mensagem || 'Sem mensagens'}</p>
                             <div class="flex items-center justify-between mt-1">
@@ -653,7 +835,16 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
+        }
+
+        function getUrgenciaBadge(nivel) {
+            if (nivel === 'critica') {
+                return `<span class="urgencia-badge urgencia-critica"><i class="fas fa-exclamation-triangle"></i> Urgente</span>`;
+            } else if (nivel === 'atencao') {
+                return `<span class="urgencia-badge urgencia-atencao"><i class="fas fa-exclamation-circle"></i> Atenção</span>`;
+            }
+            return '';
         }
 
         function renderizarMensagens(mensagens) {
@@ -715,9 +906,30 @@
             statusEl.className = `status-badge ${getStatusClass(conversa.status)}`;
             statusEl.textContent = getStatusLabel(conversa.status);
 
+            // Urgency badge in header
+            let urgenciaBadgeEl = document.getElementById('chatUrgenciaBadge');
+            const isUrgente = conversa.urgencia_nivel && conversa.urgencia_nivel !== 'normal' && !conversa.urgencia_resolvida;
+
+            if (!urgenciaBadgeEl) {
+                // Criar elemento se não existir
+                urgenciaBadgeEl = document.createElement('span');
+                urgenciaBadgeEl.id = 'chatUrgenciaBadge';
+                statusEl.parentNode.insertBefore(urgenciaBadgeEl, statusEl.nextSibling);
+            }
+
+            if (isUrgente) {
+                urgenciaBadgeEl.innerHTML = getUrgenciaBadge(conversa.urgencia_nivel);
+                urgenciaBadgeEl.classList.remove('hidden');
+                urgenciaBadgeEl.classList.add('ml-2');
+            } else {
+                urgenciaBadgeEl.innerHTML = '';
+                urgenciaBadgeEl.classList.add('hidden');
+            }
+
             // Botões
             const btnAssumir = document.getElementById('btnAssumir');
             const btnDevolver = document.getElementById('btnDevolver');
+            const btnResolverUrgencia = document.getElementById('btnResolverUrgencia');
             const inputHint = document.getElementById('inputHint');
 
             if (conversa.status === 'humano_assumiu') {
@@ -728,6 +940,13 @@
                 btnAssumir.classList.remove('hidden');
                 btnDevolver.classList.add('hidden');
                 inputHint.classList.add('hidden');
+            }
+
+            // Botão de resolver urgência
+            if (isUrgente) {
+                btnResolverUrgencia.classList.remove('hidden');
+            } else {
+                btnResolverUrgencia.classList.add('hidden');
             }
         }
 
@@ -751,11 +970,26 @@
 
             // Atualizar botões
             document.querySelectorAll('.filtro-btn').forEach(btn => {
-                btn.classList.remove('active', 'bg-purple-600', 'text-white');
-                btn.classList.add('bg-gray-200', 'text-gray-700');
+                const isUrgenteBtn = btn.classList.contains('urgente');
+                btn.classList.remove('active');
+                if (isUrgenteBtn) {
+                    btn.classList.remove('bg-red-600', 'text-white');
+                } else {
+                    btn.classList.remove('bg-purple-600', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                }
             });
-            event.target.classList.add('active', 'bg-purple-600', 'text-white');
-            event.target.classList.remove('bg-gray-200', 'text-gray-700');
+
+            const clickedBtn = event.target.closest('.filtro-btn');
+            if (clickedBtn) {
+                clickedBtn.classList.add('active');
+                if (clickedBtn.classList.contains('urgente')) {
+                    clickedBtn.classList.add('bg-red-600', 'text-white');
+                } else {
+                    clickedBtn.classList.add('bg-purple-600', 'text-white');
+                    clickedBtn.classList.remove('bg-gray-200', 'text-gray-700');
+                }
+            }
 
             renderizarConversas();
         }

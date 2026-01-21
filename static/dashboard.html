@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Profissional - Horário Inteligente</title>
+    <title>Painel Profissional - Horário Inteligente</title>
 
     <!-- PWA -->
     <link rel="manifest" href="/static/manifest.json">
@@ -1144,7 +1144,7 @@
                         { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', href: '/static/calendario-unificado.html' },
                         { id: 'conversas', label: 'Conversas', icon: 'fa-comments', href: '/static/conversas.html' },
                         { id: 'novo', label: 'Novo', icon: 'fa-plus', primary: true, onClick: () => { window.location.href = '/static/calendario-unificado.html'; }},
-                        { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line', href: '/static/dashboard.html' },
+                        { id: 'dashboard', label: 'Painel', icon: 'fa-chart-line', href: '/static/dashboard.html' },
                         { id: 'perfil', label: 'Perfil', icon: 'fa-user', href: '/static/perfil.html' }
                     ]
                 });
@@ -1155,22 +1155,14 @@
                 HiPullRefresh.init({
                     onRefresh: async () => {
                         if (typeof loadData === 'function') await loadData();
-                        if (typeof HiToast !== 'undefined') HiToast.success('Dashboard atualizado!');
+                        if (typeof HiToast !== 'undefined') HiToast.success('Painel atualizado!');
                     }
                 });
             }
         });
     </script>
 
-    <!-- Service Worker para PWA -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/service-worker.js')
-                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
-                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
-            });
-        }
-    </script>
+    <!-- PWA Update Manager -->
+    <script src="/static/js/pwa-updater.js?v=1.1.0"></script>
 </body>
 </html>

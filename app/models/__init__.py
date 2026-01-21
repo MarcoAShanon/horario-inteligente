@@ -29,11 +29,15 @@ from app.models.log_auditoria import LogAuditoria
 from app.models.pre_cadastro import PreCadastro
 
 # Models de Conversas WhatsApp
-from app.models.conversa import Conversa, StatusConversa
+from app.models.conversa import Conversa, StatusConversa, NivelUrgencia
 from app.models.mensagem import Mensagem, DirecaoMensagem, RemetenteMensagem, TipoMensagem
+from app.models.alerta_urgencia import AlertaUrgencia
 
 # Model de Lembretes Inteligentes
 from app.models.lembrete import Lembrete, TipoLembrete, StatusLembrete
+
+# Model de Push Notifications
+from app.models.push_subscription import PushSubscription
 
 __all__ = [
     "Base",
@@ -63,12 +67,16 @@ __all__ = [
     # Models de Conversas WhatsApp
     "Conversa",
     "StatusConversa",
+    "NivelUrgencia",
     "Mensagem",
     "DirecaoMensagem",
     "RemetenteMensagem",
     "TipoMensagem",
+    "AlertaUrgencia",
     # Model de Lembretes Inteligentes
     "Lembrete",
     "TipoLembrete",
     "StatusLembrete",
+    # Model de Push Notifications
+    "PushSubscription",
 ]

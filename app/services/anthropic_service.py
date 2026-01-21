@@ -259,10 +259,57 @@ REGRA ESTRATÉGICA SOBRE OFERECIMENTO DE HORÁRIOS:
 43. O marcador ⏳ faz o sistema exibir a primeira parte, aguardar 2-3 segundos, e depois mostrar a segunda parte
 44. Isso cria a impressão realista de que você está consultando o sistema
 
+🚨 SISTEMA DE DETECÇÃO DE URGÊNCIA MÉDICA:
+VOCÊ DEVE CLASSIFICAR CADA MENSAGEM QUANTO À URGÊNCIA. ISSO É CRÍTICO PARA A SEGURANÇA DO PACIENTE.
+
+NÍVEIS DE URGÊNCIA:
+- "critica": Emergência médica com risco imediato à saúde/vida. Exemplos:
+  * Sintomas de infarto (dor no peito, braço esquerdo, falta de ar intensa)
+  * Sintomas de AVC (paralisia, fala enrolada, confusão súbita)
+  * Dificuldade respiratória grave, engasgo
+  * Sangramento intenso que não para
+  * Reação alérgica grave (anafilaxia)
+  * Ideação suicida ou autolesão ("quero morrer", "não aguento mais viver")
+  * Dor insuportável, perda de consciência
+  * Pedidos de socorro/ajuda urgente ("me ajuda, estou passando mal")
+  * Convulsões em andamento
+
+- "atencao": Situações preocupantes que merecem atenção, mas sem risco imediato:
+  * Piora significativa de sintomas ("está muito pior que ontem")
+  * Efeitos colaterais de medicamentos
+  * Febre alta persistente (acima de 39°C)
+  * Sintomas novos preocupantes
+  * Paciente muito ansioso ou assustado com seu quadro
+  * Dor que não passa com medicação comum
+
+- "normal": Conversas rotineiras de agendamento, dúvidas gerais, remarcações
+
+⚠️ REGRAS CRÍTICAS DE CONTEXTO PARA URGÊNCIA:
+45. ANALISE O CONTEXTO, não apenas palavras isoladas:
+   - "Meu pai teve infarto ano passado" → NORMAL (referência histórica)
+   - "Acho que estou tendo um infarto agora" → CRÍTICA (situação atual)
+   - "Não é urgente, só quero remarcar" → NORMAL (negação presente)
+   - "É urgente, preciso falar com o doutor" → CRÍTICA
+
+46. Se detectar URGÊNCIA CRÍTICA, sua resposta DEVE:
+   - Reconhecer a gravidade da situação
+   - Informar que o médico está sendo notificado IMEDIATAMENTE
+   - Incluir os números de emergência (SAMU 192, Bombeiros 193)
+   - Orientar a ir ao pronto-socorro mais próximo se necessário
+   - NÃO continuar o fluxo normal de agendamento
+
+47. Se detectar URGÊNCIA ATENÇÃO, continue o atendimento normalmente, mas registre no JSON
+
+48. Em caso de dúvida sobre o nível, prefira classificar como mais urgente (melhor alarme falso que perder emergência)
+
 RESPONDA EM FORMATO JSON:
 {{
     "resposta": "sua resposta para o usuário",
-    "intencao": "saudacao|agendamento|informacao|despedida|outros",
+    "intencao": "saudacao|agendamento|informacao|despedida|urgencia|outros",
+    "urgencia": {{
+        "nivel": "normal|atencao|critica",
+        "motivo": null  # Se nivel != normal, descreva brevemente o motivo (ex: "Paciente relata dor no peito intensa")
+    }},
     "dados_coletados": {{
         "nome": null,
         "especialidade": null,
@@ -270,7 +317,7 @@ RESPONDA EM FORMATO JSON:
         "convenio": null,
         "data_preferida": null  # Formato: "DD/MM/YYYY HH:MM" ou "DD/MM/YYYY"
     }},
-    "proxima_acao": "solicitar_dados|verificar_agenda|agendar|informar|finalizar"
+    "proxima_acao": "solicitar_dados|verificar_agenda|agendar|informar|finalizar|notificar_urgencia"
 }}
 
 IMPORTANTE SOBRE medico_id:
@@ -282,7 +329,7 @@ IMPORTANTE SOBRE medico_id:
     
     def _processar_resposta_ia(self, resposta_ia: str) -> Dict[str, Any]:
         """Processa a resposta da IA e executa ações necessárias."""
-        
+
         try:
             # Extrair JSON da resposta
             json_match = re.search(r'\{.*\}', resposta_ia, re.DOTALL)
@@ -290,20 +337,33 @@ IMPORTANTE SOBRE medico_id:
                 dados = json.loads(json_match.group())
             else:
                 raise ValueError("JSON não encontrado na resposta")
-                
+
         except (json.JSONDecodeError, ValueError):
             return self._resposta_padrao("Como posso ajudá-lo hoje?")
-        
+
         resposta = dados.get("resposta", "Como posso ajudá-lo?")
         intencao = dados.get("intencao", "outros")
         proxima_acao = dados.get("proxima_acao", "informar")
         dados_coletados = dados.get("dados_coletados", {})
-        
+
+        # Extrair informações de urgência
+        urgencia_data = dados.get("urgencia", {})
+        urgencia_nivel = urgencia_data.get("nivel", "normal") if isinstance(urgencia_data, dict) else "normal"
+        urgencia_motivo = urgencia_data.get("motivo") if isinstance(urgencia_data, dict) else None
+
+        # Validar nível de urgência
+        if urgencia_nivel not in ["normal", "atencao", "critica"]:
+            urgencia_nivel = "normal"
+
         return {
             "resposta": resposta,
             "intencao": intencao,
             "proxima_acao": proxima_acao,
             "dados_coletados": dados_coletados,
+            "urgencia": {
+                "nivel": urgencia_nivel,
+                "motivo": urgencia_motivo
+            },
             "paciente_existente": False
         }
     
@@ -376,57 +436,62 @@ IMPORTANTE SOBRE medico_id:
             "intencao": "saudacao",
             "proxima_acao": "aguardar_solicitacao",
             "dados_coletados": {},
+            "urgencia": {"nivel": "normal", "motivo": None},
             "paciente_existente": False
         }
-    
+
     def _processar_agendamento(self, contexto: Dict) -> Dict[str, Any]:
         medicos = contexto.get("medicos", [])
         opcoes_medicos = ""
         for i, medico in enumerate(medicos, 1):
             opcoes_medicos += f"{i}️⃣ {medico['especialidade']} - {medico['nome']}\n"
-        
+
         return {
             "resposta": f"Para qual especialidade você gostaria de agendar?\n\n{opcoes_medicos}",
             "intencao": "agendamento",
             "proxima_acao": "escolher_especialidade",
             "dados_coletados": {"solicitou_agendamento": True},
+            "urgencia": {"nivel": "normal", "motivo": None},
             "paciente_existente": False
         }
-    
+
     def _processar_especialidade(self, tipo: str, contexto: Dict) -> Dict[str, Any]:
         medicos = contexto.get("medicos", [])
         medico = next((m for m in medicos if tipo.lower() in m["especialidade"].lower()), None)
-        
+
         if medico:
             convenios_str = ", ".join(medico["convenios"])
             resposta = f"**{medico['nome']}** - {medico['especialidade']}\n"
             resposta += f"CRM: {medico['crm']}\nConvênios: {convenios_str}\n"
             resposta += "Seu atendimento será pelo convênio ou particular?"
-            
+
             return {
                 "resposta": resposta,
                 "intencao": "agendamento",
                 "proxima_acao": "escolher_convenio",
                 "dados_coletados": {"medico_id": medico["id"], "especialidade": medico["especialidade"]},
+                "urgencia": {"nivel": "normal", "motivo": None},
                 "paciente_existente": False
             }
-        
+
         return self._resposta_padrao("Especialidade não encontrada.")
-    
+
     def _processar_despedida(self) -> Dict[str, Any]:
         return {
             "resposta": "Foi um prazer ajudá-lo! Tenha um ótimo dia!",
             "intencao": "despedida",
             "proxima_acao": "finalizar",
             "dados_coletados": {},
+            "urgencia": {"nivel": "normal", "motivo": None},
             "paciente_existente": False
         }
-    
+
     def _resposta_padrao(self, mensagem: str) -> Dict[str, Any]:
         return {
             "resposta": mensagem,
             "intencao": "outros",
             "proxima_acao": "informar",
             "dados_coletados": {},
+            "urgencia": {"nivel": "normal", "motivo": None},
             "paciente_existente": False
         }

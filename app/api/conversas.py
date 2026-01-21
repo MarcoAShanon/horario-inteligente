@@ -48,6 +48,10 @@ class ConversaResponse(BaseModel):
     criado_em: datetime
     nao_lidas: int = 0
     ultima_mensagem: Optional[str] = None
+    # Campos de urgência
+    urgencia_nivel: Optional[str] = "normal"
+    urgencia_motivo: Optional[str] = None
+    urgencia_resolvida: bool = True
 
     class Config:
         from_attributes = True
@@ -113,7 +117,11 @@ async def listar_conversas(
             "ultima_mensagem_at": conv.ultima_mensagem_at,
             "criado_em": conv.criado_em,
             "nao_lidas": nao_lidas,
-            "ultima_mensagem": ultima.conteudo[:50] + "..." if ultima and len(ultima.conteudo) > 50 else (ultima.conteudo if ultima else None)
+            "ultima_mensagem": ultima.conteudo[:50] + "..." if ultima and len(ultima.conteudo) > 50 else (ultima.conteudo if ultima else None),
+            # Campos de urgência
+            "urgencia_nivel": conv.urgencia_nivel.value if conv.urgencia_nivel else "normal",
+            "urgencia_motivo": conv.urgencia_motivo,
+            "urgencia_resolvida": conv.urgencia_resolvida if conv.urgencia_resolvida is not None else True
         }
         result.append(conv_dict)
 
@@ -177,6 +185,10 @@ async def get_conversa(
         "ultima_mensagem_at": conversa.ultima_mensagem_at,
         "criado_em": conversa.criado_em,
         "nao_lidas": 0,  # Acabamos de marcar como lidas
+        # Campos de urgência
+        "urgencia_nivel": conversa.urgencia_nivel.value if conversa.urgencia_nivel else "normal",
+        "urgencia_motivo": conversa.urgencia_motivo,
+        "urgencia_resolvida": conversa.urgencia_resolvida if conversa.urgencia_resolvida is not None else True,
         "mensagens": [
             {
                 "id": m.id,
@@ -273,7 +285,9 @@ async def assumir_conversa(
     if not conversa:
         raise HTTPException(status_code=404, detail="Conversa não encontrada")
 
-    conversa = ConversaService.assumir_conversa(db, conversa_id, current_user["id"])
+    # Passa o tipo do atendente (medico ou secretaria)
+    atendente_tipo = current_user.get("tipo", "medico")
+    conversa = ConversaService.assumir_conversa(db, conversa_id, current_user["id"], atendente_tipo)
 
     return {"message": "Conversa assumida com sucesso", "status": conversa.status.value}
 

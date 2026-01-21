@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.services.whatsapp_service import WhatsAppService
+from app.services.push_notification_service import push_service
 
 logger = logging.getLogger(__name__)
 
@@ -44,31 +45,44 @@ class NotificationService:
             Dict com status do envio
         """
         try:
-            # Buscar configurações de notificação do médico
+            resultados = {
+                "whatsapp": None,
+                "email": None,
+                "push": None
+            }
+
+            # Enviar via Push Notification (gratuito e instantâneo)
+            # Push é enviado SEMPRE que o médico tem subscriptions ativas
+            # Não depende de config pois é baseado em subscription
+            resultado_push = await self._enviar_push(
+                medico_id,
+                evento,
+                dados_agendamento
+            )
+            resultados["push"] = resultado_push
+
+            # Buscar configurações de notificação do médico (para WhatsApp/Email)
             config = self._get_config(medico_id, cliente_id)
 
             if not config:
-                logger.info(f"Médico {medico_id} não possui configurações de notificação")
+                logger.info(f"Médico {medico_id} não possui configurações de notificação (WhatsApp/Email)")
                 return {
                     "sucesso": True,
-                    "mensagem": "Médico não configurou notificações"
+                    "mensagem": "Push enviado, sem config de WhatsApp/Email",
+                    "detalhes": resultados
                 }
 
-            # Verificar se deve notificar para este evento
+            # Verificar se deve notificar para este evento (WhatsApp/Email)
             if not self._deve_notificar(config, evento):
-                logger.info(f"Médico {medico_id} não quer notificação de {evento}")
+                logger.info(f"Médico {medico_id} não quer notificação de {evento} via WhatsApp/Email")
                 return {
                     "sucesso": True,
-                    "mensagem": f"Notificação de {evento} desabilitada"
+                    "mensagem": f"Notificação de {evento} desabilitada para WhatsApp/Email",
+                    "detalhes": resultados
                 }
 
-            # Formatar mensagem
+            # Formatar mensagem para WhatsApp/Email
             mensagem = self._formatar_mensagem(evento, dados_agendamento)
-
-            resultados = {
-                "whatsapp": None,
-                "email": None
-            }
 
             # Enviar via WhatsApp se habilitado
             if config.get('canal_whatsapp') and config.get('whatsapp_numero'):
@@ -193,6 +207,72 @@ O paciente confirmou presença."""
         }
 
         return mensagens.get(evento, f"Notificação de agendamento: {evento}")
+
+    async def _enviar_push(
+        self,
+        medico_id: int,
+        evento: str,
+        dados: Dict
+    ) -> Dict:
+        """Envia notificação via Push Notification (Web Push API)"""
+        try:
+            paciente_nome = dados.get('paciente_nome', 'Paciente')
+            data_hora = dados.get('data_hora', '')
+
+            # Formatar data/hora se for datetime
+            if isinstance(data_hora, datetime):
+                data_hora_str = data_hora.strftime("%d/%m às %H:%M")
+            else:
+                data_hora_str = str(data_hora)
+
+            # Definir título e corpo baseado no evento
+            titulos = {
+                "novo": "Novo Agendamento",
+                "reagendado": "Agendamento Reagendado",
+                "cancelado": "Agendamento Cancelado",
+                "confirmado": "Paciente Confirmou"
+            }
+
+            corpos = {
+                "novo": f"{paciente_nome} - {data_hora_str}",
+                "reagendado": f"{paciente_nome} reagendou para {data_hora_str}",
+                "cancelado": f"{paciente_nome} cancelou ({data_hora_str})",
+                "confirmado": f"{paciente_nome} confirmou presença - {data_hora_str}"
+            }
+
+            titulo = titulos.get(evento, "Notificação de Agendamento")
+            corpo = corpos.get(evento, f"{paciente_nome} - {data_hora_str}")
+
+            # Enviar push notification
+            resultado = await push_service.send_notification(
+                db=self.db,
+                medico_id=medico_id,
+                title=titulo,
+                body=corpo,
+                url="/static/calendario-unificado.html",
+                tag=f"agendamento-{evento}"
+            )
+
+            if resultado.get("sent", 0) > 0:
+                logger.info(f"📱 Push notification enviada para médico {medico_id}")
+                return {
+                    "sucesso": True,
+                    "canal": "push",
+                    "enviados": resultado.get("sent", 0)
+                }
+            else:
+                reason = resultado.get("reason", "unknown")
+                if reason == "no_subscriptions":
+                    logger.debug(f"Médico {medico_id} não tem push subscriptions ativas")
+                return {
+                    "sucesso": False,
+                    "canal": "push",
+                    "motivo": reason
+                }
+
+        except Exception as e:
+            logger.error(f"Erro ao enviar push notification: {e}", exc_info=True)
+            return {"sucesso": False, "erro": str(e), "canal": "push"}
 
     async def _enviar_whatsapp(
         self,

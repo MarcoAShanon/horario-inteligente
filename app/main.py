@@ -306,6 +306,16 @@ try:
     app.include_router(websocket_router, tags=["WebSocket"])
     logger.info("✅ Router WebSocket registrado")
 
+    # Router Push Notifications (notificações gratuitas via Web Push)
+    from app.api.push_notifications import router as push_router
+    app.include_router(push_router, tags=["Push Notifications"])
+    logger.info("✅ Router Push Notifications registrado")
+
+    # Router Alertas de Urgência (sistema de detecção de urgência em conversas)
+    from app.api.alertas_urgencia import router as alertas_router
+    app.include_router(alertas_router, tags=["Alertas de Urgência"])
+    logger.info("✅ Router Alertas de Urgência registrado")
+
     logger.info("✅ Routers principais registrados com sucesso (incluindo Admin, Financeiro e Gestão Interna)")
     
 except Exception as e:

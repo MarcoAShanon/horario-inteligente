@@ -35,6 +35,11 @@ class ProcedimentoItem(BaseModel):
     duracao_minutos: int
     valor: float
 
+class ConvenioItem(BaseModel):
+    nome: str
+    valor: float = 0
+    codigo: Optional[str] = ""
+
 class RegisterRequest(BaseModel):
     nome: str
     email: EmailStr
@@ -75,8 +80,17 @@ class ResetPasswordRequest(BaseModel):
 
     @validator('nova_senha')
     def senha_forte(cls, v):
+        import re
         if len(v) < 8:
             raise ValueError('Senha deve ter no mínimo 8 caracteres')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Senha deve conter pelo menos uma letra maiúscula')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Senha deve conter pelo menos uma letra minúscula')
+        if not re.search(r'\d', v):
+            raise ValueError('Senha deve conter pelo menos um número')
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError('Senha deve conter pelo menos um caractere especial (!@#$%^&*)')
         return v
 
 class UpdateProfileRequest(BaseModel):
@@ -84,7 +98,7 @@ class UpdateProfileRequest(BaseModel):
     telefone: Optional[str] = None
     telefone_particular: Optional[str] = None
     especialidade: Optional[str] = None
-    convenios_aceitos: Optional[List[str]] = None
+    convenios_aceitos: Optional[List[ConvenioItem]] = None
     valor_consulta_particular: Optional[float] = None
     procedimentos: Optional[List[ProcedimentoItem]] = None
     biografia: Optional[str] = None
@@ -95,8 +109,17 @@ class ChangePasswordRequest(BaseModel):
 
     @validator('nova_senha')
     def senha_forte(cls, v):
+        import re
         if len(v) < 8:
             raise ValueError('Senha deve ter no mínimo 8 caracteres')
+        if not re.search(r'[A-Z]', v):
+            raise ValueError('Senha deve conter pelo menos uma letra maiúscula')
+        if not re.search(r'[a-z]', v):
+            raise ValueError('Senha deve conter pelo menos uma letra minúscula')
+        if not re.search(r'\d', v):
+            raise ValueError('Senha deve conter pelo menos um número')
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', v):
+            raise ValueError('Senha deve conter pelo menos um caractere especial (!@#$%^&*)')
         return v
 
 
@@ -761,9 +784,13 @@ async def update_profile(
                 params["especialidade"] = dados.especialidade
 
             if dados.convenios_aceitos is not None:
-                updates.append("convenios_aceitos = :convenios::jsonb")
-                # Converter para JSON válido (json.dumps usa aspas duplas)
-                params["convenios"] = json.dumps([c.dict() if hasattr(c, 'dict') else c for c in dados.convenios_aceitos])
+                updates.append("convenios_aceitos = CAST(:convenios AS jsonb)")
+                # Converter objetos ConvenioItem para dicionários
+                convenios_list = [
+                    {"nome": c.nome, "valor": c.valor, "codigo": c.codigo}
+                    for c in dados.convenios_aceitos
+                ]
+                params["convenios"] = json.dumps(convenios_list)
 
             if dados.valor_consulta_particular is not None:
                 updates.append("valor_consulta_particular = :valor")
@@ -778,7 +805,7 @@ async def update_profile(
                     }
                     for p in dados.procedimentos
                 ]
-                updates.append("procedimentos = :procedimentos::jsonb")
+                updates.append("procedimentos = CAST(:procedimentos AS jsonb)")
                 params["procedimentos"] = json.dumps(procedimentos_json)
 
             if dados.biografia is not None:

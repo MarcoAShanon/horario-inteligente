@@ -256,6 +256,45 @@
                                 </p>
                             </div>
                         </div>
+
+                        <!-- Push Notifications (PWA) -->
+                        <div id="pushNotificationsCard" class="bg-purple-50 p-4 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <label class="flex items-center cursor-pointer flex-1">
+                                    <i class="fas fa-bell mr-3 text-purple-600 text-xl"></i>
+                                    <div>
+                                        <span class="text-gray-700 font-medium">Push Notifications</span>
+                                        <p class="text-xs text-gray-500">Notificações instantâneas no navegador/celular</p>
+                                    </div>
+                                </label>
+                                <div class="flex items-center gap-3">
+                                    <span id="pushStatusBadge" class="badge bg-secondary text-xs px-2 py-1 rounded-full">Inativo</span>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="pushToggle" class="sr-only peer" onchange="togglePushNotifications()">
+                                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="pushNotifDetails" class="mt-3 hidden">
+                                <p id="pushStatusText" class="text-sm text-gray-600 mb-3"></p>
+                                <button type="button" id="btnTestPush" onclick="testPushNotification()" class="inline-flex items-center px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <i class="fas fa-paper-plane mr-2"></i>
+                                    Enviar Teste
+                                </button>
+                            </div>
+                            <div id="pushNotSupported" class="mt-3 hidden">
+                                <p class="text-sm text-red-600">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                                    Push notifications não suportadas neste navegador.
+                                </p>
+                            </div>
+                            <div id="pushPermissionDenied" class="mt-3 hidden">
+                                <p class="text-sm text-orange-600">
+                                    <i class="fas fa-exclamation-circle mr-1"></i>
+                                    Notificações bloqueadas. Altere nas configurações do navegador.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -381,6 +420,9 @@
                 // Mostrar seção de notificações e carregar configurações
                 document.getElementById('secaoNotificacoes').classList.remove('hidden');
                 carregarNotificacoes();
+
+                // Inicializar Push Notifications (após carregar página)
+                setTimeout(() => initPushNotifications(), 500);
             } else {
                 document.getElementById('tipoUsuario').innerHTML = '<i class="fas fa-user-tie mr-1"></i>Secretária';
             }
@@ -776,10 +818,141 @@
                 mostrarErro('Erro ao salvar configurações de notificações. Tente novamente.');
             }
         });
+
+        // ============= PUSH NOTIFICATIONS =============
+
+        async function initPushNotifications() {
+            // Só inicializa se PushNotifications estiver disponível
+            if (typeof PushNotifications === 'undefined') {
+                console.warn('PushNotifications module não carregado');
+                return;
+            }
+
+            // Corrige o token para o módulo de push
+            const authToken = localStorage.getItem('authToken');
+            if (authToken) {
+                localStorage.setItem('token', authToken);
+            }
+
+            const supported = await PushNotifications.init();
+
+            const toggle = document.getElementById('pushToggle');
+            const statusBadge = document.getElementById('pushStatusBadge');
+            const statusText = document.getElementById('pushStatusText');
+            const detailsDiv = document.getElementById('pushNotifDetails');
+            const notSupportedDiv = document.getElementById('pushNotSupported');
+            const permissionDeniedDiv = document.getElementById('pushPermissionDenied');
+            const testBtn = document.getElementById('btnTestPush');
+
+            if (!supported) {
+                // Navegador não suporta
+                toggle.disabled = true;
+                notSupportedDiv.classList.remove('hidden');
+                return;
+            }
+
+            const permission = PushNotifications.getPermissionStatus();
+
+            if (permission === 'denied') {
+                toggle.disabled = true;
+                toggle.checked = false;
+                permissionDeniedDiv.classList.remove('hidden');
+                return;
+            }
+
+            // Atualiza UI com estado atual
+            await updatePushUI();
+        }
+
+        async function updatePushUI() {
+            const toggle = document.getElementById('pushToggle');
+            const statusBadge = document.getElementById('pushStatusBadge');
+            const statusText = document.getElementById('pushStatusText');
+            const detailsDiv = document.getElementById('pushNotifDetails');
+            const testBtn = document.getElementById('btnTestPush');
+
+            const serverStatus = await PushNotifications.getStatus();
+            const isActive = PushNotifications.isSubscribed && serverStatus.enabled;
+
+            toggle.checked = isActive;
+            detailsDiv.classList.toggle('hidden', !isActive);
+
+            if (isActive) {
+                statusBadge.textContent = 'Ativo';
+                statusBadge.className = 'text-xs px-2 py-1 rounded-full bg-green-100 text-green-800';
+                statusText.textContent = `Ativo em ${serverStatus.subscriptions} dispositivo(s)`;
+                statusText.className = 'text-sm text-green-600 mb-3';
+                testBtn.disabled = false;
+            } else {
+                statusBadge.textContent = 'Inativo';
+                statusBadge.className = 'text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600';
+                statusText.textContent = 'Desativado';
+                statusText.className = 'text-sm text-gray-500 mb-3';
+                testBtn.disabled = true;
+            }
+        }
+
+        async function togglePushNotifications() {
+            const toggle = document.getElementById('pushToggle');
+            const originalState = !toggle.checked;
+
+            toggle.disabled = true;
+
+            try {
+                let result;
+                if (toggle.checked) {
+                    result = await PushNotifications.subscribe();
+                } else {
+                    result = await PushNotifications.unsubscribe();
+                }
+
+                if (result.success) {
+                    mostrarSucesso(result.message || (toggle.checked ? 'Notificações ativadas!' : 'Notificações desativadas'));
+                    await updatePushUI();
+                } else {
+                    // Reverte toggle se falhou
+                    toggle.checked = originalState;
+                    mostrarErro(result.error || 'Erro ao alterar configuração');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                toggle.checked = originalState;
+                mostrarErro('Erro ao alterar notificações');
+            } finally {
+                toggle.disabled = false;
+            }
+        }
+
+        async function testPushNotification() {
+            const btn = document.getElementById('btnTestPush');
+            const originalText = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
+
+            try {
+                const result = await PushNotifications.sendTest();
+
+                if (result.success) {
+                    mostrarSucesso(result.message || 'Notificação de teste enviada!');
+                } else {
+                    mostrarErro(result.message || result.error || 'Erro ao enviar teste');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                mostrarErro('Erro ao enviar notificação de teste');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
     </script>
 
     <!-- Validation -->
     <script src="/static/js/utils/validation.js"></script>
+
+    <!-- Push Notifications -->
+    <script src="/static/js/push-notifications.js"></script>
 
     <!-- Mobile Components -->
     <script src="/static/js/components/toast.js"></script>
@@ -816,7 +989,7 @@
                         { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', href: '/static/calendario-unificado.html' },
                         { id: 'config', label: 'Configurações', icon: 'fa-cog', href: '/static/configuracoes.html' },
                         { id: 'novo', label: 'Novo', icon: 'fa-plus', primary: true, onClick: () => { window.location.href = '/static/calendario-unificado.html'; }},
-                        { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line', href: '/static/dashboard.html' },
+                        { id: 'dashboard', label: 'Painel', icon: 'fa-chart-line', href: '/static/dashboard.html' },
                         { id: 'perfil', label: 'Perfil', icon: 'fa-user', href: '/static/perfil.html' }
                     ]
                 });
@@ -831,15 +1004,7 @@
         });
     </script>
 
-    <!-- Service Worker para PWA -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/service-worker.js')
-                    .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
-                    .catch(err => console.log('❌ Erro ao registrar Service Worker:', err));
-            });
-        }
-    </script>
+    <!-- PWA Update Manager -->
+    <script src="/static/js/pwa-updater.js?v=1.1.0"></script>
 </body>
 </html>

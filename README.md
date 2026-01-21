@@ -1,6 +1,6 @@
 # Horário Inteligente - Sistema de Agendamento para Clínicas
 
-![Version](https://img.shields.io/badge/version-3.6.0-blue)
+![Version](https://img.shields.io/badge/version-3.7.0-blue)
 ![LGPD](https://img.shields.io/badge/LGPD-100%25_conforme-success)
 ![AI](https://img.shields.io/badge/🤖_AI-Claude_Sonnet_4.5-blueviolet)
 ![Audio](https://img.shields.io/badge/🎙️_áudio-OpenAI_Whisper_+_TTS-orange)
@@ -21,17 +21,18 @@ Sistema SaaS de agendamento para clínicas (médicos, dentistas, psicólogos, fi
 
 1. [📋 Visão Geral](#-visão-geral)
 2. [✅ Segurança](#-segurança-atualizado-em-2026-01-20)
-3. [🚀 Novidades v3.2.0 e v3.3.0](#-novidades-v320-e-v330-novo)
-4. [🌐 Acesso em Produção](#-acesso-em-produção)
-5. [🏢 Multi-Tenant SaaS](#-multi-tenant-saas)
-6. [🤖 Integração com IA](#-integração-com-ia)
-7. [🎯 Funcionalidades Principais](#-funcionalidades-principais)
-8. [📱 Progressive Web App (PWA)](#-progressive-web-app-pwa)
-9. [⚙️ Configuração e Instalação](#️-configuração-e-instalação)
-10. [🐍 Stack Tecnológico](#-stack-tecnológico)
-11. [🔄 Fluxo de Uso](#-fluxo-de-uso)
-12. [💰 Custos de Operação](#-custos-de-operação)
-13. [📚 Documentação Adicional](#-documentação-adicional)
+3. [🚀 Novidades v3.7.0](#-novidades-v370-atual)
+4. [🚀 Novidades v3.2.0 e v3.3.0](#-novidades-v320-e-v330)
+5. [🌐 Acesso em Produção](#-acesso-em-produção)
+6. [🏢 Multi-Tenant SaaS](#-multi-tenant-saas)
+7. [🤖 Integração com IA](#-integração-com-ia)
+8. [🎯 Funcionalidades Principais](#-funcionalidades-principais)
+9. [📱 Progressive Web App (PWA)](#-progressive-web-app-pwa)
+10. [⚙️ Configuração e Instalação](#️-configuração-e-instalação)
+11. [🐍 Stack Tecnológico](#-stack-tecnológico)
+12. [🔄 Fluxo de Uso](#-fluxo-de-uso)
+13. [💰 Custos de Operação](#-custos-de-operação)
+14. [📚 Documentação Adicional](#-documentação-adicional)
 
 ---
 
@@ -53,8 +54,8 @@ O **Horário Inteligente** é uma plataforma completa de gerenciamento de agenda
 
 **Atende todos os tipos de profissionais de saúde:** médicos, dentistas, psicólogos, fisioterapeutas, nutricionistas, fonoaudiólogos e outros.
 
-**Última atualização:** 9 de dezembro de 2025
-**Versão:** 3.6.0 🚀 **[NOVA: Documentação Legal Completa - Termos de Uso + Política de Privacidade LGPD]**
+**Última atualização:** 21 de janeiro de 2026
+**Versão:** 3.7.0 🚀 **[NOVA: Sistema de Detecção de Urgência + Push Notifications + Melhorias de Segurança]**
 **Desenvolvedor:** Marco Aurélio Thiele (com Claude Code)
 
 ---
@@ -97,7 +98,114 @@ O **Horário Inteligente** é uma plataforma completa de gerenciamento de agenda
 
 ---
 
-## 🚀 Novidades v3.2.0 e v3.3.0 (NOVO)
+## 🚀 Novidades v3.7.0 (ATUAL)
+
+### 🔒 Melhorias de Segurança
+
+**Correções críticas implementadas:**
+
+1. **SECRET_KEY Obrigatória**
+   - Removido valor fallback inseguro
+   - Sistema agora **requer** variável de ambiente `SECRET_KEY`
+   - Erro fatal se não configurada (previne produção insegura)
+
+2. **Validação de Senha Forte**
+   - Implementada em todos os endpoints de criação/alteração de senha
+   - Requisitos mínimos:
+     - ✅ 8 caracteres
+     - ✅ 1 letra maiúscula
+     - ✅ 1 letra minúscula
+     - ✅ 1 número
+     - ✅ 1 caractere especial (!@#$%^&*)
+   - Aplicada em:
+     - `user_management.py` (reset/change password)
+     - `usuarios_internos.py` (criação/alteração)
+
+3. **Remoção de Token em Logs**
+   - Token de verificação não é mais logado em caso de erro
+   - Previne exposição acidental de credenciais
+
+### 🚨 Sistema de Detecção de Urgência
+
+**Novo recurso de monitoramento de conversas críticas:**
+
+O sistema agora detecta automaticamente mensagens urgentes nas conversas WhatsApp e alerta a equipe.
+
+**Níveis de Urgência:**
+- 🟢 **NORMAL** - Conversas padrão de agendamento
+- 🟡 **ATENÇÃO** - Menções a sintomas ou preocupações médicas
+- 🔴 **CRÍTICA** - Emergências, dores intensas, sintomas graves
+
+**Palavras-chave detectadas:**
+```
+CRÍTICA: emergência, urgente, dor forte, sangramento,
+         desmaio, não consegue respirar, infarto, AVC
+
+ATENÇÃO: febre, dor, medicamento, receita, resultado,
+         preocupado, piorou, sintoma
+```
+
+**APIs de Alertas:**
+```
+GET /api/alertas/contagem           # Contagem por nível
+GET /api/alertas/pendentes          # Alertas não resolvidos
+GET /api/alertas/conversas-urgentes # Conversas críticas ativas
+PUT /api/alertas/{id}/resolver      # Marcar como resolvido
+```
+
+**Campos na conversa:**
+- `urgencia_nivel` - Nível detectado (normal/atencao/critica)
+- `urgencia_detectada_em` - Timestamp da detecção
+- `urgencia_keywords` - Palavras que dispararam o alerta
+- `urgencia_resolvida` - Se foi tratada pela equipe
+- `urgencia_resolvida_por` - Quem resolveu
+- `urgencia_resolvida_em` - Quando foi resolvida
+
+### 📲 Push Notifications (PWA)
+
+**Sistema completo de notificações push para o PWA:**
+
+**Recursos:**
+- ✅ Inscrição de dispositivos via VAPID
+- ✅ Envio de notificações push nativas
+- ✅ Persistência de subscriptions no banco
+- ✅ Notificações por usuário específico
+
+**Endpoints:**
+```
+POST /api/push/subscription         # Registrar dispositivo
+DELETE /api/push/subscription       # Cancelar inscrição
+POST /api/push/send                 # Enviar notificação
+POST /api/push/send-to-user/{id}    # Enviar para usuário
+GET /api/push/vapid-public-key      # Obter chave pública
+```
+
+**Modelo de dados:**
+```sql
+push_subscriptions (
+    id,
+    usuario_id,
+    endpoint,
+    p256dh_key,
+    auth_key,
+    user_agent,
+    criado_em,
+    ultimo_uso
+)
+```
+
+### 📊 Outras Melhorias v3.7.0
+
+- ✅ Correção de enum `NivelUrgencia` para compatibilidade com PostgreSQL
+- ✅ Importação correta de `PushSubscription` nos models
+- ✅ Router de lembretes inteligentes registrado
+- ✅ Router de alertas de urgência registrado
+- ✅ Router de push notifications registrado
+- ✅ 188 rotas totais registradas no sistema
+
+---
+
+## 🚀 Novidades v3.2.0 e v3.3.0
 
 ### 🤖 Migração para Claude Sonnet 4.5
 
@@ -1082,7 +1190,17 @@ POST   /api/webhooks/whatsapp               # WhatsApp
 
 ## 🎉 Resumo de Conquistas
 
-### Versão 3.5.1 (Atual - 09/12/2025)
+### Versão 3.7.0 (Atual - 21/01/2026)
+
+✅ **Sistema de Detecção de Urgência** - Monitoramento automático de conversas críticas
+✅ **Push Notifications PWA** - Notificações nativas via VAPID
+✅ **SECRET_KEY Obrigatória** - Removido fallback inseguro
+✅ **Validação de Senha Forte** - Requisitos mínimos em todos os endpoints
+✅ **Remoção de Token em Logs** - Segurança de credenciais aprimorada
+✅ **APIs de Alertas** - Endpoints para gestão de urgências
+✅ **188 rotas registradas** - Sistema completo e funcional
+
+### Versão 3.5.1 (09/12/2025)
 
 ✅ **Documentação Legal Completa** - Termos de Uso e Política de Privacidade
 ✅ **100% Conforme LGPD** - Política de privacidade com todos os 8 direitos dos titulares
@@ -1169,7 +1287,7 @@ POST   /api/webhooks/whatsapp               # WhatsApp
 
 ---
 
-**Última atualização:** 9 de dezembro de 2025
-**Versão:** 3.6.0
+**Última atualização:** 21 de janeiro de 2026
+**Versão:** 3.7.0
 **Status:** ✅ Em Produção
 **Conformidade:** ✅ LGPD (Lei 13.709/2018)

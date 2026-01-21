@@ -39,6 +39,9 @@ from app.services.audio_preference_service import (
     detectar_preferencia_na_mensagem,
     gerar_resposta_preferencia
 )
+from app.services.notification_service import get_notification_service
+from app.services.urgencia_service import get_urgencia_service
+from app.services.conversa_service import ConversaService
 
 router = APIRouter()
 
@@ -528,10 +531,54 @@ async def process_with_anthropic_ai(message_text: str, sender: str, push_name: s
         proxima_acao = resultado.get("proxima_acao", "informar")
         dados_coletados = resultado.get("dados_coletados", {})
 
+        # Extrair informações de urgência
+        urgencia_data = resultado.get("urgencia", {"nivel": "normal", "motivo": None})
+        urgencia_nivel = urgencia_data.get("nivel", "normal")
+        urgencia_motivo = urgencia_data.get("motivo")
+
         logger.info(f"🔍 Resposta extraída: '{resposta[:100]}...'")
         logger.info(f"🎯 Intenção detectada: {intencao}")
         logger.info(f"🔄 Próxima ação: {proxima_acao}")
         logger.info(f"📋 Dados coletados: {dados_coletados}")
+        logger.info(f"🚨 Urgência: nivel={urgencia_nivel}, motivo={urgencia_motivo}")
+
+        # ========== PROCESSAR URGÊNCIA ==========
+        if urgencia_nivel in ["atencao", "critica"]:
+            try:
+                logger.warning(f"🚨 URGÊNCIA DETECTADA: {urgencia_nivel} - {urgencia_motivo}")
+
+                # Obter ou criar conversa para registrar urgência
+                conversa = ConversaService.criar_ou_recuperar_conversa(
+                    db=db,
+                    cliente_id=cliente_id,
+                    paciente_telefone=sender,
+                    paciente_nome=push_name
+                )
+
+                if conversa:
+                    # Processar urgência
+                    urgencia_service = get_urgencia_service(db)
+                    urgencia_result = await urgencia_service.processar_urgencia(
+                        conversa_id=conversa.id,
+                        cliente_id=cliente_id,
+                        nivel=urgencia_nivel,
+                        motivo=urgencia_motivo,
+                        mensagem_paciente=message_text,
+                        paciente_telefone=sender,
+                        paciente_nome=push_name
+                    )
+
+                    logger.info(f"🚨 Resultado urgência: {urgencia_result}")
+
+                    # Se for crítica, substituir resposta pela resposta de emergência
+                    if urgencia_nivel == "critica" and urgencia_result.get("resposta_emergencia"):
+                        resposta = urgencia_result["resposta_emergencia"]
+                        logger.info("🚨 Resposta substituída por mensagem de emergência")
+
+            except Exception as urgencia_error:
+                logger.error(f"❌ Erro ao processar urgência (não bloqueante): {urgencia_error}")
+                # Não falhar o fluxo por erro na urgência
+        # ==========================================
 
         # ========== VALIDAÇÃO DE CONTEXTO - REMOVIDA ==========
         # Nota: A validação de contexto foi removida pois estava sendo muito restritiva
@@ -848,6 +895,22 @@ async def process_with_anthropic_ai(message_text: str, sender: str, push_name: s
 
                 db.commit()
                 logger.info(f"✅✅✅ AGENDAMENTO SALVO COM SUCESSO! Paciente: {nome_paciente}, Data: {data_hora}")
+
+                # Notificar médico sobre novo agendamento (Push + WhatsApp/Email se configurado)
+                try:
+                    notification_service = get_notification_service(db)
+                    await notification_service.notificar_medico(
+                        medico_id=medico_id,
+                        cliente_id=cliente_id,
+                        evento="novo",
+                        dados_agendamento={
+                            "paciente_nome": nome_paciente,
+                            "data_hora": data_hora
+                        }
+                    )
+                    logger.info(f"📱 Notificação enviada para médico {medico_id}")
+                except Exception as notif_error:
+                    logger.warning(f"⚠️ Erro ao notificar médico: {notif_error}")
 
                 # SUBSTITUIR qualquer mensagem anterior por confirmação definitiva
                 if isinstance(resposta, str) and '\n\n' in resposta:

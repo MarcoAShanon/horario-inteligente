@@ -36,6 +36,7 @@ class Medico(BaseModel):
     # Relacionamentos
     cliente = relationship("Cliente", back_populates="medicos")
     agendamentos = relationship("Agendamento", back_populates="medico", cascade="all, delete-orphan")
+    push_subscriptions = relationship("PushSubscription", back_populates="medico", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Medico(nome='{self.nome}', especialidade='{self.especialidade}')>"

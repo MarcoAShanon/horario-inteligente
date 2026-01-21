@@ -12,6 +12,7 @@ from app.api.auth import get_current_user
 from app.utils.auth_middleware import AuthMiddleware, get_medico_filter_dependency
 from app.utils.phone_utils import normalize_phone
 from app.utils.timezone_helper import parse_datetime_brazil, now_brazil, format_brazil
+from app.services.websocket_manager import websocket_manager
 
 router = APIRouter()
 
@@ -168,6 +169,20 @@ async def criar_agendamento(
             import logging
             logger = logging.getLogger(__name__)
             logger.warning(f"Erro ao notificar médico sobre novo agendamento: {e}")
+
+        # Notificar via WebSocket para atualizar calendários em tempo real
+        try:
+            await websocket_manager.send_novo_agendamento(cliente_id, {
+                "id": agendamento_id,
+                "paciente_nome": dados.paciente_nome,
+                "medico_id": dados.medico_id,
+                "data_hora": data_hora_tz.isoformat(),
+                "status": "confirmado"
+            })
+        except Exception as ws_error:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"[WebSocket] Erro ao notificar novo agendamento: {ws_error}")
 
         return {
             "sucesso": True,

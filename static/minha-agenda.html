@@ -772,19 +772,7 @@
         window.onload = checkAuth;
     </script>
 
-    <!-- PWA Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/service-worker.js')
-                    .then(registration => {
-                        console.log('✅ PWA: Service Worker registrado com sucesso!', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('❌ PWA: Falha ao registrar Service Worker:', error);
-                    });
-            });
-        }
-    </script>
+    <!-- PWA Update Manager -->
+    <script src="/static/js/pwa-updater.js?v=1.1.0"></script>
 </body>
 </html>
