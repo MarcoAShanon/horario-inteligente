@@ -37,11 +37,10 @@ class MedicoResponse(BaseModel):
     nome: str
     crm: str
     especialidade: str
-    calendario_id: Optional[str]
     convenios_aceitos: Optional[List[str]]
     horarios_atendimento: Optional[dict]
     ativo: bool
-    
+
     class Config:
         from_attributes = True
 

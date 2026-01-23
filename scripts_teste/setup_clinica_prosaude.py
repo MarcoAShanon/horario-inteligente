@@ -77,7 +77,6 @@ def setup_clinica_prosaude():
             nome="Dra. Tânia Maria",
             crm="CRM-RJ 12345",
             especialidade="Alergista",
-            calendario_id="tania@clinicaprosaude.com.br",
             convenios_aceitos=["unimed", "amil", "particular"],
             horarios_atendimento={
                 "segunda": {"inicio": "08:00", "fim": "17:00", "ativo": True},
@@ -98,7 +97,6 @@ def setup_clinica_prosaude():
             nome="Dr. Marco Aurélio",
             crm="CRM-RJ 67890",
             especialidade="Cardiologista",
-            calendario_id="marco@clinicaprosaude.com.br",
             convenios_aceitos=["unimed", "bradesco", "particular"],
             horarios_atendimento={
                 "segunda": {"inicio": "08:00", "fim": "18:00", "ativo": True},

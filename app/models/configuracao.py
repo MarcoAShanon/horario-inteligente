@@ -14,10 +14,6 @@ class Configuracao(BaseModel):
     evolution_instance_id = Column(String(100), nullable=True)
     whatsapp_ativo = Column(Boolean, default=False)
     
-    # Google Calendar Configuration
-    google_credentials = Column(JSON, nullable=True)  # Credenciais JSON do Google
-    google_calendar_ativo = Column(Boolean, default=False)
-    
     # Anthropic AI Configuration
     anthropic_api_key = Column(String(200), nullable=True)
     anthropic_model = Column(String(50), default="claude-3-sonnet-20240229")

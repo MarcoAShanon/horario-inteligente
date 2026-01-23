@@ -15,9 +15,6 @@ class Medico(BaseModel):
     telefone = Column(String(20), nullable=True)
     email = Column(String(100), nullable=True)
     
-    # Google Calendar
-    calendario_id = Column(String(200), nullable=True)  # email do Google Calendar
-    
     # Horários de atendimento (JSON)
     horarios_atendimento = Column(JSON, nullable=True)
     # Exemplo: {
@@ -40,7 +37,3 @@ class Medico(BaseModel):
     
     def __repr__(self):
         return f"<Medico(nome='{self.nome}', especialidade='{self.especialidade}')>"
-
-    # Campos Google Calendar
-    google_calendar_token = Column(Text, nullable=True)
-    calendario_ativo = Column(Boolean, default=False)
