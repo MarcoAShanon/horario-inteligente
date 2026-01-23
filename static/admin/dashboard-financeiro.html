@@ -167,6 +167,121 @@
                 </table>
             </div>
         </div>
+
+        <!-- Cobranças ASAAS -->
+        <div class="bg-gray-900 rounded-lg border border-gray-800 p-6 mt-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white">
+                    <i class="fas fa-credit-card mr-2 text-emerald-500"></i>
+                    Cobranças ASAAS
+                </h2>
+                <div class="flex gap-3">
+                    <select id="filtroStatusCobranca" onchange="carregarCobrancas()" class="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="">Todos os Status</option>
+                        <option value="PENDING">Pendente</option>
+                        <option value="CONFIRMED">Confirmado</option>
+                        <option value="RECEIVED">Recebido</option>
+                        <option value="OVERDUE">Vencido</option>
+                        <option value="REFUNDED">Estornado</option>
+                    </select>
+                    <button onclick="abrirModalCobranca()" class="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-4 py-2 rounded-lg hover:from-emerald-700 hover:to-green-700 transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        Nova Cobrança
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cards de resumo cobranças -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-800/50 rounded-lg p-4 text-center">
+                    <p class="text-2xl font-bold text-yellow-500" id="cobrancasPendentes">0</p>
+                    <p class="text-xs text-gray-400">Pendentes</p>
+                </div>
+                <div class="bg-gray-800/50 rounded-lg p-4 text-center">
+                    <p class="text-2xl font-bold text-green-500" id="cobrancasConfirmadas">0</p>
+                    <p class="text-xs text-gray-400">Confirmadas</p>
+                </div>
+                <div class="bg-gray-800/50 rounded-lg p-4 text-center">
+                    <p class="text-2xl font-bold text-yellow-500" id="valorPendente">R$ 0</p>
+                    <p class="text-xs text-gray-400">Valor Pendente</p>
+                </div>
+                <div class="bg-gray-800/50 rounded-lg p-4 text-center">
+                    <p class="text-2xl font-bold text-green-500" id="valorRecebido">R$ 0</p>
+                    <p class="text-xs text-gray-400">Valor Recebido</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-800">
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Cliente</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Descrição</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Valor</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Vencimento</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Status</th>
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cobrancasTable">
+                        <tr>
+                            <td colspan="6" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                                <p>Carregando cobranças...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nova Cobrança -->
+    <div id="modalCobranca" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-gray-900 rounded-lg p-6 w-full max-w-md mx-4 border border-gray-700">
+            <h3 class="text-xl font-bold text-white mb-4">
+                <i class="fas fa-file-invoice-dollar mr-2 text-emerald-500"></i>
+                Nova Cobrança ASAAS
+            </h3>
+            <form id="formCobranca" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Cliente</label>
+                    <select id="cobrancaCliente" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="">Selecione o cliente...</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Valor (R$)</label>
+                        <input type="number" step="0.01" min="5" id="cobrancaValor" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Mín. R$ 5,00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Vencimento</label>
+                        <input type="date" id="cobrancaVencimento" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Forma de Pagamento</label>
+                    <select id="cobrancaFormaPagamento" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="PIX">PIX</option>
+                        <option value="BOLETO">Boleto</option>
+                        <option value="UNDEFINED">Todas as formas</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Descrição</label>
+                    <input type="text" id="cobrancaDescricao" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Ex: Mensalidade Janeiro/2026">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="fecharModalCobranca()" class="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition">
+                        Criar Cobrança
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Modal Novo Custo -->
@@ -553,6 +668,196 @@
                 alert('Erro ao salvar custo');
             }
         });
+
+        // ============ COBRANÇAS ASAAS ============
+
+        async function carregarCobrancas() {
+            const status = document.getElementById('filtroStatusCobranca').value;
+            let url = '/api/billing/charges?per_page=50';
+            if (status) url += `&status=${status}`;
+
+            try {
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+                const data = await response.json();
+
+                const tbody = document.getElementById('cobrancasTable');
+                if (data.items && data.items.length > 0) {
+                    tbody.innerHTML = data.items.map(c => `
+                        <tr class="border-b border-gray-800 hover:bg-gray-800/50">
+                            <td class="py-3 px-4 text-white">${c.cliente_nome}</td>
+                            <td class="py-3 px-4 text-gray-300 text-sm">${c.descricao || '-'}</td>
+                            <td class="py-3 px-4 text-white font-medium">R$ ${c.valor.toFixed(2)}</td>
+                            <td class="py-3 px-4 text-gray-300">${formatarData(c.vencimento)}</td>
+                            <td class="py-3 px-4">${getBadgeStatus(c.status)}</td>
+                            <td class="py-3 px-4">
+                                ${c.invoice_url ? `<a href="${c.invoice_url}" target="_blank" class="text-emerald-400 hover:text-emerald-300 mr-3" title="Ver no ASAAS"><i class="fas fa-external-link-alt"></i></a>` : ''}
+                                ${c.status === 'PENDING' ? `<button onclick="cancelarCobranca(${c.id})" class="text-red-400 hover:text-red-300" title="Cancelar"><i class="fas fa-times"></i></button>` : ''}
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-8 text-gray-500">
+                                <i class="fas fa-inbox text-3xl mb-2"></i>
+                                <p>Nenhuma cobrança encontrada</p>
+                            </td>
+                        </tr>`;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar cobranças:', error);
+            }
+        }
+
+        async function carregarResumoCobrancas() {
+            try {
+                const response = await fetch('/api/billing/charges/summary', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+                const data = await response.json();
+
+                const pendentes = (data.por_status?.PENDING?.quantidade || 0) + (data.por_status?.OVERDUE?.quantidade || 0);
+                const confirmadas = (data.por_status?.CONFIRMED?.quantidade || 0) + (data.por_status?.RECEIVED?.quantidade || 0);
+
+                document.getElementById('cobrancasPendentes').textContent = pendentes;
+                document.getElementById('cobrancasConfirmadas').textContent = confirmadas;
+                document.getElementById('valorPendente').textContent = `R$ ${(data.total_pendente || 0).toFixed(2)}`;
+                document.getElementById('valorRecebido').textContent = `R$ ${(data.total_recebido || 0).toFixed(2)}`;
+            } catch (error) {
+                console.error('Erro ao carregar resumo:', error);
+            }
+        }
+
+        async function carregarClientesSelect() {
+            try {
+                const response = await fetch('/api/financeiro/clientes?apenas_ativos=true', {
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+                const clientes = await response.json();
+
+                const select = document.getElementById('cobrancaCliente');
+                select.innerHTML = '<option value="">Selecione o cliente...</option>' +
+                    clientes.map(c => `<option value="${c.id}" data-asaas="${c.asaas_customer_id || ''}">${c.nome}</option>`).join('');
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+            }
+        }
+
+        function getBadgeStatus(status) {
+            const badges = {
+                'PENDING': '<span class="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400">Pendente</span>',
+                'CONFIRMED': '<span class="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Confirmado</span>',
+                'RECEIVED': '<span class="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Recebido</span>',
+                'OVERDUE': '<span class="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400">Vencido</span>',
+                'REFUNDED': '<span class="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-400">Estornado</span>',
+                'DELETED': '<span class="px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-400">Cancelado</span>'
+            };
+            return badges[status] || `<span class="px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-400">${status}</span>`;
+        }
+
+        function formatarData(dataStr) {
+            if (!dataStr) return '-';
+            const [ano, mes, dia] = dataStr.split('-');
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        function abrirModalCobranca() {
+            carregarClientesSelect();
+            // Definir vencimento padrão para amanhã
+            const amanha = new Date();
+            amanha.setDate(amanha.getDate() + 1);
+            document.getElementById('cobrancaVencimento').value = amanha.toISOString().split('T')[0];
+            document.getElementById('modalCobranca').classList.remove('hidden');
+            document.getElementById('modalCobranca').classList.add('flex');
+        }
+
+        function fecharModalCobranca() {
+            document.getElementById('modalCobranca').classList.add('hidden');
+            document.getElementById('modalCobranca').classList.remove('flex');
+            document.getElementById('formCobranca').reset();
+        }
+
+        document.getElementById('formCobranca').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const clienteId = document.getElementById('cobrancaCliente').value;
+            const valor = parseFloat(document.getElementById('cobrancaValor').value);
+
+            if (valor < 5) {
+                alert('O valor mínimo para cobrança é R$ 5,00');
+                return;
+            }
+
+            const dados = {
+                cliente_id: parseInt(clienteId),
+                valor: valor,
+                descricao: document.getElementById('cobrancaDescricao').value,
+                data_vencimento: document.getElementById('cobrancaVencimento').value,
+                forma_pagamento: document.getElementById('cobrancaFormaPagamento').value
+            };
+
+            try {
+                const response = await fetch('/api/billing/charges', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    fecharModalCobranca();
+                    await carregarCobrancas();
+                    await carregarResumoCobrancas();
+                    if (result.link_pix) {
+                        if (confirm('Cobrança criada com sucesso! Deseja abrir o link de pagamento?')) {
+                            window.open(result.link_pix, '_blank');
+                        }
+                    } else {
+                        alert('Cobrança criada com sucesso!');
+                    }
+                } else {
+                    const error = await response.json();
+                    alert(error.detail || 'Erro ao criar cobrança');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao criar cobrança');
+            }
+        });
+
+        async function cancelarCobranca(id) {
+            if (!confirm('Tem certeza que deseja cancelar esta cobrança?')) return;
+
+            try {
+                const response = await fetch(`/api/billing/charges/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${userToken}` }
+                });
+
+                if (response.ok) {
+                    await carregarCobrancas();
+                    await carregarResumoCobrancas();
+                    alert('Cobrança cancelada com sucesso!');
+                } else {
+                    const error = await response.json();
+                    alert(error.detail || 'Erro ao cancelar cobrança');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao cancelar cobrança');
+            }
+        }
+
+        // Carregar cobranças ao iniciar
+        setTimeout(() => {
+            carregarCobrancas();
+            carregarResumoCobrancas();
+        }, 500);
 
         function logout() {
             localStorage.removeItem('adminToken');

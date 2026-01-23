@@ -206,6 +206,67 @@
             50% { opacity: 0.5; }
         }
 
+        /* Janela 24h status */
+        .janela-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .janela-ativa {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .janela-expirada {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .janela-indicator {
+            font-size: 0.9rem;
+        }
+
+        /* Template selector */
+        .template-selector {
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        .template-selector select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background: white;
+        }
+        .template-selector label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 6px;
+        }
+        .template-params {
+            margin-top: 8px;
+        }
+        .template-params input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            margin-top: 4px;
+        }
+        .input-desabilitado {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
         /* Mobile responsive */
         @media (max-width: 768px) {
             .sidebar {
@@ -317,6 +378,11 @@
                             <p id="chatTelefone" class="text-sm text-gray-500">+55 00 00000-0000</p>
                         </div>
                         <span id="chatStatus" class="status-badge status-ia ml-2">IA Ativa</span>
+                        <!-- Indicador de Janela 24h -->
+                        <span id="janelaStatus" class="janela-status janela-ativa ml-2 hidden">
+                            <span class="janela-indicator">🟢</span>
+                            <span id="janelaTexto">Janela ativa</span>
+                        </span>
                     </div>
                     <div class="flex items-center gap-2">
                         <button id="btnResolverUrgencia" onclick="resolverUrgencia()"
@@ -354,10 +420,28 @@
 
             <!-- Input Area -->
             <div id="chatInput" class="bg-white border-t p-3 hidden">
+                <!-- Template Selector (quando janela expirada) -->
+                <div id="templateSelector" class="template-selector hidden">
+                    <label>
+                        <i class="fas fa-file-alt"></i>
+                        Janela de 24h expirada - Selecione um template aprovado:
+                    </label>
+                    <select id="templateSelect" onchange="onTemplateChange()">
+                        <option value="">-- Selecione um template --</option>
+                        <option value="lembrete_consulta">Lembrete de Consulta</option>
+                        <option value="confirmacao_agendamento">Confirmação de Agendamento</option>
+                        <option value="retorno_contato">Retorno de Contato</option>
+                    </select>
+                    <div id="templateParams" class="template-params hidden">
+                        <label class="text-xs text-gray-600">Parâmetros do template:</label>
+                        <input type="text" id="templateParam1" placeholder="Parâmetro 1 (ex: nome do paciente)">
+                    </div>
+                </div>
+
                 <form onsubmit="enviarMensagem(event)" class="flex gap-2">
                     <input type="text" id="mensagemInput" placeholder="Digite sua mensagem..."
                         class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    <button type="submit"
+                    <button type="submit" id="btnEnviar"
                         class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center gap-2">
                         <i class="fas fa-paper-plane"></i>
                         <span class="hidden sm:inline">Enviar</span>
@@ -366,6 +450,10 @@
                 <p id="inputHint" class="text-xs text-amber-600 mt-1 hidden">
                     <i class="fas fa-info-circle"></i>
                     Você assumiu esta conversa. A IA não responderá.
+                </p>
+                <p id="janelaHint" class="text-xs text-red-600 mt-1 hidden">
+                    <i class="fas fa-clock"></i>
+                    Janela de 24h expirada. Use um template aprovado pela Meta para enviar mensagem.
                 </p>
             </div>
 
@@ -391,6 +479,7 @@
         let ws = null;
         let filtroAtual = 'todas';
         let urgenciasContagem = { critica: 0, atencao: 0, total: 0 };
+        let janelaAtual = { ativa: true, expira_em: null }; // Status da janela 24h
 
         // ==================== INIT ====================
         document.addEventListener('DOMContentLoaded', () => {
@@ -483,6 +572,9 @@
                 atualizarHeader(data);
                 mostrarChat();
 
+                // Verificar status da janela 24h
+                await verificarJanela24h(conversaId);
+
                 // Atualizar lista para remover badge de não lidas
                 const conv = conversas.find(c => c.id === conversaId);
                 if (conv) conv.nao_lidas = 0;
@@ -493,13 +585,114 @@
             }
         }
 
+        async function verificarJanela24h(conversaId) {
+            try {
+                const response = await fetch(`/api/conversas/${conversaId}/janela-status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    console.error('Erro ao verificar janela 24h');
+                    return;
+                }
+
+                janelaAtual = await response.json();
+                atualizarUIJanela(janelaAtual);
+
+            } catch (error) {
+                console.error('Erro ao verificar janela 24h:', error);
+            }
+        }
+
+        function atualizarUIJanela(janela) {
+            const janelaStatusEl = document.getElementById('janelaStatus');
+            const janelaTextoEl = document.getElementById('janelaTexto');
+            const templateSelectorEl = document.getElementById('templateSelector');
+            const mensagemInputEl = document.getElementById('mensagemInput');
+            const janelaHintEl = document.getElementById('janelaHint');
+
+            janelaStatusEl.classList.remove('hidden');
+
+            if (janela.ativa) {
+                // Janela ativa - pode enviar mensagem livre
+                janelaStatusEl.classList.remove('janela-expirada');
+                janelaStatusEl.classList.add('janela-ativa');
+                janelaStatusEl.querySelector('.janela-indicator').textContent = '🟢';
+                janelaTextoEl.textContent = `Janela ativa (${janela.expira_em || 'ativa'})`;
+
+                // Habilitar input de texto e esconder template selector
+                templateSelectorEl.classList.add('hidden');
+                mensagemInputEl.classList.remove('input-desabilitado');
+                mensagemInputEl.placeholder = 'Digite sua mensagem...';
+                mensagemInputEl.disabled = false;
+                janelaHintEl.classList.add('hidden');
+
+            } else {
+                // Janela expirada - obrigatório usar template
+                janelaStatusEl.classList.remove('janela-ativa');
+                janelaStatusEl.classList.add('janela-expirada');
+                janelaStatusEl.querySelector('.janela-indicator').textContent = '🔴';
+                janelaTextoEl.textContent = 'Janela expirada';
+
+                // Mostrar template selector e desabilitar input livre
+                templateSelectorEl.classList.remove('hidden');
+                mensagemInputEl.classList.add('input-desabilitado');
+                mensagemInputEl.placeholder = 'Selecione um template acima...';
+                mensagemInputEl.disabled = true;
+                janelaHintEl.classList.remove('hidden');
+            }
+        }
+
+        function onTemplateChange() {
+            const templateSelect = document.getElementById('templateSelect');
+            const templateParams = document.getElementById('templateParams');
+            const mensagemInput = document.getElementById('mensagemInput');
+
+            if (templateSelect.value) {
+                templateParams.classList.remove('hidden');
+                // Preencher o input com uma prévia do template
+                const templatePreviews = {
+                    'lembrete_consulta': 'Olá! Passando para lembrar da sua consulta agendada.',
+                    'confirmacao_agendamento': 'Seu agendamento foi confirmado com sucesso!',
+                    'retorno_contato': 'Olá! Estamos retornando seu contato.'
+                };
+                mensagemInput.value = templatePreviews[templateSelect.value] || '';
+                mensagemInput.classList.remove('input-desabilitado');
+                mensagemInput.disabled = false;
+            } else {
+                templateParams.classList.add('hidden');
+                mensagemInput.value = '';
+                if (!janelaAtual.ativa) {
+                    mensagemInput.classList.add('input-desabilitado');
+                    mensagemInput.disabled = true;
+                }
+            }
+        }
+
         async function enviarMensagem(event) {
             event.preventDefault();
 
             const input = document.getElementById('mensagemInput');
             const conteudo = input.value.trim();
+            const templateSelect = document.getElementById('templateSelect');
+            const templateParam1 = document.getElementById('templateParam1');
 
             if (!conteudo || !conversaAtual) return;
+
+            // Preparar payload
+            let payload = { conteudo, tipo: 'texto' };
+
+            // Se janela expirada, verificar se tem template selecionado
+            if (!janelaAtual.ativa) {
+                if (!templateSelect.value) {
+                    alert('Janela de 24h expirada. Selecione um template aprovado para enviar mensagem.');
+                    return;
+                }
+
+                // Adicionar dados do template ao payload
+                payload.template_name = templateSelect.value;
+                payload.template_params = templateParam1.value ? [templateParam1.value] : [];
+            }
 
             try {
                 const response = await fetch(`/api/conversas/${conversaAtual.id}/mensagens`, {
@@ -508,11 +701,19 @@
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ conteudo, tipo: 'texto' })
+                    body: JSON.stringify(payload)
                 });
 
                 if (!response.ok) {
                     const error = await response.json();
+                    // Verificar se é erro de janela expirada
+                    if (error.detail && error.detail.error === 'janela_expirada') {
+                        alert(error.detail.message);
+                        // Atualizar status da janela na UI
+                        janelaAtual.ativa = false;
+                        atualizarUIJanela(janelaAtual);
+                        return;
+                    }
                     alert(error.detail || 'Erro ao enviar mensagem');
                     return;
                 }
@@ -520,6 +721,13 @@
                 const mensagem = await response.json();
                 adicionarMensagemUI(mensagem);
                 input.value = '';
+
+                // Limpar seleção de template se usado
+                if (!janelaAtual.ativa) {
+                    templateSelect.value = '';
+                    templateParam1.value = '';
+                    document.getElementById('templateParams').classList.add('hidden');
+                }
 
             } catch (error) {
                 console.error('Erro ao enviar mensagem:', error);
@@ -1006,6 +1214,12 @@
             document.getElementById('chatInput').classList.add('hidden');
             document.getElementById('emptyState').classList.remove('hidden');
             document.getElementById('chatMessages').innerHTML = '';
+
+            // Resetar status da janela
+            document.getElementById('janelaStatus').classList.add('hidden');
+            document.getElementById('templateSelector').classList.add('hidden');
+            document.getElementById('janelaHint').classList.add('hidden');
+            janelaAtual = { ativa: true, expira_em: null };
         }
 
         function setupMobileMenu() {

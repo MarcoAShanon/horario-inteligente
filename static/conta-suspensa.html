@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conta Suspensa - Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#ef4444">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            min-height: 100vh;
+        }
+        .pulse-warning {
+            animation: pulse-warning 2s infinite;
+        }
+        @keyframes pulse-warning {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+    <div class="max-w-lg w-full">
+        <!-- Card Principal -->
+        <div class="bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-700">
+
+            <!-- Header com Alerta -->
+            <div class="bg-gradient-to-r from-red-600 to-orange-600 p-6 text-center">
+                <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 pulse-warning">
+                    <i class="fas fa-exclamation-triangle text-4xl text-white"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white mb-2">Conta Suspensa</h1>
+                <p class="text-red-100">Identificamos uma pendência financeira</p>
+            </div>
+
+            <!-- Conteúdo -->
+            <div class="p-6 space-y-6">
+
+                <!-- Mensagem -->
+                <div class="bg-gray-700/50 rounded-xl p-4 border border-gray-600">
+                    <p class="text-gray-300 text-center">
+                        Sua assinatura do <strong class="text-white">Horário Inteligente</strong> está temporariamente suspensa devido a uma fatura em atraso.
+                    </p>
+                </div>
+
+                <!-- Informações da Fatura (carregado via JS) -->
+                <div id="faturaInfo" class="hidden">
+                    <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                        <i class="fas fa-file-invoice text-red-400"></i>
+                        Fatura Pendente
+                    </h3>
+                    <div class="bg-gray-700 rounded-xl p-4 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Descrição</span>
+                            <span id="faturaDescricao" class="text-white font-medium">-</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Valor</span>
+                            <span id="faturaValor" class="text-2xl font-bold text-red-400">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Vencimento</span>
+                            <span id="faturaVencimento" class="text-white">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading -->
+                <div id="loading" class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
+                    <p class="text-gray-400 mt-2">Carregando informações...</p>
+                </div>
+
+                <!-- Erro -->
+                <div id="erroInfo" class="hidden bg-red-900/30 border border-red-700 rounded-xl p-4 text-center">
+                    <i class="fas fa-exclamation-circle text-red-400 text-2xl mb-2"></i>
+                    <p class="text-red-300" id="erroMensagem">Erro ao carregar informações</p>
+                </div>
+
+                <!-- Botões de Pagamento -->
+                <div id="botoesAcao" class="hidden space-y-3">
+                    <a id="btnPagarPix" href="#" target="_blank"
+                       class="card-hover w-full bg-gradient-to-r from-emerald-600 to-green-600 text-white py-4 px-6 rounded-xl font-semibold flex items-center justify-center gap-3 hover:from-emerald-700 hover:to-green-700">
+                        <i class="fas fa-qrcode text-xl"></i>
+                        <span>Pagar com PIX</span>
+                        <span class="text-emerald-200 text-sm">(Liberação imediata)</span>
+                    </a>
+
+                    <a id="btnPagarBoleto" href="#" target="_blank"
+                       class="card-hover w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 px-6 rounded-xl font-semibold flex items-center justify-center gap-3 hover:from-blue-700 hover:to-indigo-700">
+                        <i class="fas fa-barcode text-xl"></i>
+                        <span>Gerar Boleto</span>
+                        <span class="text-blue-200 text-sm">(1-2 dias úteis)</span>
+                    </a>
+
+                    <button onclick="verificarPagamento()"
+                            class="w-full bg-gray-700 text-gray-300 py-3 px-6 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-gray-600 transition">
+                        <i class="fas fa-sync-alt"></i>
+                        Já paguei, verificar status
+                    </button>
+                </div>
+
+                <!-- Divider -->
+                <div class="border-t border-gray-700 pt-4">
+                    <p class="text-gray-400 text-sm text-center mb-4">
+                        Após a confirmação do pagamento, sua conta será reativada automaticamente.
+                    </p>
+                </div>
+
+                <!-- Contato -->
+                <div class="bg-blue-900/30 border border-blue-700 rounded-xl p-4">
+                    <h4 class="text-blue-300 font-medium mb-2 flex items-center gap-2">
+                        <i class="fas fa-headset"></i>
+                        Precisa de ajuda?
+                    </h4>
+                    <p class="text-gray-400 text-sm mb-3">
+                        Se você acredita que isso é um erro ou precisa de condições especiais, entre em contato conosco.
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="https://wa.me/5521999999999?text=Olá! Preciso de ajuda com minha conta suspensa."
+                           target="_blank"
+                           class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition">
+                            <i class="fab fa-whatsapp"></i>
+                            WhatsApp
+                        </a>
+                        <a href="mailto:contato@horariointeligente.com.br?subject=Conta Suspensa - Ajuda"
+                           class="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-500 transition">
+                            <i class="fas fa-envelope"></i>
+                            Email
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="bg-gray-900 px-6 py-4 text-center">
+                <a href="/static/login.html" class="text-gray-400 hover:text-white text-sm transition">
+                    <i class="fas fa-arrow-left mr-1"></i>
+                    Voltar para o login
+                </a>
+            </div>
+        </div>
+
+        <!-- Logo -->
+        <div class="text-center mt-6">
+            <img src="/static/images/logo.png" alt="Horário Inteligente" class="h-8 mx-auto opacity-50">
+        </div>
+    </div>
+
+    <script>
+        // Obter cliente_id da URL ou do token
+        function getClienteId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const clienteId = urlParams.get('cliente_id');
+
+            if (clienteId) return clienteId;
+
+            // Tentar obter do token armazenado
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    return payload.cliente_id;
+                } catch (e) {
+                    console.error('Erro ao decodificar token:', e);
+                }
+            }
+            return null;
+        }
+
+        // Carregar informações da fatura pendente
+        async function carregarFaturaPendente() {
+            const clienteId = getClienteId();
+
+            if (!clienteId) {
+                mostrarErro('Não foi possível identificar sua conta');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/billing/faturas-pendentes/${clienteId}`);
+                const data = await response.json();
+
+                document.getElementById('loading').classList.add('hidden');
+
+                if (response.ok && data.faturas && data.faturas.length > 0) {
+                    const fatura = data.faturas[0]; // Pega a mais antiga
+
+                    // Preencher dados
+                    document.getElementById('faturaDescricao').textContent = fatura.descricao || 'Mensalidade';
+                    document.getElementById('faturaValor').textContent = `R$ ${fatura.valor.toFixed(2).replace('.', ',')}`;
+                    document.getElementById('faturaVencimento').textContent = formatarData(fatura.vencimento);
+
+                    // Configurar botões
+                    if (fatura.invoice_url) {
+                        document.getElementById('btnPagarPix').href = fatura.invoice_url;
+                        document.getElementById('btnPagarBoleto').href = fatura.invoice_url;
+                    }
+
+                    // Mostrar informações
+                    document.getElementById('faturaInfo').classList.remove('hidden');
+                    document.getElementById('botoesAcao').classList.remove('hidden');
+                } else {
+                    // Nenhuma fatura pendente - conta pode ter sido reativada
+                    mostrarSucesso();
+                }
+
+            } catch (error) {
+                console.error('Erro ao carregar fatura:', error);
+                mostrarErro('Erro ao carregar informações. Tente novamente.');
+            }
+        }
+
+        function mostrarErro(mensagem) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('erroMensagem').textContent = mensagem;
+            document.getElementById('erroInfo').classList.remove('hidden');
+            document.getElementById('botoesAcao').classList.remove('hidden');
+        }
+
+        function mostrarSucesso() {
+            document.getElementById('loading').classList.add('hidden');
+            document.querySelector('.bg-gradient-to-r.from-red-600').className =
+                'bg-gradient-to-r from-emerald-600 to-green-600 p-6 text-center';
+            document.querySelector('.pulse-warning i').className = 'fas fa-check-circle text-4xl text-white';
+            document.querySelector('h1').textContent = 'Conta Ativa!';
+            document.querySelector('.text-red-100').textContent = 'Não há pendências financeiras';
+
+            const content = document.querySelector('.p-6.space-y-6');
+            content.innerHTML = `
+                <div class="bg-emerald-900/30 border border-emerald-600 rounded-xl p-6 text-center">
+                    <i class="fas fa-check-circle text-emerald-400 text-5xl mb-4"></i>
+                    <h3 class="text-xl font-bold text-white mb-2">Tudo certo!</h3>
+                    <p class="text-gray-300 mb-4">Sua conta está ativa e sem pendências.</p>
+                    <a href="/static/dashboard.html"
+                       class="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition">
+                        <i class="fas fa-home"></i>
+                        Acessar Sistema
+                    </a>
+                </div>
+            `;
+        }
+
+        async function verificarPagamento() {
+            const btn = event.target;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verificando...';
+            btn.disabled = true;
+
+            // Recarregar página após 2 segundos
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+
+        function formatarData(data) {
+            if (!data) return '-';
+            const d = new Date(data);
+            return d.toLocaleDateString('pt-BR');
+        }
+
+        // Iniciar
+        document.addEventListener('DOMContentLoaded', carregarFaturaPendente);
+    </script>
+</body>
+</html>

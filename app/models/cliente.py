@@ -29,6 +29,9 @@ class Cliente(BaseModel):
     plano = Column(String(50), default="basico", nullable=False)  # basico, profissional, enterprise
     ativo = Column(Boolean, default=True, nullable=False)
     valor_mensalidade = Column(String(10), default="150.00", nullable=False)
+
+    # ASAAS Integration
+    asaas_customer_id = Column(String(50), nullable=True, index=True)  # ID do cliente no ASAAS
     
     # Relacionamentos
     medicos = relationship("Medico", back_populates="cliente", cascade="all, delete-orphan")

@@ -5,12 +5,13 @@ Desenvolvido por Marco
 
 from app.models.base import BaseModel, Base
 
-# Models de Planos (importar antes de Cliente por dependência)
+# Models principais (importar primeiro - são dependências)
+from app.models.cliente import Cliente
+
+# Models de Planos e Pagamentos (dependem de Cliente)
 from app.models.plano import Plano
 from app.models.assinatura import Assinatura
-
-# Models principais
-from app.models.cliente import Cliente
+from app.models.pagamento import Pagamento
 from app.models.medico import Medico
 from app.models.paciente import Paciente
 from app.models.agendamento import Agendamento
@@ -62,6 +63,7 @@ __all__ = [
     # Models de Planos e Assinaturas
     "Plano",
     "Assinatura",
+    "Pagamento",
     # Model de Pré-Cadastro
     "PreCadastro",
     # Models de Conversas WhatsApp

@@ -28,6 +28,13 @@ class TenantMiddleware(BaseHTTPMiddleware):
             # Rotas que não precisam de tenant (gestão interna)
             path = request.url.path
             logger.info(f"🔍 TenantMiddleware v2: path={path}")
+            # Rotas de billing autenticadas usam cliente_id do JWT, não do subdomain
+            if path.startswith('/api/billing/minha') or path.startswith('/api/billing/minhas'):
+                request.state.cliente_id = None
+                request.state.subdomain = 'jwt_auth'
+                request.state.is_admin = False
+                response = await call_next(request)
+                return response
             if path.startswith('/api/financeiro/') or path.startswith('/api/gestao-interna/') or path.startswith('/api/admin/') or path.startswith('/api/interno/'):
                 request.state.cliente_id = None
                 request.state.subdomain = 'admin'

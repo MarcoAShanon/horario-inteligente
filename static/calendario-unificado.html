@@ -948,8 +948,8 @@
                         </select>
                     </div>
 
-                    <!-- Data e Hora -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <!-- Data, Hora e Duração -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                         <div>
                             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                                 Data *
@@ -965,6 +965,16 @@
                             <input type="time" id="hora" name="hora"
                                    onchange="verificarDisponibilidadeHorario()"
                                    class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                Duração (min)
+                            </label>
+                            <input type="number" id="duracao_minutos" name="duracao_minutos"
+                                   value="30" min="5" max="480" step="5"
+                                   onchange="verificarHorariosDisponiveis()"
+                                   class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="text-xs text-gray-500">Padrão: 30 min</span>
                         </div>
                     </div>
 
@@ -1067,6 +1077,10 @@
                             <div>
                                 <span class="text-gray-600">Horário:</span>
                                 <p class="font-medium" id="det_hora"></p>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Duração:</span>
+                                <p class="font-medium" id="det_duracao"></p>
                             </div>
                             <div>
                                 <span class="text-gray-600">Status:</span>
@@ -2184,24 +2198,29 @@
             document.getElementById('horariosDisponiveisContainer').classList.add('hidden');
         }
 
-        // Verificar horários disponíveis quando médico ou data mudam
+        // Verificar horários disponíveis quando médico, data ou duração mudam
         async function verificarHorariosDisponiveis() {
             const medicoId = document.getElementById('medico_id').value;
             const data = document.getElementById('data').value;
+            const duracao = document.getElementById('duracao_minutos').value || 30;
 
             if (!medicoId || !data) {
                 return;
             }
 
             try {
-                const response = await fetch(`/api/horarios-disponiveis?medico_id=${medicoId}&data=${data}`);
+                // Incluir duração na requisição para filtrar horários com espaço suficiente
+                const response = await fetch(`/api/horarios-disponiveis?medico_id=${medicoId}&data=${data}&duracao=${duracao}`);
                 const result = await response.json();
 
                 if (result.sucesso && result.horarios.length > 0) {
                     mostrarHorariosDisponiveis(result.horarios);
                 } else {
                     document.getElementById('horariosDisponiveisContainer').classList.add('hidden');
-                    mostrarMensagem('Nenhum horário disponível para esta data', 'warning');
+                    const msg = parseInt(duracao) > 30
+                        ? `Nenhum horário disponível com ${duracao} minutos livres`
+                        : 'Nenhum horário disponível para esta data';
+                    mostrarMensagem(msg, 'warning');
                 }
             } catch (error) {
                 console.error('Erro ao buscar horários:', error);
@@ -2343,6 +2362,7 @@
                 medico_id: parseInt(document.getElementById('medico_id').value),
                 data: document.getElementById('data').value,
                 hora: document.getElementById('hora').value,
+                duracao_minutos: parseInt(document.getElementById('duracao_minutos').value) || 30,
                 motivo_consulta: document.getElementById('motivo_consulta').value || 'Consulta'
             };
 
@@ -2415,6 +2435,7 @@
                     agendamentoAtual = {
                         id: ag.id,
                         data_hora: ag.data_hora,
+                        duracao_minutos: ag.duracao_minutos || 30,
                         status: ag.status,
                         tipo: ag.tipo_atendimento,
                         motivo_consulta: ag.motivo_consulta,
@@ -2439,6 +2460,7 @@
 
                     document.getElementById('det_data').textContent = dataFormatada;
                     document.getElementById('det_hora').textContent = horaFormatada;
+                    document.getElementById('det_duracao').textContent = `${agendamentoAtual.duracao_minutos} minutos`;
 
                     // USABILIDADE: Status com badge visual (ícone + cor + texto)
                     const statusElement = document.getElementById('det_status');

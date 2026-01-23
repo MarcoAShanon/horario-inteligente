@@ -193,7 +193,13 @@ app.add_middleware(
 app.add_middleware(SecurityHeadersMiddleware)
 logger.info("🔒 SecurityHeadersMiddleware ativado")
 
-# Multi-Tenant Middleware (NOVO)
+# Billing Middleware - Bloqueio de Inadimplentes (deve vir ANTES do TenantMiddleware)
+# Na stack de middleware, o último adicionado roda primeiro na request
+from app.middleware.billing_middleware import BillingMiddleware
+app.add_middleware(BillingMiddleware)
+logger.info("💰 BillingMiddleware ativado - Bloqueio de inadimplentes ATIVO")
+
+# Multi-Tenant Middleware (roda ANTES do BillingMiddleware pois foi adicionado DEPOIS)
 from app.middleware.tenant_middleware import TenantMiddleware
 app.add_middleware(TenantMiddleware)
 logger.info("🏢 TenantMiddleware ativado - Sistema Multi-Tenant ATIVO")
@@ -315,6 +321,16 @@ try:
     from app.api.alertas_urgencia import router as alertas_router
     app.include_router(alertas_router, tags=["Alertas de Urgência"])
     logger.info("✅ Router Alertas de Urgência registrado")
+
+    # Router Billing ASAAS (gateway de pagamentos)
+    from app.api.billing import router as billing_router
+    app.include_router(billing_router, tags=["Billing ASAAS"])
+    logger.info("✅ Router Billing ASAAS registrado")
+
+    # Router Webhooks ASAAS (notificações de pagamento)
+    from app.api.webhooks_asaas import router as webhooks_asaas_router
+    app.include_router(webhooks_asaas_router, tags=["Webhooks ASAAS"])
+    logger.info("✅ Router Webhooks ASAAS registrado")
 
     logger.info("✅ Routers principais registrados com sucesso (incluindo Admin, Financeiro e Gestão Interna)")
     

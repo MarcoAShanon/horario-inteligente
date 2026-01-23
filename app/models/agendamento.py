@@ -12,6 +12,7 @@ class Agendamento(BaseModel):
     
     # Dados do agendamento
     data_hora = Column(DateTime(timezone=True), nullable=False)
+    duracao_minutos = Column(Integer, default=30, nullable=False)  # Duração customizável
     status = Column(String(50), default="agendado", nullable=False)
     # Status: agendado, confirmado, cancelado, realizado, faltou
     

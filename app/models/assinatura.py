@@ -40,6 +40,9 @@ class Assinatura(Base):
     status = Column(String(20), default='ativa')  # ativa, suspensa, cancelada
     motivo_cancelamento = Column(Text)
 
+    # ASAAS Integration
+    asaas_subscription_id = Column(String(50), nullable=True, index=True)  # ID da assinatura no ASAAS
+
     # Auditoria
     criado_em = Column(DateTime, server_default=func.now())
     atualizado_em = Column(DateTime, onupdate=func.now())

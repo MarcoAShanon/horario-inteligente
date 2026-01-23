@@ -110,8 +110,8 @@
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <!-- Tabs Navigation -->
         <div class="bg-white rounded-xl shadow-sm p-2 mb-6">
-            <!-- Mobile: Grade 2x2 / Desktop: Linha única -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <!-- Mobile: Grade 2x3 / Desktop: Linha única -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 <button onclick="showTab('horarios')" id="tab-horarios" class="tab-btn active px-3 py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2">
                     <i class="fas fa-clock"></i>
                     <span>Horários</span>
@@ -127,6 +127,10 @@
                 <button onclick="showTab('lembretes')" id="tab-lembretes" class="tab-btn px-3 py-3 rounded-lg font-medium text-sm text-gray-600 flex items-center justify-center gap-2">
                     <i class="fas fa-bell"></i>
                     <span>Lembretes</span>
+                </button>
+                <button onclick="showTab('assinatura')" id="tab-assinatura" class="tab-btn px-3 py-3 rounded-lg font-medium text-sm text-gray-600 flex items-center justify-center gap-2">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Assinatura</span>
                 </button>
             </div>
         </div>
@@ -733,6 +737,98 @@
                 </div>
             </div>
         </div>
+
+        <!-- ==================== TAB: MINHA ASSINATURA ==================== -->
+        <div id="content-assinatura" class="tab-content hidden fade-in">
+            <div class="space-y-6">
+                <!-- Card: Status da Assinatura -->
+                <div class="config-card bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-credit-card text-emerald-600"></i>
+                        Minha Assinatura
+                    </h3>
+
+                    <div id="assinaturaLoading" class="text-center py-8">
+                        <i class="fas fa-spinner fa-spin text-3xl text-gray-400 mb-2"></i>
+                        <p class="text-gray-500">Carregando informações...</p>
+                    </div>
+
+                    <div id="assinaturaContent" class="hidden">
+                        <!-- Info do Cliente -->
+                        <div class="bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg p-4 mb-6 border border-emerald-100">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-building text-emerald-600 text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800" id="assinaturaClienteNome">-</p>
+                                    <p class="text-sm text-gray-500" id="assinaturaClienteEmail">-</p>
+                                </div>
+                                <div class="ml-auto">
+                                    <span id="assinaturaPlano" class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cards de Resumo -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-gray-50 rounded-lg p-4 text-center">
+                                <p class="text-2xl font-bold text-gray-800" id="assinaturaTotalFaturas">0</p>
+                                <p class="text-xs text-gray-500">Total Faturas</p>
+                            </div>
+                            <div class="bg-yellow-50 rounded-lg p-4 text-center">
+                                <p class="text-2xl font-bold text-yellow-600" id="assinaturaPendentes">0</p>
+                                <p class="text-xs text-gray-500">Pendentes</p>
+                            </div>
+                            <div class="bg-green-50 rounded-lg p-4 text-center">
+                                <p class="text-2xl font-bold text-green-600" id="assinaturaPagas">0</p>
+                                <p class="text-xs text-gray-500">Pagas</p>
+                            </div>
+                            <div class="bg-emerald-50 rounded-lg p-4 text-center">
+                                <p class="text-2xl font-bold text-emerald-600" id="assinaturaValorPago">R$ 0</p>
+                                <p class="text-xs text-gray-500">Valor Pago</p>
+                            </div>
+                        </div>
+
+                        <!-- Lista de Faturas -->
+                        <h4 class="font-bold text-gray-700 mb-3 flex items-center gap-2">
+                            <i class="fas fa-file-invoice text-gray-500"></i>
+                            Minhas Faturas
+                        </h4>
+                        <div id="listaFaturas" class="space-y-3">
+                            <p class="text-gray-500 text-center py-4">Nenhuma fatura encontrada</p>
+                        </div>
+                    </div>
+
+                    <div id="assinaturaError" class="hidden text-center py-8">
+                        <i class="fas fa-exclamation-triangle text-3xl text-red-400 mb-2"></i>
+                        <p class="text-red-500">Erro ao carregar informações da assinatura</p>
+                        <button onclick="carregarAssinatura()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                            Tentar novamente
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Informações de Contato -->
+                <div class="config-card bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-sm p-6 border border-blue-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-headset text-blue-600"></i>
+                        Precisa de Ajuda?
+                    </h3>
+                    <p class="text-gray-600 mb-4">Entre em contato conosco para dúvidas sobre sua assinatura ou pagamentos.</p>
+                    <div class="flex flex-wrap gap-3">
+                        <a href="mailto:contato@horariointeligente.com.br" class="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-lg text-blue-600 hover:bg-blue-50 transition border border-blue-200">
+                            <i class="fas fa-envelope"></i>
+                            Email
+                        </a>
+                        <a href="https://wa.me/5511999999999" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                            <i class="fab fa-whatsapp"></i>
+                            WhatsApp
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal: Adicionar Convênio -->
@@ -827,7 +923,9 @@
 
                 currentUser = await response.json();
                 medicoId = currentUser.id;
-                document.getElementById('userName').textContent = `Dr(a). ${currentUser.nome}`;
+                // Só exibe "Dr(a)." se for médico
+                const prefixo = currentUser.tipo === 'medico' ? 'Dr(a). ' : '';
+                document.getElementById('userName').textContent = `${prefixo}${currentUser.nome}`;
 
                 // Verificar se é demo
                 if (window.location.hostname.includes('demo')) {
@@ -885,6 +983,11 @@
             if (tab) {
                 tab.classList.add('active');
                 tab.classList.remove('text-gray-600');
+            }
+
+            // Carregar dados específicos da aba
+            if (tabName === 'assinatura') {
+                carregarAssinatura();
             }
         }
 
@@ -1594,6 +1697,154 @@
                 console.error('Erro ao salvar lembretes:', error);
                 mostrarMensagem('Erro ao salvar lembretes', 'error');
             }
+        }
+
+        // ==================== MINHA ASSINATURA ====================
+        let assinaturaCarregada = false;
+
+        async function carregarAssinatura() {
+            if (assinaturaCarregada) return;
+
+            const loading = document.getElementById('assinaturaLoading');
+            const content = document.getElementById('assinaturaContent');
+            const error = document.getElementById('assinaturaError');
+
+            loading.classList.remove('hidden');
+            content.classList.add('hidden');
+            error.classList.add('hidden');
+
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch('/api/billing/minha-assinatura', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar');
+
+                const data = await response.json();
+                assinaturaCarregada = true;
+
+                // Preencher dados do cliente
+                document.getElementById('assinaturaClienteNome').textContent = data.cliente?.nome || '-';
+                document.getElementById('assinaturaClienteEmail').textContent = data.cliente?.email || '-';
+                document.getElementById('assinaturaPlano').textContent = data.cliente?.plano?.toUpperCase() || 'BÁSICO';
+
+                // Preencher resumo
+                document.getElementById('assinaturaTotalFaturas').textContent = data.resumo?.total_faturas || 0;
+                document.getElementById('assinaturaPendentes').textContent = data.resumo?.pendentes || 0;
+                document.getElementById('assinaturaPagas').textContent = data.resumo?.pagas || 0;
+                document.getElementById('assinaturaValorPago').textContent = `R$ ${(data.resumo?.valor_pago || 0).toFixed(2)}`;
+
+                // Preencher lista de faturas
+                renderizarFaturas(data.faturas || []);
+
+                loading.classList.add('hidden');
+                content.classList.remove('hidden');
+
+            } catch (err) {
+                console.error('Erro ao carregar assinatura:', err);
+                loading.classList.add('hidden');
+                error.classList.remove('hidden');
+            }
+        }
+
+        function renderizarFaturas(faturas) {
+            const container = document.getElementById('listaFaturas');
+
+            if (faturas.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhuma fatura encontrada</p>';
+                return;
+            }
+
+            container.innerHTML = faturas.map(f => `
+                <div class="bg-gray-50 rounded-lg p-4 flex items-center justify-between hover:bg-gray-100 transition">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center ${getBgColorStatus(f.status)}">
+                            <i class="fas ${getIconStatus(f.status)} ${getTextColorStatus(f.status)}"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-800">${f.descricao || 'Fatura'}</p>
+                            <p class="text-sm text-gray-500">Venc: ${formatarDataFatura(f.vencimento)}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="text-right">
+                            <p class="font-bold text-gray-800">R$ ${(f.valor || 0).toFixed(2)}</p>
+                            <span class="text-xs px-2 py-0.5 rounded-full ${getBadgeColorStatus(f.status)}">${getTextStatus(f.status)}</span>
+                        </div>
+                        ${f.invoice_url && f.status === 'PENDING' ? `
+                            <a href="${f.invoice_url}" target="_blank" class="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition text-sm font-medium">
+                                <i class="fas fa-credit-card mr-1"></i> Pagar
+                            </a>
+                        ` : f.invoice_url ? `
+                            <a href="${f.invoice_url}" target="_blank" class="px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition text-sm">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getBgColorStatus(status) {
+            const colors = {
+                'PENDING': 'bg-yellow-100',
+                'CONFIRMED': 'bg-green-100',
+                'RECEIVED': 'bg-green-100',
+                'OVERDUE': 'bg-red-100',
+                'REFUNDED': 'bg-purple-100'
+            };
+            return colors[status] || 'bg-gray-100';
+        }
+
+        function getIconStatus(status) {
+            const icons = {
+                'PENDING': 'fa-clock',
+                'CONFIRMED': 'fa-check',
+                'RECEIVED': 'fa-check-double',
+                'OVERDUE': 'fa-exclamation',
+                'REFUNDED': 'fa-undo'
+            };
+            return icons[status] || 'fa-file-invoice';
+        }
+
+        function getTextColorStatus(status) {
+            const colors = {
+                'PENDING': 'text-yellow-600',
+                'CONFIRMED': 'text-green-600',
+                'RECEIVED': 'text-green-600',
+                'OVERDUE': 'text-red-600',
+                'REFUNDED': 'text-purple-600'
+            };
+            return colors[status] || 'text-gray-600';
+        }
+
+        function getBadgeColorStatus(status) {
+            const colors = {
+                'PENDING': 'bg-yellow-100 text-yellow-700',
+                'CONFIRMED': 'bg-green-100 text-green-700',
+                'RECEIVED': 'bg-green-100 text-green-700',
+                'OVERDUE': 'bg-red-100 text-red-700',
+                'REFUNDED': 'bg-purple-100 text-purple-700'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-700';
+        }
+
+        function getTextStatus(status) {
+            const texts = {
+                'PENDING': 'Pendente',
+                'CONFIRMED': 'Pago',
+                'RECEIVED': 'Recebido',
+                'OVERDUE': 'Vencido',
+                'REFUNDED': 'Estornado'
+            };
+            return texts[status] || status;
+        }
+
+        function formatarDataFatura(dataStr) {
+            if (!dataStr) return '-';
+            const [ano, mes, dia] = dataStr.split('-');
+            return `${dia}/${mes}/${ano}`;
         }
 
         // ==================== EVENTOS ====================

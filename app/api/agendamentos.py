@@ -23,6 +23,7 @@ class AgendamentoCreate(BaseModel):
     data: str
     hora: str
     medico_id: int = 1
+    duracao_minutos: int = 30  # Duração customizável (padrão 30min)
     motivo_consulta: Optional[str] = None  # Aceita do frontend
     motivo: Optional[str] = None  # Retrocompatibilidade
     # Campos opcionais adicionais
@@ -121,19 +122,53 @@ async def criar_agendamento(
         if data_hora_tz < agora:
             return {"sucesso": False, "erro": "Não é possível agendar para datas ou horários passados"}
 
+        # Validar duração (mínimo 5 minutos, máximo 480 minutos = 8 horas)
+        duracao = max(5, min(480, dados.duracao_minutos))
+
+        # VALIDAÇÃO DE CONFLITO: Verificar sobreposição com agendamentos existentes
+        # Conflito ocorre quando: novo_inicio < existente_fim AND novo_fim > existente_inicio
+        conflito = db.execute(text("""
+            SELECT a.id, a.data_hora, a.duracao_minutos, p.nome as paciente
+            FROM agendamentos a
+            JOIN pacientes p ON a.paciente_id = p.id
+            WHERE a.medico_id = :medico_id
+            AND a.status NOT IN ('cancelado', 'faltou')
+            AND (
+                -- Novo agendamento começa antes do existente terminar
+                :novo_inicio < (a.data_hora + (COALESCE(a.duracao_minutos, 30) || ' minutes')::interval)
+                AND
+                -- Novo agendamento termina depois do existente começar
+                (:novo_inicio + (:duracao || ' minutes')::interval) > a.data_hora
+            )
+        """), {
+            "medico_id": dados.medico_id,
+            "novo_inicio": data_hora_tz,
+            "duracao": duracao
+        }).fetchone()
+
+        if conflito:
+            # Converter para horário de Brasília para exibição
+            hora_conflito_utc = conflito[1]
+            hora_conflito_br = hora_conflito_utc.astimezone(tz_brazil).strftime('%H:%M')
+            return {
+                "sucesso": False,
+                "erro": f"Conflito de horário: já existe agendamento de {conflito[3]} às {hora_conflito_br} ({conflito[2]} min)"
+            }
+
         result = db.execute(text("""
             INSERT INTO agendamentos
-            (paciente_id, medico_id, data_hora, status, tipo_atendimento,
+            (paciente_id, medico_id, data_hora, duracao_minutos, status, tipo_atendimento,
              motivo_consulta, lembrete_24h_enviado, lembrete_3h_enviado, lembrete_1h_enviado,
              criado_em, atualizado_em)
             VALUES
-            (:pac_id, :med_id, :dt, 'confirmado', 'consulta',
+            (:pac_id, :med_id, :dt, :duracao, 'confirmado', 'consulta',
              :motivo, FALSE, FALSE, FALSE, NOW(), NOW())
             RETURNING id
         """), {
             "pac_id": paciente_id,
             "med_id": dados.medico_id,
             "dt": data_hora_tz,  # Agora timezone-aware!
+            "duracao": duracao,
             "motivo": motivo_final
         })
         
@@ -226,6 +261,7 @@ async def listar_calendario(
             SELECT
                 a.id,
                 a.data_hora,
+                a.duracao_minutos,
                 a.status,
                 a.tipo_atendimento,
                 a.motivo_consulta,
@@ -245,8 +281,9 @@ async def listar_calendario(
         
         agendamentos = []
         for row in result:
-            # Calcular horário final (consultas de 30 minutos)
-            horario_final = row.data_hora + timedelta(minutes=30)
+            # Calcular horário final usando duração real do agendamento
+            duracao = row.duracao_minutos or 30  # Fallback para 30 se null
+            horario_final = row.data_hora + timedelta(minutes=duracao)
 
             agendamentos.append({
                 "id": row.id,
@@ -264,7 +301,8 @@ async def listar_calendario(
                     "tipo": row.tipo_atendimento,
                     "status": row.status,
                     "motivo": row.motivo_consulta,
-                    "medico_id": row.medico_id  # Também nos extendedProps para fácil acesso
+                    "medico_id": row.medico_id,  # Também nos extendedProps para fácil acesso
+                    "duracao_minutos": duracao  # Incluir duração para exibição
                 }
             })
         
@@ -318,26 +356,36 @@ async def listar_medicos(
 async def obter_horarios_disponiveis(
     medico_id: int,
     data: str,
+    duracao: int = 30,  # Duração em minutos (padrão 30)
     db: Session = Depends(get_db)
 ):
-    """Obtém horários disponíveis de um médico em uma data específica"""
+    """
+    Obtém horários disponíveis de um médico em uma data específica.
+
+    Considera a duração solicitada e a duração dos agendamentos existentes
+    para retornar apenas horários onde há espaço suficiente.
+    """
     try:
         # Converter string de data para objeto date
         data_consulta = datetime.strptime(data, "%Y-%m-%d").date()
 
+        # Validar duração
+        duracao = max(5, min(480, duracao))
+
         # Criar serviço de agendamento
         service = AgendamentoService(db)
 
-        # Obter horários disponíveis
+        # Obter horários disponíveis considerando a duração solicitada
         horarios = service.obter_horarios_disponiveis(
             medico_id=medico_id,
             data_consulta=data_consulta,
-            duracao_minutos=30
+            duracao_minutos=duracao
         )
 
         return {
             "sucesso": True,
             "data": data,
+            "duracao": duracao,
             "horarios": horarios,
             "total": len(horarios)
         }
@@ -384,6 +432,7 @@ class AgendamentoUpdate(BaseModel):
     data: Optional[str] = None
     hora: Optional[str] = None
     medico_id: Optional[int] = None
+    duracao_minutos: Optional[int] = None  # Duração customizável
     status: Optional[str] = None
     motivo_consulta: Optional[str] = None
     observacoes: Optional[str] = None
@@ -428,29 +477,47 @@ async def atualizar_agendamento(
             if nova_data_hora_tz < agora:
                 return {"sucesso": False, "erro": "Não é possível reagendar para datas ou horários passados"}
 
-            # Verificar disponibilidade do novo horário
+            # Verificar disponibilidade do novo horário (considerando duração)
             if dados.medico_id or agendamento.medico_id:
                 medico_id = dados.medico_id if dados.medico_id else agendamento.medico_id
-                service = AgendamentoService(db)
-                data_hora_obj = nova_data_hora_tz
 
-                # Verificar disponibilidade (excluindo o próprio agendamento)
+                # Determinar a duração (nova duração ou duração atual do agendamento)
+                duracao_verificacao = dados.duracao_minutos if dados.duracao_minutos else 30
+                # Buscar duração atual se não estiver sendo alterada
+                if not dados.duracao_minutos:
+                    duracao_atual = db.execute(text(
+                        "SELECT duracao_minutos FROM agendamentos WHERE id = :id"
+                    ), {"id": agendamento_id}).fetchone()
+                    if duracao_atual:
+                        duracao_verificacao = duracao_atual[0] or 30
+
+                # VALIDAÇÃO DE CONFLITO: Verificar sobreposição (excluindo o próprio agendamento)
                 conflito = db.execute(text("""
-                    SELECT id FROM agendamentos
-                    WHERE medico_id = :medico_id
-                    AND data_hora = :data_hora
-                    AND id != :id
-                    AND status NOT IN ('cancelado', 'faltou')
+                    SELECT a.id, a.data_hora, a.duracao_minutos, p.nome as paciente
+                    FROM agendamentos a
+                    JOIN pacientes p ON a.paciente_id = p.id
+                    WHERE a.medico_id = :medico_id
+                    AND a.id != :agendamento_id
+                    AND a.status NOT IN ('cancelado', 'faltou')
+                    AND (
+                        :novo_inicio < (a.data_hora + (COALESCE(a.duracao_minutos, 30) || ' minutes')::interval)
+                        AND
+                        (:novo_inicio + (:duracao || ' minutes')::interval) > a.data_hora
+                    )
                 """), {
                     "medico_id": medico_id,
-                    "data_hora": nova_data_hora_tz,
-                    "id": agendamento_id
+                    "agendamento_id": agendamento_id,
+                    "novo_inicio": nova_data_hora_tz,
+                    "duracao": duracao_verificacao
                 }).fetchone()
 
                 if conflito:
+                    # Converter para horário de Brasília para exibição
+                    hora_conflito_utc = conflito[1]
+                    hora_conflito_br = hora_conflito_utc.astimezone(tz_brazil).strftime('%H:%M')
                     raise HTTPException(
                         status_code=400,
-                        detail="Horário não disponível - já existe outro agendamento"
+                        detail=f"Conflito de horário: já existe agendamento de {conflito[3]} às {hora_conflito_br} ({conflito[2]} min)"
                     )
 
             updates.append("data_hora = :data_hora")
@@ -465,6 +532,12 @@ async def atualizar_agendamento(
         if dados.medico_id:
             updates.append("medico_id = :medico_id")
             params["medico_id"] = dados.medico_id
+
+        if dados.duracao_minutos:
+            # Validar duração (mínimo 5 minutos, máximo 480 minutos = 8 horas)
+            duracao = max(5, min(480, dados.duracao_minutos))
+            updates.append("duracao_minutos = :duracao")
+            params["duracao"] = duracao
 
         if dados.status:
             # Status válidos para atualização manual
@@ -661,6 +734,7 @@ async def obter_agendamento(
             SELECT
                 a.id,
                 a.data_hora,
+                a.duracao_minutos,
                 a.status,
                 a.tipo_atendimento,
                 a.motivo_consulta,
@@ -694,6 +768,7 @@ async def obter_agendamento(
             "agendamento": {
                 "id": agendamento.id,
                 "data_hora": agendamento.data_hora.isoformat(),
+                "duracao_minutos": agendamento.duracao_minutos or 30,
                 "status": agendamento.status,
                 "tipo_atendimento": agendamento.tipo_atendimento,
                 "motivo_consulta": agendamento.motivo_consulta,

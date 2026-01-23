@@ -61,6 +61,7 @@ class Conversa(BaseModel):
 
     # Timestamps
     ultima_mensagem_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    ultima_mensagem_paciente_at = Column(DateTime, nullable=True)  # Para controle de janela 24h da Meta
     closed_at = Column(DateTime, nullable=True)
 
     # Relacionamentos

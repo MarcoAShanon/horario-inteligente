@@ -338,7 +338,9 @@
 
                 currentUser = await response.json();
                 medicoId = currentUser.id;
-                document.getElementById('userName').textContent = `Dr(a). ${currentUser.nome}`;
+                // Só exibe "Dr(a)." se for médico
+                const prefixo = currentUser.tipo === 'medico' ? 'Dr(a). ' : '';
+                document.getElementById('userName').textContent = `${prefixo}${currentUser.nome}`;
 
                 // Carregar dados iniciais
                 carregarConfiguracoes();

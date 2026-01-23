@@ -498,13 +498,57 @@
     <!-- Pricing Section -->
     <section id="precos" class="py-20 bg-gray-50">
         <div class="container mx-auto px-4">
-            <div class="text-center mb-16">
+            <div class="text-center mb-12">
                 <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
                     Planos que cabem no seu bolso
                 </h2>
                 <p class="text-xl text-gray-600 max-w-2xl mx-auto">
                     Sem surpresas, sem taxas escondidas. Cancele quando quiser.
                 </p>
+            </div>
+
+            <!-- Cycle Selector -->
+            <div class="flex justify-center mb-6">
+                <div class="bg-white rounded-xl shadow-md p-1 inline-flex flex-wrap justify-center gap-1">
+                    <button onclick="setCycle('mensal')" id="cycle-mensal" class="cycle-btn px-4 py-2 rounded-lg font-semibold text-sm transition bg-blue-600 text-white">
+                        Mensal
+                    </button>
+                    <button onclick="setCycle('trimestral')" id="cycle-trimestral" class="cycle-btn px-4 py-2 rounded-lg font-semibold text-sm transition text-gray-600 hover:bg-gray-100">
+                        Trimestral <span class="text-green-600 text-xs">-10%</span>
+                    </button>
+                    <button onclick="setCycle('semestral')" id="cycle-semestral" class="cycle-btn px-4 py-2 rounded-lg font-semibold text-sm transition text-gray-600 hover:bg-gray-100">
+                        Semestral <span class="text-green-600 text-xs">-15%</span>
+                    </button>
+                    <button onclick="setCycle('anual')" id="cycle-anual" class="cycle-btn px-4 py-2 rounded-lg font-semibold text-sm transition text-gray-600 hover:bg-gray-100">
+                        Anual <span class="text-green-600 text-xs">-20%</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Linha Dedicada Toggle -->
+            <div class="flex justify-center mb-10">
+                <div class="bg-white rounded-xl shadow-md p-4 inline-flex items-center gap-4">
+                    <span class="text-gray-700 font-medium">Linha WhatsApp:</span>
+                    <div class="flex items-center bg-gray-100 rounded-lg p-1">
+                        <button onclick="setLinhaDedicada(false)" id="linha-propria" class="linha-btn px-4 py-2 rounded-lg text-sm font-semibold transition bg-blue-600 text-white">
+                            <i class="fas fa-mobile-alt mr-1"></i>Usar meu número
+                        </button>
+                        <button onclick="setLinhaDedicada(true)" id="linha-dedicada" class="linha-btn px-4 py-2 rounded-lg text-sm font-semibold transition text-gray-600">
+                            <i class="fas fa-phone-alt mr-1"></i>Linha Dedicada <span class="text-blue-600">+R$40/mês</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info sobre Linha Dedicada -->
+            <div id="info-linha-dedicada" class="hidden max-w-2xl mx-auto mb-8">
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                    <p class="text-blue-800 text-sm">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <strong>Linha Dedicada:</strong> Número de WhatsApp exclusivo para seu consultório.
+                        Ideal para quem não quer usar o número pessoal ou não possui número comercial.
+                    </p>
+                </div>
             </div>
 
             <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -515,11 +559,15 @@
                         <p class="text-gray-600">Perfeito para profissionais liberais</p>
                     </div>
                     <div class="text-center mb-6">
-                        <div class="text-5xl font-bold text-gray-800 mb-2">
-                            R$ 150
-                            <span class="text-xl text-gray-600 font-normal">/mês</span>
+                        <div class="flex items-center justify-center gap-2 mb-1">
+                            <span id="price-individual-old" class="text-2xl text-gray-400 line-through hidden">R$ 150</span>
                         </div>
-                        <p class="text-sm text-gray-500">1 profissional</p>
+                        <div class="text-5xl font-bold text-gray-800 mb-1">
+                            <span id="price-individual">R$ 150</span>
+                        </div>
+                        <p id="price-individual-period" class="text-gray-600 text-lg">/mês</p>
+                        <p id="price-individual-monthly" class="text-sm text-green-600 font-medium hidden"></p>
+                        <p class="text-sm text-gray-500 mt-2">1 profissional</p>
                         <p class="text-xs text-blue-600 mt-2">+ R$ 150 de ativação (única vez)</p>
                     </div>
                     <ul class="space-y-4 mb-8">
@@ -551,9 +599,9 @@
                             <i class="fas fa-check text-green-600"></i>
                             <span class="text-gray-600">Suporte incluso</span>
                         </li>
-                        <li class="flex items-center gap-3">
+                        <li id="linha-dedicada-feature-individual" class="flex items-center gap-3 hidden">
                             <i class="fas fa-check text-green-600"></i>
-                            <span class="text-gray-600">Suporte contínuo</span>
+                            <span class="text-gray-600">Linha WhatsApp dedicada</span>
                         </li>
                     </ul>
                     <a href="#contato" class="block text-center bg-gray-800 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition">
@@ -567,17 +615,21 @@
                         MAIS POPULAR
                     </div>
                     <div class="text-center mb-6">
-                        <h3 class="text-2xl font-bold mb-2">Consultório Compartilhado</h3>
+                        <h3 class="text-2xl font-bold mb-2">Consultório</h3>
                         <p class="text-blue-100">Para equipes de profissionais</p>
                     </div>
                     <div class="text-center mb-6">
-                        <div class="text-5xl font-bold mb-2">
-                            R$ 200
-                            <span class="text-xl font-normal">/mês</span>
+                        <div class="flex items-center justify-center gap-2 mb-1">
+                            <span id="price-consultorio-old" class="text-2xl text-blue-300 line-through hidden">R$ 200</span>
                         </div>
-                        <p class="text-sm text-blue-100">2 profissionais incluídos</p>
+                        <div class="text-5xl font-bold mb-1">
+                            <span id="price-consultorio">R$ 200</span>
+                        </div>
+                        <p id="price-consultorio-period" class="text-blue-100 text-lg">/mês</p>
+                        <p id="price-consultorio-monthly" class="text-sm text-yellow-300 font-medium hidden"></p>
+                        <p class="text-sm text-blue-100 mt-2">2 profissionais incluídos</p>
                         <p class="text-xs text-yellow-300 mt-2">+ R$ 200 de ativação (única vez)</p>
-                        <p class="text-xs text-yellow-300 mt-1">+ R$ 50/mês por profissional adicional</p>
+                        <p class="text-xs text-yellow-300 mt-1">+ R$ 50/mês por profissional adicional (até 5)</p>
                     </div>
                     <ul class="space-y-4 mb-8">
                         <li class="flex items-center gap-3">
@@ -606,11 +658,11 @@
                         </li>
                         <li class="flex items-center gap-3">
                             <i class="fas fa-check text-yellow-300"></i>
-                            <span>Suporte para toda equipe</span>
-                        </li>
-                        <li class="flex items-center gap-3">
-                            <i class="fas fa-check text-yellow-300"></i>
                             <span>Suporte prioritário</span>
+                        </li>
+                        <li id="linha-dedicada-feature-consultorio" class="flex items-center gap-3 hidden">
+                            <i class="fas fa-check text-yellow-300"></i>
+                            <span>Linha WhatsApp dedicada</span>
                         </li>
                     </ul>
                     <a href="#contato" class="block text-center bg-white text-blue-600 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
@@ -619,10 +671,20 @@
                 </div>
             </div>
 
-            <div class="text-center mt-12">
+            <!-- Savings Banner -->
+            <div id="savings-banner" class="hidden max-w-3xl mx-auto mt-8">
+                <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                    <p class="text-green-800 font-semibold">
+                        <i class="fas fa-piggy-bank mr-2"></i>
+                        <span id="savings-text"></span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="text-center mt-10">
                 <p class="text-gray-600">
                     <i class="fas fa-shield-alt text-green-600 mr-2"></i>
-                    Cancele quando quiser • Sem compromisso • Seus dados protegidos
+                    Garantia de 7 dias • Cancele quando quiser • Seus dados protegidos
                 </p>
             </div>
         </div>
@@ -764,14 +826,32 @@
                     </p>
                 </div>
 
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-white rounded-lg shadow-md p-6 border-2 border-green-200">
                     <h3 class="text-xl font-bold text-gray-800 mb-3">
                         <i class="fas fa-question-circle text-blue-600 mr-2"></i>
-                        Posso usar meu número de WhatsApp atual?
+                        Preciso ter um número de WhatsApp dedicado?
                     </h3>
-                    <p class="text-gray-600">
-                        Sim! Se você já possui um número de WhatsApp dedicado para atendimento, esse é o cenário ideal — todos os seus contatos e histórico de conversas já estão vinculados a ele. Não recomendamos a utilização do seu número pessoal, para evitar que a IA interaja com seus contatos pessoais. Caso prefira, podemos fornecer um número virtual dedicado exclusivamente para os agendamentos dos seus pacientes/clientes. Informações sobre o valor mensal do número dedicado sob consulta.
-                    </p>
+                    <div class="text-gray-600 space-y-3">
+                        <p>
+                            Recomendamos usar um número exclusivo para o consultório, separado do seu pessoal. Você tem duas opções:
+                        </p>
+                        <ul class="list-none space-y-2 ml-2">
+                            <li class="flex items-start gap-2">
+                                <span class="text-blue-600 font-bold">1.</span>
+                                <span><strong>Usar seu próprio número:</strong> Se já possui um número comercial dedicado (não o pessoal), pode utilizá-lo sem custo adicional.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <span class="text-blue-600 font-bold">2.</span>
+                                <span><strong>Contratar linha dedicada:</strong> Fornecemos um número exclusivo para seu consultório por + R$ 40/mês.</span>
+                            </li>
+                        </ul>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3">
+                            <p class="text-yellow-800 text-sm">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <strong>Importante:</strong> Não recomendamos usar seu número pessoal, pois a IA responderia também seus contatos pessoais (família, amigos).
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="bg-white rounded-lg shadow-md p-6">
@@ -1408,6 +1488,127 @@
                 }
             });
         }
+
+        // ==================== PRICING CALCULATOR ====================
+
+        // Pricing data
+        const pricing = {
+            individual: {
+                base: 150,
+                comLinha: 190
+            },
+            consultorio: {
+                base: 200,
+                comLinha: 240
+            }
+        };
+
+        const discounts = {
+            mensal: { mult: 1, months: 1, label: '/mês' },
+            trimestral: { mult: 0.90, months: 3, label: '/trimestre' },
+            semestral: { mult: 0.85, months: 6, label: '/semestre' },
+            anual: { mult: 0.80, months: 12, label: '/ano' }
+        };
+
+        let currentCycle = 'mensal';
+        let linhaDedicada = false;
+
+        function setCycle(cycle) {
+            currentCycle = cycle;
+
+            // Update button styles
+            document.querySelectorAll('.cycle-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('text-gray-600', 'hover:bg-gray-100');
+            });
+            document.getElementById('cycle-' + cycle).classList.remove('text-gray-600', 'hover:bg-gray-100');
+            document.getElementById('cycle-' + cycle).classList.add('bg-blue-600', 'text-white');
+
+            updatePrices();
+        }
+
+        function setLinhaDedicada(dedicada) {
+            linhaDedicada = dedicada;
+
+            // Update button styles
+            document.querySelectorAll('.linha-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('text-gray-600');
+            });
+
+            if (dedicada) {
+                document.getElementById('linha-dedicada').classList.remove('text-gray-600');
+                document.getElementById('linha-dedicada').classList.add('bg-blue-600', 'text-white');
+                document.getElementById('info-linha-dedicada').classList.remove('hidden');
+                document.getElementById('linha-dedicada-feature-individual').classList.remove('hidden');
+                document.getElementById('linha-dedicada-feature-consultorio').classList.remove('hidden');
+            } else {
+                document.getElementById('linha-propria').classList.remove('text-gray-600');
+                document.getElementById('linha-propria').classList.add('bg-blue-600', 'text-white');
+                document.getElementById('info-linha-dedicada').classList.add('hidden');
+                document.getElementById('linha-dedicada-feature-individual').classList.add('hidden');
+                document.getElementById('linha-dedicada-feature-consultorio').classList.add('hidden');
+            }
+
+            updatePrices();
+        }
+
+        function updatePrices() {
+            const cycle = discounts[currentCycle];
+
+            // Calculate prices
+            const baseIndividual = linhaDedicada ? pricing.individual.comLinha : pricing.individual.base;
+            const baseConsultorio = linhaDedicada ? pricing.consultorio.comLinha : pricing.consultorio.base;
+
+            const priceIndividual = Math.round(baseIndividual * cycle.mult * cycle.months);
+            const priceConsultorio = Math.round(baseConsultorio * cycle.mult * cycle.months);
+
+            // Update display - Individual
+            document.getElementById('price-individual').textContent = 'R$ ' + priceIndividual.toLocaleString('pt-BR');
+            document.getElementById('price-individual-period').textContent = cycle.label;
+
+            // Update display - Consultório
+            document.getElementById('price-consultorio').textContent = 'R$ ' + priceConsultorio.toLocaleString('pt-BR');
+            document.getElementById('price-consultorio-period').textContent = cycle.label;
+
+            // Show/hide monthly equivalent and original price
+            if (currentCycle !== 'mensal') {
+                const monthlyIndividual = Math.round(priceIndividual / cycle.months);
+                const monthlyConsultorio = Math.round(priceConsultorio / cycle.months);
+                const originalIndividual = Math.round(baseIndividual * cycle.months);
+                const originalConsultorio = Math.round(baseConsultorio * cycle.months);
+
+                document.getElementById('price-individual-old').textContent = 'R$ ' + originalIndividual.toLocaleString('pt-BR');
+                document.getElementById('price-individual-old').classList.remove('hidden');
+                document.getElementById('price-individual-monthly').textContent = '(equivalente a R$ ' + monthlyIndividual + '/mês)';
+                document.getElementById('price-individual-monthly').classList.remove('hidden');
+
+                document.getElementById('price-consultorio-old').textContent = 'R$ ' + originalConsultorio.toLocaleString('pt-BR');
+                document.getElementById('price-consultorio-old').classList.remove('hidden');
+                document.getElementById('price-consultorio-monthly').textContent = '(equivalente a R$ ' + monthlyConsultorio + '/mês)';
+                document.getElementById('price-consultorio-monthly').classList.remove('hidden');
+
+                // Show savings banner
+                const savingsIndividual = originalIndividual - priceIndividual;
+                const savingsConsultorio = originalConsultorio - priceConsultorio;
+                const discountPct = Math.round((1 - cycle.mult) * 100);
+
+                document.getElementById('savings-text').textContent =
+                    'Economize ' + discountPct + '% pagando antecipadamente! ' +
+                    'Individual: R$ ' + savingsIndividual + ' de economia | ' +
+                    'Consultório: R$ ' + savingsConsultorio + ' de economia';
+                document.getElementById('savings-banner').classList.remove('hidden');
+            } else {
+                document.getElementById('price-individual-old').classList.add('hidden');
+                document.getElementById('price-individual-monthly').classList.add('hidden');
+                document.getElementById('price-consultorio-old').classList.add('hidden');
+                document.getElementById('price-consultorio-monthly').classList.add('hidden');
+                document.getElementById('savings-banner').classList.add('hidden');
+            }
+        }
+
+        // Initialize prices on page load
+        document.addEventListener('DOMContentLoaded', updatePrices);
     </script>
 
     <!-- Analytics Tracker -->

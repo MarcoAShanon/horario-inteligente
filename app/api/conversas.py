@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.database import get_db
 from app.services.conversa_service import ConversaService
@@ -64,12 +64,24 @@ class ConversaDetailResponse(ConversaResponse):
 class EnviarMensagemRequest(BaseModel):
     conteudo: str
     tipo: str = "texto"
+    template_name: Optional[str] = None  # Nome do template Meta (obrigatório se janela expirada)
+    template_params: Optional[List[str]] = None  # Parâmetros do template
 
 
 class StatsResponse(BaseModel):
     total_ativas: int
     total_assumidas: int
     total_nao_lidas: int
+
+
+class JanelaStatusResponse(BaseModel):
+    """Status da janela de 24h da Meta para envio de mensagens"""
+    ativa: bool
+    expira_em: Optional[str] = None  # Ex: "4h32min"
+    timestamp_expiracao: Optional[datetime] = None
+    ultima_mensagem_paciente: Optional[datetime] = None
+    pode_mensagem_livre: bool
+    mensagem: str
 
 
 # ============ ENDPOINTS ============
@@ -155,6 +167,61 @@ async def get_stats(
     }
 
 
+@router.get("/{conversa_id}/janela-status", response_model=JanelaStatusResponse)
+async def verificar_janela_24h(
+    conversa_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """
+    Verifica status da janela de 24h da Meta para envio de mensagens.
+
+    Regras da Meta:
+    - Dentro de 24h após última mensagem do paciente → Pode enviar mensagem livre
+    - Fora de 24h → Obrigatório usar template aprovado
+    """
+    conversa = db.query(Conversa).filter(
+        Conversa.id == conversa_id,
+        Conversa.cliente_id == current_user["cliente_id"]
+    ).first()
+
+    if not conversa:
+        raise HTTPException(status_code=404, detail="Conversa não encontrada")
+
+    # Calcular status da janela
+    janela_ativa = False
+    expira_em = None
+    timestamp_expiracao = None
+    mensagem = ""
+
+    if conversa.ultima_mensagem_paciente_at:
+        # Janela de 24h
+        expiracao = conversa.ultima_mensagem_paciente_at + timedelta(hours=24)
+        agora = datetime.utcnow()
+
+        if agora < expiracao:
+            janela_ativa = True
+            tempo_restante = expiracao - agora
+            horas = int(tempo_restante.total_seconds() // 3600)
+            minutos = int((tempo_restante.total_seconds() % 3600) // 60)
+            expira_em = f"{horas}h{minutos:02d}min"
+            timestamp_expiracao = expiracao
+            mensagem = f"Janela ativa. Você pode enviar mensagens livres. Expira em {expira_em}."
+        else:
+            mensagem = "Janela expirada. Use um template aprovado para iniciar nova conversa."
+    else:
+        mensagem = "Paciente ainda não enviou mensagens. Use um template aprovado."
+
+    return {
+        "ativa": janela_ativa,
+        "expira_em": expira_em,
+        "timestamp_expiracao": timestamp_expiracao,
+        "ultima_mensagem_paciente": conversa.ultima_mensagem_paciente_at,
+        "pode_mensagem_livre": janela_ativa,
+        "mensagem": mensagem
+    }
+
+
 @router.get("/{conversa_id}", response_model=ConversaDetailResponse)
 async def get_conversa(
     conversa_id: int,
@@ -212,7 +279,13 @@ async def enviar_mensagem(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Envia mensagem manual (atendente)"""
+    """
+    Envia mensagem manual (atendente).
+
+    Respeita a janela de 24h da Meta:
+    - Se janela ativa: pode enviar mensagem livre
+    - Se janela expirada: obrigatório usar template aprovado
+    """
     conversa = db.query(Conversa).filter(
         Conversa.id == conversa_id,
         Conversa.cliente_id == current_user["cliente_id"]
@@ -221,12 +294,39 @@ async def enviar_mensagem(
     if not conversa:
         raise HTTPException(status_code=404, detail="Conversa não encontrada")
 
+    # Verificar janela de 24h
+    janela_ativa = False
+    if conversa.ultima_mensagem_paciente_at:
+        expiracao = conversa.ultima_mensagem_paciente_at + timedelta(hours=24)
+        janela_ativa = datetime.utcnow() < expiracao
+
+    # Se janela expirada e não tem template, bloquear
+    if not janela_ativa and not request.template_name:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "janela_expirada",
+                "message": "A janela de 24h expirou. É necessário usar um template aprovado pela Meta.",
+                "janela_ativa": False
+            }
+        )
+
     # Enviar via WhatsApp (API Oficial Meta)
     from app.services.whatsapp_official_service import WhatsAppOfficialService
     whatsapp = WhatsAppOfficialService()
 
     try:
-        result = await whatsapp.send_text(to=conversa.paciente_telefone, message=request.conteudo)
+        if request.template_name:
+            # Enviar via template
+            result = await whatsapp.send_template(
+                to=conversa.paciente_telefone,
+                template_name=request.template_name,
+                parameters=request.template_params or []
+            )
+        else:
+            # Enviar mensagem livre (janela ativa)
+            result = await whatsapp.send_text(to=conversa.paciente_telefone, message=request.conteudo)
+
         if not result.success:
             raise HTTPException(status_code=500, detail=f"Erro ao enviar WhatsApp: {result.error}")
     except HTTPException:

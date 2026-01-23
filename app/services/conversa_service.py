@@ -72,6 +72,10 @@ class ConversaService:
         if conversa:
             conversa.ultima_mensagem_at = datetime.utcnow()
 
+            # Se for mensagem do paciente, atualizar timestamp para controle de janela 24h
+            if remetente == RemetenteMensagem.PACIENTE:
+                conversa.ultima_mensagem_paciente_at = datetime.utcnow()
+
         db.commit()
         db.refresh(mensagem)
         return mensagem
