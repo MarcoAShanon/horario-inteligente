@@ -1,5 +1,119 @@
 # Changelog - Horário Inteligente SaaS
 
+## [3.7.0] - 2026-01-26
+
+### 🆕 Adicionado
+
+- **Sistema de Comissões para Parceiros Comerciais**
+  - Tabela `comissoes` para rastrear comissões de indicações
+  - Fluxo completo: pendente → aprovada → paga (ou cancelada)
+  - Cálculo automático: 40% do valor pago pelo cliente (configurável por parceiro)
+  - Integração com cadastro de clientes (selecionar parceiro ao criar cliente)
+
+- **Model Comissao**: `/app/models/comissao.py`
+  - Campos: parceiro_id, cliente_id, assinatura_id, valor_base, percentual_aplicado, valor_comissao
+  - Status: pendente, aprovada, paga, cancelada
+  - Rastreamento: data_pagamento, asaas_transfer_id, comprovante_url
+
+- **API de Comissões**: `/app/api/admin_comissoes.py`
+  - `GET /api/admin/comissoes` - Listar com filtros (status, parceiro, período)
+  - `GET /api/admin/comissoes/resumo` - Totais por status e top parceiros
+  - `GET /api/admin/comissoes/parceiro/{id}` - Comissões de um parceiro
+  - `POST /api/admin/comissoes/{id}/aprovar` - Aprovar comissão
+  - `POST /api/admin/comissoes/{id}/pagar` - Marcar como paga
+  - `POST /api/admin/comissoes/{id}/cancelar` - Cancelar com motivo
+  - `POST /api/admin/comissoes/pagar-lote` - Pagamento em lote
+
+- **API de Clientes Admin**: `/app/api/admin_clientes.py`
+  - `GET /api/admin/clientes` - Listar clientes com estatísticas
+  - `GET /api/admin/clientes/{id}` - Detalhes completos do cliente
+  - `POST /api/admin/clientes` - Criar cliente com onboarding completo
+  - `PUT /api/admin/clientes/{id}` - Atualizar dados do cliente
+  - `POST /api/admin/clientes/{id}/medicos` - Adicionar médico
+  - `POST /api/admin/clientes/{id}/usuarios` - Adicionar secretária
+  - `PUT /api/admin/clientes/{id}/status` - Ativar/desativar cliente
+  - Campo `parceiro_id` no cadastro para vincular indicação
+
+- **Interface de Gestão de Parceiros**: `/static/admin/parceiros.html`
+  - CRUD completo de parceiros comerciais
+  - Dados: nome, CPF/CNPJ, contato, percentual de comissão, dados bancários
+  - Configuração de parceria de lançamento (limite de clientes)
+  - Visualização de clientes vinculados e comissões por parceiro
+  - Ativar/desativar parceiros
+
+- **Interface de Gestão de Comissões**: `/static/admin/comissoes.html`
+  - Listagem com filtros por status e parceiro
+  - Cards de resumo: pendentes, aprovadas, pagas, total
+  - Ações individuais: aprovar, pagar, cancelar
+  - Pagamento em lote com seleção múltipla
+  - Modal de pagamento com campos ASAAS e comprovante
+  - Modal de cancelamento com motivo obrigatório
+
+- **Interface de Gestão de Clientes**: `/static/admin/clientes.html`
+  - Listagem de todos os clientes com estatísticas
+  - Filtros por status (ativo/inativo)
+  - Busca por nome
+  - Link para criar novo cliente
+
+- **Formulário de Novo Cliente**: `/static/admin/clientes-novo.html`
+  - Wizard em etapas: Dados, Plano, Médico, Finalizar
+  - Seleção de parceiro indicador (opcional)
+  - Preview de comissão em tempo real
+  - Configuração de descontos e período de cobrança
+
+- **Detalhes do Cliente**: `/static/admin/clientes-detalhes.html`
+  - Informações completas do cliente
+  - Lista de médicos e usuários
+  - Histórico de assinaturas
+  - Ações: editar, adicionar médico, ativar/desativar
+
+- **Links no Dashboard Admin**: `/static/admin/dashboard.html`
+  - Atalho "Parceiros" (verde) no grid de ações rápidas
+  - Atalho "Comissões" (âmbar) no grid de ações rápidas
+
+### 🔒 Segurança
+
+- **Proteção XSS**: Função `escapeHtml()` em todos os frontends
+  - Sanitização de nomes, emails, telefones, observações
+  - Proteção em renderização de tabelas e modais
+  - Try-catch em JSON.parse para evitar crashes
+
+- **Mensagens de erro genéricas no backend**
+  - Erros não expõem mais stack traces ou detalhes internos
+  - Logs detalhados mantidos no servidor para debug
+  - Todas as HTTPExceptions com mensagens amigáveis
+
+### 📊 Fluxo de Comissões
+
+1. **Cliente cadastrado com parceiro** → Comissão criada automaticamente (status: pendente)
+2. **Admin aprova** → status: aprovada (pode pular direto para paga)
+3. **Admin registra pagamento** → status: paga (com ID ASAAS e comprovante)
+4. **Ou cancela** → status: cancelada (com motivo obrigatório)
+
+### 📝 Tabela no Banco de Dados
+```sql
+CREATE TABLE comissoes (
+    id SERIAL PRIMARY KEY,
+    parceiro_id INTEGER REFERENCES parceiros_comerciais(id),
+    cliente_id INTEGER REFERENCES clientes(id),
+    assinatura_id INTEGER REFERENCES assinaturas(id),
+    valor_base NUMERIC(10,2) NOT NULL,
+    percentual_aplicado NUMERIC(5,2) NOT NULL,
+    valor_comissao NUMERIC(10,2) NOT NULL,
+    mes_referencia INTEGER,
+    data_referencia DATE,
+    status VARCHAR(20) DEFAULT 'pendente',
+    data_pagamento TIMESTAMP,
+    asaas_transfer_id VARCHAR(100),
+    comprovante_url VARCHAR(500),
+    observacoes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+---
+
 ## [3.6.2] - 2026-01-20
 
 ### 🆕 Adicionado

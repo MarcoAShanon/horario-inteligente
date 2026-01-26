@@ -1,7 +1,7 @@
 # Painel Administrativo - Horário Inteligente
 
-**Versão:** 1.0
-**Data:** 21/12/2025
+**Versão:** 2.0
+**Data:** 26/01/2026
 **Status:** Implementado
 
 ---
@@ -314,16 +314,23 @@ Todas as ações administrativas são registradas:
 ### Frontend (HTML/JS)
 ```
 /static/admin/
-├── login.html              # Página de login
-├── dashboard.html          # Dashboard admin
+├── login.html                  # Página de login
+├── dashboard.html              # Dashboard admin
 ├── dashboard-financeiro.html   # Dashboard financeiro
-└── dashboard-suporte.html      # Dashboard suporte
+├── dashboard-suporte.html      # Dashboard suporte
+├── clientes.html               # Lista de clientes
+├── clientes-novo.html          # Formulário novo cliente
+├── clientes-detalhes.html      # Detalhes do cliente
+├── parceiros.html              # Gestão de parceiros comerciais
+└── comissoes.html              # Gestão de comissões
 ```
 
 ### Backend (Python/FastAPI)
 ```
 /app/api/
 ├── admin.py                # APIs administrativas legadas
+├── admin_clientes.py       # APIs de gestão de clientes (CRUD, onboarding)
+├── admin_comissoes.py      # APIs de gestão de comissões
 ├── usuarios_internos.py    # APIs de usuários internos
 ├── parceiros_comerciais.py # APIs de parceiros
 └── custos_operacionais.py  # APIs de custos
@@ -335,7 +342,8 @@ Todas as ações administrativas são registradas:
 ├── usuario_interno.py      # Model UsuarioInterno
 ├── parceiro_comercial.py   # Model ParceiroComercial
 ├── cliente_parceiro.py     # Model ClienteParceiro
-└── custo_operacional.py    # Model CustoOperacional
+├── custo_operacional.py    # Model CustoOperacional
+└── comissao.py             # Model Comissao (comissões de parceiros)
 ```
 
 ---
@@ -375,4 +383,4 @@ db.commit()
 ---
 
 **Documento elaborado por:** Claude AI
-**Última atualização:** 21/12/2025
+**Última atualização:** 26/01/2026
