@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes do Cliente - Admin Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .loader {
+            border: 3px solid #374151;
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/admin/clientes.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500">
+                    <i class="fas fa-building text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white" id="headerNome">Carregando...</h1>
+                    <p class="text-sm text-gray-400" id="headerSubdomain">-</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="statusBadge" class="px-3 py-1 rounded-full text-sm font-medium">-</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Loading State -->
+        <div id="loadingState" class="flex items-center justify-center py-20">
+            <div class="loader"></div>
+            <span class="text-gray-400 ml-3">Carregando detalhes...</span>
+        </div>
+
+        <!-- Conteúdo -->
+        <div id="conteudo" class="hidden">
+            <!-- Estatísticas -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <div class="flex items-center justify-between">
+                        <i class="fas fa-user-md text-purple-500 text-xl"></i>
+                        <span class="text-2xl font-bold text-white" id="statMedicos">0</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-1">Profissionais</p>
+                </div>
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <div class="flex items-center justify-between">
+                        <i class="fas fa-users text-blue-500 text-xl"></i>
+                        <span class="text-2xl font-bold text-white" id="statPacientes">0</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-1">Pacientes</p>
+                </div>
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <div class="flex items-center justify-between">
+                        <i class="fas fa-calendar-check text-green-500 text-xl"></i>
+                        <span class="text-2xl font-bold text-white" id="statAgendamentos">0</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-1">Agendamentos</p>
+                </div>
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <div class="flex items-center justify-between">
+                        <i class="fas fa-calendar text-yellow-500 text-xl"></i>
+                        <span class="text-2xl font-bold text-white" id="statCriado">-</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-1">Cliente desde</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Coluna 1: Dados da Clínica -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Informações -->
+                    <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                        <h2 class="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                            <span><i class="fas fa-info-circle mr-2 text-blue-400"></i>Informações</span>
+                            <button onclick="toggleEditMode()" id="btnEditar" class="text-sm text-purple-400 hover:text-purple-300">
+                                <i class="fas fa-edit mr-1"></i>Editar
+                            </button>
+                        </h2>
+
+                        <div id="infoView" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-gray-500 text-sm">Nome</span>
+                                <p class="text-white" id="infoNome">-</p>
+                            </div>
+                            <div>
+                                <span class="text-gray-500 text-sm">Email</span>
+                                <p class="text-white" id="infoEmail">-</p>
+                            </div>
+                            <div>
+                                <span class="text-gray-500 text-sm">Telefone</span>
+                                <p class="text-white" id="infoTelefone">-</p>
+                            </div>
+                            <div>
+                                <span class="text-gray-500 text-sm">WhatsApp</span>
+                                <p class="text-white" id="infoWhatsApp">-</p>
+                            </div>
+                            <div class="md:col-span-2">
+                                <span class="text-gray-500 text-sm">Endereço</span>
+                                <p class="text-white" id="infoEndereco">-</p>
+                            </div>
+                        </div>
+
+                        <div id="infoEdit" class="hidden space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Nome</label>
+                                    <input type="text" id="editNome"
+                                           class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Email</label>
+                                    <input type="email" id="editEmail"
+                                           class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Telefone</label>
+                                    <input type="tel" id="editTelefone"
+                                           class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-400 mb-1">Endereço</label>
+                                    <input type="text" id="editEndereco"
+                                           class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <button onclick="salvarEdicao()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                                    <i class="fas fa-save mr-1"></i>Salvar
+                                </button>
+                                <button onclick="toggleEditMode()" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Médicos -->
+                    <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                        <h2 class="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                            <span><i class="fas fa-user-md mr-2 text-purple-400"></i>Profissionais</span>
+                            <button onclick="abrirModalMedico()" class="text-sm bg-purple-600 text-white px-3 py-1 rounded-lg hover:bg-purple-700 transition">
+                                <i class="fas fa-plus mr-1"></i>Adicionar
+                            </button>
+                        </h2>
+                        <div id="listaMedicos" class="space-y-3">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Usuários -->
+                    <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                        <h2 class="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                            <span><i class="fas fa-users-cog mr-2 text-green-400"></i>Usuários</span>
+                            <button onclick="abrirModalUsuario()" class="text-sm bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition">
+                                <i class="fas fa-plus mr-1"></i>Adicionar
+                            </button>
+                        </h2>
+                        <div id="listaUsuarios" class="space-y-3">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coluna 2: Assinatura e Ações -->
+                <div class="space-y-6">
+                    <!-- Acesso -->
+                    <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                        <h2 class="text-lg font-semibold text-white mb-4">
+                            <i class="fas fa-globe mr-2 text-cyan-400"></i>Acesso
+                        </h2>
+                        <a id="linkAcesso" href="#" target="_blank"
+                           class="block bg-gray-800 rounded-lg p-4 hover:bg-gray-700 transition">
+                            <p class="text-purple-400 text-sm font-mono break-all" id="urlAcesso">-</p>
+                            <p class="text-gray-500 text-xs mt-2">
+                                <i class="fas fa-external-link-alt mr-1"></i>Clique para abrir
+                            </p>
+                        </a>
+                    </div>
+
+                    <!-- Plano -->
+                    <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                        <h2 class="text-lg font-semibold text-white mb-4">
+                            <i class="fas fa-tag mr-2 text-yellow-400"></i>Plano
+                        </h2>
+                        <div class="bg-gray-800 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-white font-semibold" id="planoNome">-</span>
+                                <span class="text-green-400 font-bold" id="planoValor">-</span>
+                            </div>
+                            <p class="text-gray-400 text-sm" id="planoDescricao">-</p>
+                        </div>
+                    </div>
+
+                    <!-- Ações -->
+                    <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                        <h2 class="text-lg font-semibold text-white mb-4">
+                            <i class="fas fa-cog mr-2 text-gray-400"></i>Ações
+                        </h2>
+                        <div class="space-y-3">
+                            <button onclick="toggleStatusCliente()" id="btnToggleStatus"
+                                    class="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition flex items-center justify-center gap-2">
+                                <i class="fas fa-ban"></i>
+                                <span>Desativar Cliente</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Médico -->
+    <div id="modalMedico" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-md">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-white mb-4">Adicionar Profissional</h3>
+                <form id="formMedico" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Nome *</label>
+                        <input type="text" name="nome" required
+                               class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Especialidade *</label>
+                        <input type="text" name="especialidade" required
+                               class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Registro (CRM/CRO) *</label>
+                        <input type="text" name="registro_profissional" required
+                               class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Email *</label>
+                        <input type="email" name="email" required
+                               class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" name="pode_fazer_login" id="checkLogin" checked
+                               class="w-4 h-4 bg-gray-800 border-gray-700 rounded">
+                        <label for="checkLogin" class="text-gray-400 text-sm">Pode fazer login</label>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button type="submit" class="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition">
+                            Adicionar
+                        </button>
+                        <button type="button" onclick="fecharModalMedico()" class="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-600 transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Usuário -->
+    <div id="modalUsuario" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-md">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-white mb-4">Adicionar Usuário</h3>
+                <form id="formUsuario" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Nome *</label>
+                        <input type="text" name="nome" required
+                               class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Email *</label>
+                        <input type="email" name="email" required
+                               class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Telefone</label>
+                        <input type="tel" name="telefone"
+                               class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Tipo</label>
+                        <select name="tipo" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                            <option value="secretaria">Secretária</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button type="submit" class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition">
+                            Adicionar
+                        </button>
+                        <button type="button" onclick="fecharModalUsuario()" class="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-600 transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Credenciais -->
+    <div id="modalCredenciais" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-green-500 w-full max-w-sm">
+            <div class="p-6">
+                <div class="text-center mb-4">
+                    <div class="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-check text-white text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white">Credenciais Geradas</h3>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 mb-4">
+                    <p class="text-gray-400 text-sm">Email:</p>
+                    <p class="text-white font-mono" id="credEmail">-</p>
+                    <p class="text-gray-400 text-sm mt-2">Senha:</p>
+                    <p class="text-yellow-400 font-mono font-bold text-lg" id="credSenha">-</p>
+                </div>
+                <button onclick="copiarCredenciaisSimples()" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition mb-2">
+                    <i class="fas fa-copy mr-2"></i>Copiar
+                </button>
+                <button onclick="fecharModalCredenciais()" class="w-full bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-600 transition">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar autenticação
+        const token = localStorage.getItem('adminToken');
+        if (!token) {
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Obter ID do cliente da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const clienteId = urlParams.get('id');
+
+        if (!clienteId) {
+            window.location.href = '/static/admin/clientes.html';
+        }
+
+        let clienteData = null;
+        let isEditMode = false;
+
+        async function carregarCliente() {
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Host': 'admin.horariointeligente.com.br'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar cliente');
+
+                clienteData = await response.json();
+                renderizarCliente();
+                await carregarMedicos();
+                await carregarUsuarios();
+
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('conteudo').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao carregar dados do cliente');
+                window.location.href = '/static/admin/clientes.html';
+            }
+        }
+
+        function renderizarCliente() {
+            const c = clienteData;
+
+            // Header
+            document.getElementById('headerNome').textContent = c.nome;
+            document.getElementById('headerSubdomain').textContent = c.subdomain + '.horariointeligente.com.br';
+
+            // Status badge
+            const statusBadge = document.getElementById('statusBadge');
+            statusBadge.textContent = c.ativo ? 'Ativo' : 'Inativo';
+            statusBadge.className = `px-3 py-1 rounded-full text-sm font-medium ${c.ativo ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`;
+
+            // Stats
+            document.getElementById('statMedicos').textContent = c.total_medicos || 0;
+            document.getElementById('statPacientes').textContent = c.total_pacientes || 0;
+            document.getElementById('statAgendamentos').textContent = c.total_agendamentos || 0;
+            document.getElementById('statCriado').textContent = c.criado_em ? new Date(c.criado_em).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : '-';
+
+            // Informações
+            document.getElementById('infoNome').textContent = c.nome || '-';
+            document.getElementById('infoEmail').textContent = c.email || '-';
+            document.getElementById('infoTelefone').textContent = c.telefone || '-';
+            document.getElementById('infoWhatsApp').textContent = c.whatsapp_numero || 'Não configurado';
+            document.getElementById('infoEndereco').textContent = c.endereco || 'Não informado';
+
+            // Edit fields
+            document.getElementById('editNome').value = c.nome || '';
+            document.getElementById('editEmail').value = c.email || '';
+            document.getElementById('editTelefone').value = c.telefone || '';
+            document.getElementById('editEndereco').value = c.endereco || '';
+
+            // Acesso
+            const url = `https://${c.subdomain}.horariointeligente.com.br`;
+            document.getElementById('urlAcesso').textContent = url;
+            document.getElementById('linkAcesso').href = url;
+
+            // Plano
+            const planos = {
+                'individual': { nome: 'Individual', valor: 'R$ 150/mês', desc: '1 profissional incluso' },
+                'clinica': { nome: 'Consultório', valor: 'R$ 200/mês', desc: '2 profissionais inclusos' },
+                'profissional': { nome: 'Profissional', valor: 'R$ 200/mês', desc: '2 profissionais inclusos' }
+            };
+            const plano = planos[c.plano] || { nome: c.plano, valor: '-', desc: '-' };
+            document.getElementById('planoNome').textContent = plano.nome;
+            document.getElementById('planoValor').textContent = plano.valor;
+            document.getElementById('planoDescricao').textContent = plano.desc;
+
+            // Botão status
+            const btnStatus = document.getElementById('btnToggleStatus');
+            if (c.ativo) {
+                btnStatus.innerHTML = '<i class="fas fa-ban"></i><span>Desativar Cliente</span>';
+                btnStatus.className = 'w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition flex items-center justify-center gap-2';
+            } else {
+                btnStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Reativar Cliente</span>';
+                btnStatus.className = 'w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2';
+            }
+        }
+
+        async function carregarMedicos() {
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}/medicos`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Host': 'admin.horariointeligente.com.br'
+                    }
+                });
+
+                const data = await response.json();
+                const lista = document.getElementById('listaMedicos');
+
+                if (!data.medicos || data.medicos.length === 0) {
+                    lista.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum profissional cadastrado</p>';
+                    return;
+                }
+
+                lista.innerHTML = data.medicos.map(m => `
+                    <div class="bg-gray-800 rounded-lg p-3 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                                <i class="fas fa-user-md text-white"></i>
+                            </div>
+                            <div>
+                                <p class="text-white font-medium">${m.nome}</p>
+                                <p class="text-gray-400 text-sm">${m.especialidade} - ${m.crm}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${m.is_admin ? '<span class="px-2 py-1 bg-yellow-900/50 text-yellow-300 text-xs rounded">Admin</span>' : ''}
+                            ${m.ativo ? '<span class="text-green-400"><i class="fas fa-check-circle"></i></span>' : '<span class="text-red-400"><i class="fas fa-times-circle"></i></span>'}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar médicos:', error);
+            }
+        }
+
+        async function carregarUsuarios() {
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}/usuarios`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Host': 'admin.horariointeligente.com.br'
+                    }
+                });
+
+                const data = await response.json();
+                const lista = document.getElementById('listaUsuarios');
+
+                if (!data.usuarios || data.usuarios.length === 0) {
+                    lista.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum usuário adicional</p>';
+                    return;
+                }
+
+                lista.innerHTML = data.usuarios.map(u => `
+                    <div class="bg-gray-800 rounded-lg p-3 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center">
+                                <i class="fas fa-user text-white"></i>
+                            </div>
+                            <div>
+                                <p class="text-white font-medium">${u.nome}</p>
+                                <p class="text-gray-400 text-sm">${u.email}</p>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded">${u.tipo}</span>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar usuários:', error);
+            }
+        }
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            document.getElementById('infoView').classList.toggle('hidden', isEditMode);
+            document.getElementById('infoEdit').classList.toggle('hidden', !isEditMode);
+            document.getElementById('btnEditar').innerHTML = isEditMode ?
+                '<i class="fas fa-times mr-1"></i>Cancelar' :
+                '<i class="fas fa-edit mr-1"></i>Editar';
+        }
+
+        async function salvarEdicao() {
+            const dados = {
+                nome_fantasia: document.getElementById('editNome').value,
+                email: document.getElementById('editEmail').value,
+                telefone: document.getElementById('editTelefone').value,
+                endereco: document.getElementById('editEndereco').value
+            };
+
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Host': 'admin.horariointeligente.com.br'
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                if (!response.ok) throw new Error('Erro ao salvar');
+
+                await carregarCliente();
+                toggleEditMode();
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao salvar alterações');
+            }
+        }
+
+        async function toggleStatusCliente() {
+            const novoStatus = !clienteData.ativo;
+            const acao = novoStatus ? 'reativar' : 'desativar';
+
+            if (!confirm(`Deseja ${acao} este cliente?`)) return;
+
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Host': 'admin.horariointeligente.com.br'
+                    },
+                    body: JSON.stringify({
+                        ativo: novoStatus,
+                        motivo: `${acao === 'desativar' ? 'Desativado' : 'Reativado'} via painel admin`
+                    })
+                });
+
+                if (!response.ok) throw new Error('Erro ao alterar status');
+
+                await carregarCliente();
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao alterar status');
+            }
+        }
+
+        // Modais
+        function abrirModalMedico() {
+            document.getElementById('modalMedico').classList.remove('hidden');
+        }
+        function fecharModalMedico() {
+            document.getElementById('modalMedico').classList.add('hidden');
+            document.getElementById('formMedico').reset();
+        }
+        function abrirModalUsuario() {
+            document.getElementById('modalUsuario').classList.remove('hidden');
+        }
+        function fecharModalUsuario() {
+            document.getElementById('modalUsuario').classList.add('hidden');
+            document.getElementById('formUsuario').reset();
+        }
+        function fecharModalCredenciais() {
+            document.getElementById('modalCredenciais').classList.add('hidden');
+        }
+
+        // Forms
+        document.getElementById('formMedico').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}/medicos`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Host': 'admin.horariointeligente.com.br'
+                    },
+                    body: JSON.stringify({
+                        nome: formData.get('nome'),
+                        especialidade: formData.get('especialidade'),
+                        registro_profissional: formData.get('registro_profissional'),
+                        email: formData.get('email'),
+                        pode_fazer_login: formData.get('pode_fazer_login') === 'on',
+                        is_admin: false
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Erro');
+
+                fecharModalMedico();
+                await carregarMedicos();
+
+                if (result.credenciais) {
+                    document.getElementById('credEmail').textContent = result.credenciais.email;
+                    document.getElementById('credSenha').textContent = result.credenciais.senha_temporaria;
+                    document.getElementById('modalCredenciais').classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert(error.message);
+            }
+        });
+
+        document.getElementById('formUsuario').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}/usuarios`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Host': 'admin.horariointeligente.com.br'
+                    },
+                    body: JSON.stringify({
+                        nome: formData.get('nome'),
+                        email: formData.get('email'),
+                        telefone: formData.get('telefone') || null,
+                        tipo: formData.get('tipo')
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Erro');
+
+                fecharModalUsuario();
+                await carregarUsuarios();
+
+                if (result.credenciais) {
+                    document.getElementById('credEmail').textContent = result.credenciais.email;
+                    document.getElementById('credSenha').textContent = result.credenciais.senha_temporaria;
+                    document.getElementById('modalCredenciais').classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert(error.message);
+            }
+        });
+
+        function copiarCredenciaisSimples() {
+            const email = document.getElementById('credEmail').textContent;
+            const senha = document.getElementById('credSenha').textContent;
+            navigator.clipboard.writeText(`Email: ${email}\nSenha: ${senha}`).then(() => {
+                alert('Copiado!');
+            });
+        }
+
+        // Fechar modais ao clicar fora
+        ['modalMedico', 'modalUsuario', 'modalCredenciais'].forEach(id => {
+            document.getElementById(id).addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.add('hidden');
+                }
+            });
+        });
+
+        // Carregar dados
+        carregarCliente();
+    </script>
+</body>
+</html>

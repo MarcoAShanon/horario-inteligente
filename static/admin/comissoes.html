@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comissões - Admin Horário Inteligente</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .loader {
+            border: 3px solid #374151;
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .checkbox-row:has(input:checked) {
+            background: rgba(139, 92, 246, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/admin/parceiros.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-500">
+                    <i class="fas fa-coins text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Gestão de Comissões</h1>
+                    <p class="text-sm text-gray-400">Aprovar e pagar comissões de parceiros</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-gray-300 hidden sm:inline" id="adminName">
+                    <i class="fas fa-user-circle mr-2"></i>
+                    Carregando...
+                </span>
+                <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Estatísticas -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-clock text-yellow-500 text-xl"></i>
+                    <span class="text-xl font-bold text-yellow-400" id="statPendente">R$ 0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Pendentes</p>
+                <p class="text-gray-500 text-xs" id="statPendenteQtd">0 comissões</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-check text-blue-500 text-xl"></i>
+                    <span class="text-xl font-bold text-blue-400" id="statAprovada">R$ 0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Aprovadas</p>
+                <p class="text-gray-500 text-xs" id="statAprovadaQtd">0 comissões</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-check-double text-green-500 text-xl"></i>
+                    <span class="text-xl font-bold text-green-400" id="statPaga">R$ 0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Pagas</p>
+                <p class="text-gray-500 text-xs" id="statPagaQtd">0 comissões</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-coins text-purple-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statTotal">R$ 0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Total Geral</p>
+                <p class="text-gray-500 text-xs" id="statTotalQtd">0 comissões</p>
+            </div>
+        </div>
+
+        <!-- Filtros e Ações -->
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+            <!-- Filtros -->
+            <div class="flex flex-wrap items-center gap-3">
+                <select id="filtroStatus" onchange="carregarComissoes()"
+                        class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    <option value="">Todos os status</option>
+                    <option value="pendente" selected>Pendentes</option>
+                    <option value="aprovada">Aprovadas</option>
+                    <option value="paga">Pagas</option>
+                    <option value="cancelada">Canceladas</option>
+                </select>
+
+                <select id="filtroParceiro" onchange="carregarComissoes()"
+                        class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    <option value="">Todos os parceiros</option>
+                </select>
+
+                <button onclick="carregarComissoes()" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+
+            <!-- Ações em Lote -->
+            <div class="flex items-center gap-3">
+                <span class="text-gray-400 text-sm" id="selecionadosInfo">0 selecionadas</span>
+                <button onclick="aprovarSelecionadas()" id="btnAprovarLote" disabled
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-check mr-2"></i>Aprovar
+                </button>
+                <button onclick="pagarSelecionadas()" id="btnPagarLote" disabled
+                        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fas fa-dollar-sign mr-2"></i>Pagar
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabela de Comissões -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+            <!-- Loading -->
+            <div id="loadingState" class="flex items-center justify-center py-12">
+                <div class="loader"></div>
+                <span class="text-gray-400 ml-3">Carregando comissões...</span>
+            </div>
+
+            <!-- Tabela -->
+            <div id="tabelaContainer" class="hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left">
+                                <input type="checkbox" id="checkAll" onchange="toggleAll()"
+                                       class="w-4 h-4 rounded border-gray-600 text-purple-600 focus:ring-purple-500 bg-gray-700">
+                            </th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300">Parceiro</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300">Cliente</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Mês Ref.</th>
+                            <th class="px-4 py-3 text-right text-sm font-semibold text-gray-300">Valor Base</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">%</th>
+                            <th class="px-4 py-3 text-right text-sm font-semibold text-gray-300">Comissão</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Status</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaBody" class="divide-y divide-gray-800">
+                        <!-- Preenchido via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            <div id="paginacao" class="hidden flex items-center justify-between px-4 py-3 bg-gray-800/50 border-t border-gray-700">
+                <p class="text-gray-400 text-sm" id="paginacaoInfo">Mostrando 0 de 0</p>
+                <div class="flex gap-2">
+                    <button onclick="paginaAnterior()" id="btnPaginaAnterior" disabled
+                            class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <span class="px-3 py-1 text-white" id="paginaAtual">1</span>
+                    <button onclick="proximaPagina()" id="btnProximaPagina" disabled
+                            class="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Estado Vazio -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <i class="fas fa-coins text-gray-600 text-5xl mb-4"></i>
+                <p class="text-gray-400">Nenhuma comissão encontrada</p>
+                <p class="text-gray-500 text-sm mt-2">As comissões aparecem quando clientes são cadastrados com parceiros</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalhes da Comissão -->
+    <div id="modalDetalhes" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-lg">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white">Detalhes da Comissão</h3>
+                    <button onclick="fecharModalDetalhes()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <div id="detalhesContent" class="space-y-4">
+                    <!-- Preenchido via JavaScript -->
+                </div>
+
+                <div class="flex gap-3 mt-6 pt-6 border-t border-gray-700" id="detalhesAcoes">
+                    <!-- Botões de ação dinâmicos -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pagamento -->
+    <div id="modalPagamento" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-md">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white">
+                        <i class="fas fa-dollar-sign mr-2 text-green-400"></i>
+                        Registrar Pagamento
+                    </h3>
+                    <button onclick="fecharModalPagamento()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="bg-green-900/30 border border-green-500/30 rounded-lg p-4 mb-6">
+                    <p class="text-green-400 text-sm">Valor a pagar</p>
+                    <p class="text-3xl font-bold text-white" id="pagamentoValor">R$ 0,00</p>
+                    <p class="text-gray-400 text-sm mt-1" id="pagamentoQtd">0 comissão(ões)</p>
+                </div>
+
+                <form id="formPagamento" onsubmit="confirmarPagamento(event)">
+                    <input type="hidden" id="pagamentoIds" value="">
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">ID Transferência ASAAS</label>
+                            <input type="text" id="pagamentoAsaasId"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="Opcional - ID da transferência">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">URL do Comprovante</label>
+                            <input type="url" id="pagamentoComprovante"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="Opcional - Link do comprovante">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Observações</label>
+                            <textarea id="pagamentoObs" rows="2"
+                                      class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                      placeholder="Opcional - Anotações sobre o pagamento"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <button type="submit"
+                                class="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+                            <i class="fas fa-check mr-2"></i>Confirmar Pagamento
+                        </button>
+                        <button type="button" onclick="fecharModalPagamento()"
+                                class="px-6 bg-gray-700 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cancelar -->
+    <div id="modalCancelar" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-md">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white">
+                        <i class="fas fa-ban mr-2 text-red-400"></i>
+                        Cancelar Comissão
+                    </h3>
+                    <button onclick="fecharModalCancelar()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <form id="formCancelar" onsubmit="confirmarCancelamento(event)">
+                    <input type="hidden" id="cancelarId" value="">
+
+                    <div class="bg-red-900/30 border border-red-500/30 rounded-lg p-4 mb-6">
+                        <p class="text-red-400 text-sm">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            Esta ação não pode ser desfeita
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Motivo do cancelamento *</label>
+                        <textarea id="cancelarMotivo" rows="3" required
+                                  class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                  placeholder="Descreva o motivo do cancelamento..."></textarea>
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <button type="submit"
+                                class="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition">
+                            <i class="fas fa-ban mr-2"></i>Confirmar Cancelamento
+                        </button>
+                        <button type="button" onclick="fecharModalCancelar()"
+                                class="px-6 bg-gray-700 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition">
+                            Voltar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Função de escape para prevenir XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Verificar autenticação
+        const token = localStorage.getItem('adminToken');
+        let adminData = {};
+        try {
+            adminData = JSON.parse(localStorage.getItem('adminData') || '{}');
+        } catch (e) {
+            console.error('Erro ao parsear adminData:', e);
+        }
+
+        if (!token) {
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Atualizar nome do admin
+        document.getElementById('adminName').innerHTML = `
+            <i class="fas fa-user-circle mr-2"></i>
+            ${escapeHtml(adminData.nome) || 'Admin'}
+        `;
+
+        let comissoesData = [];
+        let comissaoAtual = null;
+        let paginaAtual = 1;
+        let totalPaginas = 1;
+        let selecionadas = new Set();
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminData');
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Carregar parceiros para filtro
+        async function carregarParceirosSelect() {
+            try {
+                const response = await fetch('/api/interno/parceiros?ativo=true', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const parceiros = await response.json();
+                    const select = document.getElementById('filtroParceiro');
+
+                    parceiros.forEach(p => {
+                        const option = document.createElement('option');
+                        option.value = p.id;
+                        option.textContent = p.nome;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar parceiros:', error);
+            }
+        }
+
+        // Carregar resumo
+        async function carregarResumo() {
+            try {
+                const response = await fetch('/api/admin/comissoes/resumo', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    const pendente = data.totais_por_status?.pendente || { quantidade: 0, total: 0 };
+                    const aprovada = data.totais_por_status?.aprovada || { quantidade: 0, total: 0 };
+                    const paga = data.totais_por_status?.paga || { quantidade: 0, total: 0 };
+
+                    document.getElementById('statPendente').textContent = `R$ ${pendente.total.toFixed(2).replace('.', ',')}`;
+                    document.getElementById('statPendenteQtd').textContent = `${pendente.quantidade} comissões`;
+
+                    document.getElementById('statAprovada').textContent = `R$ ${aprovada.total.toFixed(2).replace('.', ',')}`;
+                    document.getElementById('statAprovadaQtd').textContent = `${aprovada.quantidade} comissões`;
+
+                    document.getElementById('statPaga').textContent = `R$ ${paga.total.toFixed(2).replace('.', ',')}`;
+                    document.getElementById('statPagaQtd').textContent = `${paga.quantidade} comissões`;
+
+                    document.getElementById('statTotal').textContent = `R$ ${data.total_geral.toFixed(2).replace('.', ',')}`;
+                    document.getElementById('statTotalQtd').textContent = `${data.quantidade_total} comissões`;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar resumo:', error);
+            }
+        }
+
+        // Carregar comissões
+        async function carregarComissoes() {
+            const loadingState = document.getElementById('loadingState');
+            const tabelaContainer = document.getElementById('tabelaContainer');
+            const emptyState = document.getElementById('emptyState');
+            const paginacao = document.getElementById('paginacao');
+            const tabelaBody = document.getElementById('tabelaBody');
+
+            loadingState.classList.remove('hidden');
+            tabelaContainer.classList.add('hidden');
+            emptyState.classList.add('hidden');
+            paginacao.classList.add('hidden');
+
+            selecionadas.clear();
+            atualizarBotoesLote();
+
+            try {
+                const status = document.getElementById('filtroStatus').value;
+                const parceiroId = document.getElementById('filtroParceiro').value;
+
+                let url = `/api/admin/comissoes?page=${paginaAtual}&per_page=20`;
+                if (status) url += `&status=${status}`;
+                if (parceiroId) url += `&parceiro_id=${parceiroId}`;
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar comissões');
+
+                const data = await response.json();
+                comissoesData = data.comissoes || [];
+                totalPaginas = data.total_pages || 1;
+
+                // Atualizar resumo
+                await carregarResumo();
+
+                if (comissoesData.length === 0) {
+                    loadingState.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                // Renderizar tabela
+                tabelaBody.innerHTML = comissoesData.map(c => `
+                    <tr class="hover:bg-gray-800/50 transition checkbox-row">
+                        <td class="px-4 py-4">
+                            <input type="checkbox" value="${c.id}" onchange="toggleSelecao(${c.id})"
+                                   class="comissao-check w-4 h-4 rounded border-gray-600 text-purple-600 focus:ring-purple-500 bg-gray-700"
+                                   ${c.status === 'paga' || c.status === 'cancelada' ? 'disabled' : ''}>
+                        </td>
+                        <td class="px-4 py-4">
+                            <p class="text-white font-medium">${escapeHtml(c.parceiro_nome) || '-'}</p>
+                        </td>
+                        <td class="px-4 py-4">
+                            <p class="text-gray-300">${escapeHtml(c.cliente_nome) || '-'}</p>
+                            <p class="text-gray-500 text-xs">${formatarData(c.created_at)}</p>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <span class="bg-gray-700 text-gray-300 px-2 py-1 rounded text-sm">
+                                ${c.mes_referencia || 1}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-right">
+                            <span class="text-gray-300">R$ ${(c.valor_base || 0).toFixed(2).replace('.', ',')}</span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <span class="text-purple-400 font-medium">${c.percentual_aplicado || 0}%</span>
+                        </td>
+                        <td class="px-4 py-4 text-right">
+                            <span class="text-green-400 font-bold">R$ ${(c.valor_comissao || 0).toFixed(2).replace('.', ',')}</span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            ${getStatusBadge(c.status)}
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <div class="flex justify-center gap-1">
+                                <button onclick="verDetalhes(${c.id})" class="text-blue-400 hover:text-blue-300 p-1" title="Ver detalhes">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                ${c.status === 'pendente' ? `
+                                    <button onclick="aprovarComissao(${c.id})" class="text-green-400 hover:text-green-300 p-1" title="Aprovar">
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                ` : ''}
+                                ${c.status === 'pendente' || c.status === 'aprovada' ? `
+                                    <button onclick="abrirModalPagamento([${c.id}])" class="text-yellow-400 hover:text-yellow-300 p-1" title="Pagar">
+                                        <i class="fas fa-dollar-sign"></i>
+                                    </button>
+                                ` : ''}
+                                ${c.status !== 'paga' && c.status !== 'cancelada' ? `
+                                    <button onclick="abrirModalCancelar(${c.id})" class="text-red-400 hover:text-red-300 p-1" title="Cancelar">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+
+                // Atualizar paginação
+                document.getElementById('paginacaoInfo').textContent =
+                    `Mostrando ${comissoesData.length} de ${data.total}`;
+                document.getElementById('paginaAtual').textContent = paginaAtual;
+                document.getElementById('btnPaginaAnterior').disabled = paginaAtual <= 1;
+                document.getElementById('btnProximaPagina').disabled = paginaAtual >= totalPaginas;
+
+                loadingState.classList.add('hidden');
+                tabelaContainer.classList.remove('hidden');
+                paginacao.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            }
+        }
+
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'pendente':
+                    return '<span class="bg-yellow-900/50 text-yellow-300 px-2 py-1 rounded-full text-xs">Pendente</span>';
+                case 'aprovada':
+                    return '<span class="bg-blue-900/50 text-blue-300 px-2 py-1 rounded-full text-xs">Aprovada</span>';
+                case 'paga':
+                    return '<span class="bg-green-900/50 text-green-300 px-2 py-1 rounded-full text-xs">Paga</span>';
+                case 'cancelada':
+                    return '<span class="bg-red-900/50 text-red-300 px-2 py-1 rounded-full text-xs">Cancelada</span>';
+                default:
+                    return '<span class="bg-gray-700 text-gray-300 px-2 py-1 rounded-full text-xs">' + escapeHtml(status) + '</span>';
+            }
+        }
+
+        function formatarData(dataStr) {
+            if (!dataStr) return '-';
+            const data = new Date(dataStr);
+            return data.toLocaleDateString('pt-BR');
+        }
+
+        // Paginação
+        function paginaAnterior() {
+            if (paginaAtual > 1) {
+                paginaAtual--;
+                carregarComissoes();
+            }
+        }
+
+        function proximaPagina() {
+            if (paginaAtual < totalPaginas) {
+                paginaAtual++;
+                carregarComissoes();
+            }
+        }
+
+        // Seleção
+        function toggleAll() {
+            const checkAll = document.getElementById('checkAll').checked;
+            const checkboxes = document.querySelectorAll('.comissao-check:not(:disabled)');
+
+            checkboxes.forEach(cb => {
+                cb.checked = checkAll;
+                const id = parseInt(cb.value);
+                if (checkAll) {
+                    selecionadas.add(id);
+                } else {
+                    selecionadas.delete(id);
+                }
+            });
+
+            atualizarBotoesLote();
+        }
+
+        function toggleSelecao(id) {
+            if (selecionadas.has(id)) {
+                selecionadas.delete(id);
+            } else {
+                selecionadas.add(id);
+            }
+            atualizarBotoesLote();
+        }
+
+        function atualizarBotoesLote() {
+            const qtd = selecionadas.size;
+            document.getElementById('selecionadosInfo').textContent = `${qtd} selecionada${qtd !== 1 ? 's' : ''}`;
+            document.getElementById('btnAprovarLote').disabled = qtd === 0;
+            document.getElementById('btnPagarLote').disabled = qtd === 0;
+        }
+
+        // Ações individuais
+        async function aprovarComissao(id) {
+            if (!confirm('Aprovar esta comissão?')) return;
+
+            try {
+                const response = await fetch(`/api/admin/comissoes/${id}/aprovar`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erro ao aprovar');
+                }
+
+                alert('Comissão aprovada com sucesso!');
+                carregarComissoes();
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro: ' + error.message);
+            }
+        }
+
+        // Ações em lote
+        async function aprovarSelecionadas() {
+            if (selecionadas.size === 0) return;
+            if (!confirm(`Aprovar ${selecionadas.size} comissão(ões)?`)) return;
+
+            try {
+                for (const id of selecionadas) {
+                    await fetch(`/api/admin/comissoes/${id}/aprovar`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                }
+
+                alert('Comissões aprovadas com sucesso!');
+                carregarComissoes();
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao aprovar comissões');
+            }
+        }
+
+        function pagarSelecionadas() {
+            if (selecionadas.size === 0) return;
+            abrirModalPagamento(Array.from(selecionadas));
+        }
+
+        // Modal Detalhes
+        function verDetalhes(id) {
+            comissaoAtual = comissoesData.find(c => c.id === id);
+            if (!comissaoAtual) return;
+
+            const c = comissaoAtual;
+
+            document.getElementById('detalhesContent').innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-gray-400 text-sm">Parceiro</p>
+                        <p class="text-white font-medium">${c.parceiro_nome || '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">Cliente</p>
+                        <p class="text-white font-medium">${c.cliente_nome || '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">Mês Referência</p>
+                        <p class="text-white">${c.mes_referencia || 1}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">Data Referência</p>
+                        <p class="text-white">${c.data_referencia || '-'}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">Valor Base</p>
+                        <p class="text-white">R$ ${(c.valor_base || 0).toFixed(2).replace('.', ',')}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">Percentual</p>
+                        <p class="text-purple-400 font-medium">${c.percentual_aplicado || 0}%</p>
+                    </div>
+                </div>
+
+                <div class="bg-green-900/30 border border-green-500/30 rounded-lg p-4 mt-4">
+                    <p class="text-green-400 text-sm">Valor da Comissão</p>
+                    <p class="text-3xl font-bold text-white">R$ ${(c.valor_comissao || 0).toFixed(2).replace('.', ',')}</p>
+                </div>
+
+                <div class="mt-4">
+                    <p class="text-gray-400 text-sm">Status</p>
+                    <p class="mt-1">${getStatusBadge(c.status)}</p>
+                </div>
+
+                ${c.data_pagamento ? `
+                    <div class="mt-4 bg-gray-800 rounded-lg p-4">
+                        <p class="text-gray-400 text-sm">Data do Pagamento</p>
+                        <p class="text-white">${formatarData(c.data_pagamento)}</p>
+                        ${c.asaas_transfer_id ? `<p class="text-gray-500 text-xs mt-1">ID ASAAS: ${c.asaas_transfer_id}</p>` : ''}
+                    </div>
+                ` : ''}
+
+                ${c.observacoes ? `
+                    <div class="mt-4">
+                        <p class="text-gray-400 text-sm">Observações</p>
+                        <p class="text-white">${c.observacoes}</p>
+                    </div>
+                ` : ''}
+
+                <div class="mt-4 text-gray-500 text-xs">
+                    Criado em: ${formatarData(c.created_at)}
+                </div>
+            `;
+
+            // Botões de ação
+            let acoes = '';
+            if (c.status === 'pendente') {
+                acoes = `
+                    <button onclick="aprovarComissao(${c.id}); fecharModalDetalhes();"
+                            class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                        <i class="fas fa-check mr-2"></i>Aprovar
+                    </button>
+                    <button onclick="fecharModalDetalhes(); abrirModalPagamento([${c.id}]);"
+                            class="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+                        <i class="fas fa-dollar-sign mr-2"></i>Pagar
+                    </button>
+                `;
+            } else if (c.status === 'aprovada') {
+                acoes = `
+                    <button onclick="fecharModalDetalhes(); abrirModalPagamento([${c.id}]);"
+                            class="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+                        <i class="fas fa-dollar-sign mr-2"></i>Pagar
+                    </button>
+                `;
+            }
+
+            acoes += `
+                <button onclick="fecharModalDetalhes()"
+                        class="px-6 bg-gray-700 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition">
+                    Fechar
+                </button>
+            `;
+
+            document.getElementById('detalhesAcoes').innerHTML = acoes;
+            document.getElementById('modalDetalhes').classList.remove('hidden');
+        }
+
+        function fecharModalDetalhes() {
+            document.getElementById('modalDetalhes').classList.add('hidden');
+            comissaoAtual = null;
+        }
+
+        // Modal Pagamento
+        function abrirModalPagamento(ids) {
+            const comissoes = comissoesData.filter(c => ids.includes(c.id));
+            const total = comissoes.reduce((sum, c) => sum + (c.valor_comissao || 0), 0);
+
+            document.getElementById('pagamentoValor').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            document.getElementById('pagamentoQtd').textContent = `${comissoes.length} comissão(ões)`;
+            document.getElementById('pagamentoIds').value = ids.join(',');
+
+            document.getElementById('formPagamento').reset();
+            document.getElementById('modalPagamento').classList.remove('hidden');
+        }
+
+        function fecharModalPagamento() {
+            document.getElementById('modalPagamento').classList.add('hidden');
+        }
+
+        async function confirmarPagamento(event) {
+            event.preventDefault();
+
+            const ids = document.getElementById('pagamentoIds').value.split(',').map(Number);
+            const asaasId = document.getElementById('pagamentoAsaasId').value || null;
+            const comprovante = document.getElementById('pagamentoComprovante').value || null;
+            const obs = document.getElementById('pagamentoObs').value || null;
+
+            try {
+                if (ids.length === 1) {
+                    // Pagamento individual
+                    const response = await fetch(`/api/admin/comissoes/${ids[0]}/pagar`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            asaas_transfer_id: asaasId,
+                            comprovante_url: comprovante,
+                            observacoes: obs
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.detail || 'Erro ao pagar');
+                    }
+                } else {
+                    // Pagamento em lote
+                    const response = await fetch('/api/admin/comissoes/pagar-lote', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            comissao_ids: ids,
+                            observacoes: obs
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.detail || 'Erro ao pagar');
+                    }
+                }
+
+                fecharModalPagamento();
+                alert('Pagamento registrado com sucesso!');
+                carregarComissoes();
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro: ' + error.message);
+            }
+        }
+
+        // Modal Cancelar
+        function abrirModalCancelar(id) {
+            document.getElementById('cancelarId').value = id;
+            document.getElementById('cancelarMotivo').value = '';
+            document.getElementById('modalCancelar').classList.remove('hidden');
+        }
+
+        function fecharModalCancelar() {
+            document.getElementById('modalCancelar').classList.add('hidden');
+        }
+
+        async function confirmarCancelamento(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('cancelarId').value;
+            const motivo = document.getElementById('cancelarMotivo').value;
+
+            try {
+                const response = await fetch(`/api/admin/comissoes/${id}/cancelar`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ motivo })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erro ao cancelar');
+                }
+
+                fecharModalCancelar();
+                alert('Comissão cancelada!');
+                carregarComissoes();
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro: ' + error.message);
+            }
+        }
+
+        // Inicializar
+        carregarParceirosSelect();
+        carregarComissoes();
+    </script>
+</body>
+</html>

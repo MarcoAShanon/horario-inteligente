@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo Cliente - Admin Horário Inteligente</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .loader {
+            border: 3px solid #374151;
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .plan-card { transition: all 0.3s ease; }
+        .plan-card:hover { transform: translateY(-2px); }
+        .plan-card.selected {
+            border-color: #a855f7 !important;
+            box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.3);
+        }
+        .section-consultorio {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: all 0.4s ease;
+        }
+        .section-consultorio.visible {
+            max-height: 2000px;
+            opacity: 1;
+        }
+        .discount-fields {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        .discount-fields.visible {
+            max-height: 500px;
+            opacity: 1;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/admin/clientes.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                    <i class="fas fa-plus text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Novo Cliente</h1>
+                    <p class="text-sm text-gray-400">Cadastrar clínica ou profissional</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <!-- Alertas -->
+        <div id="alertError" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg mb-6">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span id="alertErrorText"></span>
+            </div>
+        </div>
+
+        <!-- Formulário -->
+        <form id="formNovoCliente" class="space-y-8">
+
+            <!-- PASSO 1: Tipo de Cliente / Plano -->
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                <h2 class="text-lg font-semibold text-white mb-2 flex items-center">
+                    <span class="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-sm mr-3">1</span>
+                    Plano e Assinatura
+                </h2>
+                <p class="text-gray-400 text-sm mb-6 ml-11">Selecione o plano e configure a cobrança</p>
+
+                <!-- Seleção de Plano -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <!-- Plano Individual -->
+                    <div class="plan-card cursor-pointer bg-gray-800 border-2 border-gray-700 rounded-xl p-6 selected"
+                         onclick="selecionarPlano(1)" id="plan1">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-user-md text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-white font-bold text-lg">Individual</h3>
+                                    <p class="text-gray-400 text-sm">Profissional autônomo</p>
+                                </div>
+                            </div>
+                            <div class="w-6 h-6 rounded-full border-2 border-purple-500 flex items-center justify-center check-indicator" id="check1">
+                                <div class="w-3 h-3 bg-purple-500 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-700 pt-4">
+                            <div class="flex items-baseline justify-between mb-3">
+                                <span class="text-3xl font-bold text-white">R$ 150</span>
+                                <span class="text-gray-400">/mês</span>
+                            </div>
+                            <ul class="space-y-2 text-sm">
+                                <li class="text-gray-300 flex items-center">
+                                    <i class="fas fa-check text-green-500 mr-2 w-4"></i>
+                                    1 profissional de saúde
+                                </li>
+                                <li class="text-gray-300 flex items-center">
+                                    <i class="fas fa-check text-green-500 mr-2 w-4"></i>
+                                    Agendamento via WhatsApp
+                                </li>
+                                <li class="text-gray-300 flex items-center">
+                                    <i class="fas fa-check text-green-500 mr-2 w-4"></i>
+                                    Confirmação automática
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Plano Consultório -->
+                    <div class="plan-card cursor-pointer bg-gray-800 border-2 border-gray-700 rounded-xl p-6"
+                         onclick="selecionarPlano(2)" id="plan2">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-hospital text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-white font-bold text-lg">Consultório</h3>
+                                    <p class="text-gray-400 text-sm">Clínica compartilhada</p>
+                                </div>
+                            </div>
+                            <div class="w-6 h-6 rounded-full border-2 border-gray-600 flex items-center justify-center check-indicator" id="check2">
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-700 pt-4">
+                            <div class="flex items-baseline justify-between mb-3">
+                                <span class="text-3xl font-bold text-white">R$ 200</span>
+                                <span class="text-gray-400">/mês</span>
+                            </div>
+                            <ul class="space-y-2 text-sm">
+                                <li class="text-gray-300 flex items-center">
+                                    <i class="fas fa-check text-green-500 mr-2 w-4"></i>
+                                    2 profissionais inclusos
+                                </li>
+                                <li class="text-gray-300 flex items-center">
+                                    <i class="fas fa-check text-green-500 mr-2 w-4"></i>
+                                    Secretária/Recepcionista
+                                </li>
+                                <li class="text-gray-300 flex items-center">
+                                    <i class="fas fa-check text-green-500 mr-2 w-4"></i>
+                                    +R$50/mês por profissional extra
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Período de Cobrança e Linha WhatsApp -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-calendar-alt mr-2 text-blue-400"></i>
+                            Período de Cobrança *
+                        </label>
+                        <select name="periodo_cobranca" id="periodoCobranca" onchange="atualizarResumo()"
+                                class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="mensal">Mensal</option>
+                            <option value="trimestral">Trimestral (-10%)</option>
+                            <option value="semestral">Semestral (-15%)</option>
+                            <option value="anual">Anual (-20%)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fab fa-whatsapp mr-2 text-green-400"></i>
+                            Linha WhatsApp *
+                        </label>
+                        <select name="linha_whatsapp" id="linhaWhatsapp" onchange="atualizarResumo()"
+                                class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="proprio">Usar número próprio do cliente (incluso)</option>
+                            <option value="dedicada">Linha Dedicada Salvy (+R$ 40/mês)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Parceiro Comercial (Indicação) -->
+                <div class="border-t border-gray-700 pt-6 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-white font-medium flex items-center">
+                            <i class="fas fa-handshake mr-2 text-green-400"></i>
+                            Indicação de Parceiro
+                        </h3>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="checkParceiro" onchange="toggleParceiro()"
+                                   class="w-5 h-5 rounded border-gray-600 text-purple-600 focus:ring-purple-500 bg-gray-800">
+                            <span class="ml-2 text-gray-400 text-sm">Cliente indicado por parceiro</span>
+                        </label>
+                    </div>
+
+                    <div id="camposParceiro" class="discount-fields">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Parceiro Comercial</label>
+                                <select name="parceiro_id" id="selectParceiro" onchange="atualizarPreviewComissao()"
+                                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="">Selecione o parceiro...</option>
+                                </select>
+                            </div>
+
+                            <div id="previewComissao" class="bg-green-900/30 rounded-lg p-4 border border-green-500/30 hidden">
+                                <h4 class="text-sm font-semibold text-green-400 mb-2">
+                                    <i class="fas fa-calculator mr-2"></i>Preview da Comissão
+                                </h4>
+                                <div class="text-sm space-y-1">
+                                    <p><span class="text-gray-400">Percentual:</span> <span class="text-white" id="previewPercentual">40%</span></p>
+                                    <p><span class="text-gray-400">Valor estimado:</span> <span class="text-green-400 font-bold" id="previewValorComissao">R$ 0,00</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desconto Promocional -->
+                <div class="border-t border-gray-700 pt-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-white font-medium flex items-center">
+                            <i class="fas fa-percentage mr-2 text-yellow-400"></i>
+                            Desconto Promocional
+                        </h3>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="checkDesconto" onchange="toggleDesconto()"
+                                   class="w-5 h-5 rounded border-gray-600 text-purple-600 focus:ring-purple-500 bg-gray-800">
+                            <span class="ml-2 text-gray-400 text-sm">Aplicar desconto</span>
+                        </label>
+                    </div>
+
+                    <div id="camposDesconto" class="discount-fields">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Tipo de Desconto</label>
+                                <select name="tipo_desconto" id="tipoDesconto" onchange="atualizarResumo()"
+                                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="percentual">Percentual (%)</option>
+                                    <option value="fixo">Valor Fixo (R$)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Valor do Desconto</label>
+                                <input type="number" name="valor_desconto" id="valorDesconto" min="0" step="0.01"
+                                       oninput="atualizarResumo()"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                       placeholder="0">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Duração</label>
+                                <select name="duracao_desconto" id="duracaoDesconto" onchange="atualizarResumo()"
+                                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                                    <option value="1">Primeira mensalidade apenas</option>
+                                    <option value="3">3 meses</option>
+                                    <option value="6">6 meses</option>
+                                    <option value="12">12 meses</option>
+                                    <option value="0">Permanente (early adopter)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Motivo do Desconto</label>
+                            <input type="text" name="motivo_desconto" id="motivoDesconto"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="Ex: Early adopter, Indicação Dr. Fulano, Promoção lançamento">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumo da Assinatura -->
+            <div class="bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-xl border border-purple-500/30 p-6">
+                <h3 class="text-white font-semibold mb-4 flex items-center">
+                    <i class="fas fa-receipt mr-2"></i>
+                    Resumo da Assinatura
+                </h3>
+                <div class="space-y-2 text-sm" id="resumoContainer">
+                    <div class="flex justify-between text-gray-300">
+                        <span>Plano:</span>
+                        <span class="text-white font-medium" id="resumoPlanoNome">Individual</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300" id="linhaValorPlano">
+                        <span>Valor do Plano:</span>
+                        <span class="text-white font-medium" id="resumoValorPlano">R$ 150,00/mês</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300 hidden" id="linhaLinhaDedicada">
+                        <span>Linha Dedicada Salvy:</span>
+                        <span class="text-white font-medium">R$ 40,00/mês</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300 hidden" id="linhaProfissionaisExtras">
+                        <span>Profissionais extras (<span id="qtdExtras">0</span>x R$50):</span>
+                        <span class="text-white font-medium" id="valorExtras">R$ 0,00/mês</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300 border-t border-purple-500/30 pt-2">
+                        <span>Subtotal:</span>
+                        <span class="text-white font-medium" id="resumoSubtotal">R$ 150,00/mês</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300 hidden" id="linhaDescontoPeriodo">
+                        <span>Desconto período (<span id="percentualPeriodo">0</span>%):</span>
+                        <span class="text-green-400 font-medium" id="valorDescontoPeriodo">-R$ 0,00/mês</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300 hidden" id="linhaDescontoPromo">
+                        <span>Desconto promocional:</span>
+                        <span class="text-green-400 font-medium" id="valorDescontoPromo">-R$ 0,00/mês</span>
+                    </div>
+                    <div class="flex justify-between border-t border-purple-500/30 pt-2 mt-2">
+                        <span class="text-white font-semibold">TOTAL:</span>
+                        <span class="text-green-400 font-bold text-xl" id="resumoTotal">R$ 150,00/mês</span>
+                    </div>
+                    <div class="text-gray-400 text-xs mt-2 hidden" id="infoAposDesconto">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        <span id="textoAposDesconto"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PASSO 2: Dados da Clínica -->
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                <h2 class="text-lg font-semibold text-white mb-2 flex items-center">
+                    <span class="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-sm mr-3">2</span>
+                    <span id="labelDadosClinica">Dados do Profissional</span>
+                </h2>
+                <p class="text-gray-400 text-sm mb-6 ml-11">Informações de cadastro e contato</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            <span id="labelNomeFantasia">Nome do Consultório</span> *
+                        </label>
+                        <input type="text" name="nome_fantasia" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="Ex: Consultório Dr. João Silva" id="inputNomeFantasia">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            Razão Social <span class="text-gray-500 text-xs">(opcional)</span>
+                        </label>
+                        <input type="text" name="razao_social"
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="Ex: João Silva ME">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">CPF ou CNPJ *</label>
+                        <input type="text" name="documento" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                               oninput="formatarDocumento(this)">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Email da Clínica *</label>
+                        <input type="email" name="email" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="contato@clinica.com">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Telefone/WhatsApp *</label>
+                        <input type="tel" name="telefone" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="(21) 99999-9999"
+                               oninput="formatarTelefone(this)">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            Endereço <span class="text-gray-500 text-xs">(opcional)</span>
+                        </label>
+                        <input type="text" name="endereco"
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="Rua, número - Bairro - Cidade/UF">
+                    </div>
+                </div>
+            </div>
+
+            <!-- PASSO 3: Profissional Principal -->
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                <h2 class="text-lg font-semibold text-white mb-2 flex items-center">
+                    <span class="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-sm mr-3">3</span>
+                    Profissional Principal
+                    <span class="ml-2 px-2 py-1 bg-purple-900 text-purple-300 rounded text-xs">Admin</span>
+                </h2>
+                <p class="text-gray-400 text-sm mb-6 ml-11">Este profissional terá acesso administrativo ao sistema</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Nome Completo *</label>
+                        <input type="text" name="medico_nome" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="Ex: Dr. João Silva">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Especialidade *</label>
+                        <input type="text" name="medico_especialidade" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="Ex: Cardiologia">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Registro (CRM/CRO/etc) *</label>
+                        <input type="text" name="medico_registro" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="Ex: CRM 12345-RJ">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Email para Login *</label>
+                        <input type="email" name="medico_email" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="drjoao@email.com">
+                        <p class="text-gray-500 text-xs mt-1">Este será o email de acesso ao sistema</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            Telefone <span class="text-gray-500 text-xs">(opcional)</span>
+                        </label>
+                        <input type="tel" name="medico_telefone"
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                               placeholder="(21) 99999-9999"
+                               oninput="formatarTelefone(this)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- PASSO 4: Profissionais Adicionais (Só para Consultório) -->
+            <div id="secaoProfissionaisAdicionais" class="section-consultorio">
+                <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-lg font-semibold text-white flex items-center">
+                            <span class="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-sm mr-3">4</span>
+                            Segundo Profissional
+                            <span class="ml-2 px-2 py-1 bg-green-900 text-green-300 rounded text-xs">Incluso no plano</span>
+                        </h2>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-6 ml-11">O plano Consultório inclui 2 profissionais</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Nome Completo *</label>
+                            <input type="text" name="medico2_nome"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="Ex: Dra. Maria Santos">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Especialidade *</label>
+                            <input type="text" name="medico2_especialidade"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="Ex: Dermatologia">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Registro (CRM/CRO/etc) *</label>
+                            <input type="text" name="medico2_registro"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="Ex: CRM 54321-RJ">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Email para Login *</label>
+                            <input type="email" name="medico2_email"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="dramaria@email.com">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Telefone <span class="text-gray-500 text-xs">(opcional)</span>
+                            </label>
+                            <input type="tel" name="medico2_telefone"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="(21) 99999-9999"
+                                   oninput="formatarTelefone(this)">
+                        </div>
+                    </div>
+
+                    <!-- Profissionais Extras -->
+                    <div id="profissionaisExtras" class="mt-6 space-y-4"></div>
+
+                    <button type="button" onclick="adicionarProfissional()"
+                            class="mt-4 w-full py-3 border-2 border-dashed border-gray-700 rounded-lg text-gray-400 hover:border-purple-500 hover:text-purple-400 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-plus"></i>
+                        Adicionar mais profissional (+R$50/mês)
+                    </button>
+                </div>
+            </div>
+
+            <!-- PASSO 5: Secretária (Só para Consultório) -->
+            <div id="secaoSecretaria" class="section-consultorio">
+                <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-lg font-semibold text-white flex items-center">
+                            <span class="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-sm mr-3">5</span>
+                            Secretária / Recepcionista
+                            <span class="ml-2 px-2 py-1 bg-blue-900 text-blue-300 rounded text-xs">Opcional</span>
+                        </h2>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="checkSecretaria" onchange="toggleSecretaria()"
+                                   class="w-5 h-5 rounded border-gray-600 text-purple-600 focus:ring-purple-500 bg-gray-800">
+                            <span class="ml-2 text-gray-400 text-sm">Incluir</span>
+                        </label>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-6 ml-11">Usuário com permissões limitadas para gestão de agenda</p>
+
+                    <div id="camposSecretaria" class="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-50 pointer-events-none">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Nome Completo</label>
+                            <input type="text" name="secretaria_nome"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="Ex: Ana Paula">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Email para Login</label>
+                            <input type="email" name="secretaria_email"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="ana@clinica.com">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                Telefone <span class="text-gray-500 text-xs">(opcional)</span>
+                            </label>
+                            <input type="tel" name="secretaria_telefone"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="(21) 99999-9999"
+                                   oninput="formatarTelefone(this)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button type="submit" id="btnSubmit"
+                        class="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-check"></i>
+                    <span id="btnSubmitText">Criar Cliente</span>
+                </button>
+
+                <a href="/static/admin/clientes.html"
+                   class="flex-1 sm:flex-none bg-gray-700 text-white py-4 px-8 rounded-lg font-semibold hover:bg-gray-600 transition text-center">
+                    <i class="fas fa-times mr-2"></i>
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Modal de Sucesso -->
+    <div id="modalSucesso" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-gray-900 rounded-xl border border-green-500 w-full max-w-lg my-8">
+            <div class="p-6">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white mb-2">Cliente Criado!</h3>
+                    <p class="text-gray-400">O cliente foi cadastrado com sucesso.</p>
+                </div>
+
+                <!-- Resumo da Assinatura -->
+                <div class="bg-purple-900/30 rounded-lg p-4 mb-4 border border-purple-500/30">
+                    <h4 class="text-sm font-semibold text-purple-400 mb-2">
+                        <i class="fas fa-receipt mr-2"></i>Assinatura
+                    </h4>
+                    <div class="text-sm space-y-1" id="modalResumoAssinatura">
+                    </div>
+                </div>
+
+                <!-- Comissão do Parceiro (se aplicável) -->
+                <div id="modalComissao" class="bg-green-900/30 rounded-lg p-4 mb-4 border border-green-500/30 hidden">
+                    <h4 class="text-sm font-semibold text-green-400 mb-2">
+                        <i class="fas fa-handshake mr-2"></i>Comissão do Parceiro
+                    </h4>
+                    <div class="text-sm space-y-1" id="modalComissaoInfo">
+                    </div>
+                </div>
+
+                <!-- Credenciais do Admin -->
+                <div class="bg-gray-800 rounded-lg p-4 mb-4">
+                    <h4 class="text-sm font-semibold text-purple-400 mb-3">
+                        <i class="fas fa-user-shield mr-2"></i>Profissional Principal (Admin)
+                    </h4>
+                    <div class="space-y-2">
+                        <div>
+                            <span class="text-gray-500 text-sm">URL:</span>
+                            <p class="text-purple-400 font-mono text-sm break-all" id="credencialUrl"></p>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 text-sm">Email:</span>
+                            <p class="text-white font-mono text-sm" id="credencialEmail"></p>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 text-sm">Senha temporária:</span>
+                            <p class="text-yellow-400 font-mono text-lg font-bold" id="credencialSenha"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="credenciaisAdicionais" class="space-y-4 mb-4"></div>
+
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <button onclick="copiarCredenciais()"
+                            class="bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-copy"></i>
+                        Copiar Tudo
+                    </button>
+                    <button onclick="enviarWhatsApp()"
+                            class="bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2">
+                        <i class="fab fa-whatsapp"></i>
+                        WhatsApp
+                    </button>
+                </div>
+
+                <a href="/static/admin/clientes.html"
+                   class="block w-full bg-gray-700 text-white py-3 rounded-lg hover:bg-gray-600 transition text-center">
+                    <i class="fas fa-list mr-2"></i>
+                    Ir para Lista de Clientes
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar autenticação
+        const token = localStorage.getItem('adminToken');
+        if (!token) {
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Configurações de planos
+        const planos = {
+            1: { nome: 'Individual', valor: 150, profissionais: 1, valorExtra: 50 },
+            2: { nome: 'Consultório', valor: 200, profissionais: 2, valorExtra: 50 }
+        };
+
+        const descontosPeriodo = {
+            'mensal': 0,
+            'trimestral': 10,
+            'semestral': 15,
+            'anual': 20
+        };
+
+        // Estado do formulário
+        let planoAtual = 1;
+        let profissionaisExtras = 0;
+        let incluirSecretaria = false;
+        let incluirDesconto = false;
+        let incluirParceiro = false;
+        let parceirosDisponiveis = [];
+        let parceiroSelecionado = null;
+        let clienteCriado = null;
+
+        // Seleção de plano
+        function selecionarPlano(planoId) {
+            planoAtual = planoId;
+
+            // Atualizar visual dos cards
+            document.querySelectorAll('.plan-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.getElementById(`plan${planoId}`).classList.add('selected');
+
+            // Atualizar checkmarks
+            document.querySelectorAll('.check-indicator').forEach(check => {
+                check.innerHTML = '';
+                check.classList.remove('border-purple-500');
+                check.classList.add('border-gray-600');
+            });
+            const activeCheck = document.getElementById(`check${planoId}`);
+            activeCheck.innerHTML = '<div class="w-3 h-3 bg-purple-500 rounded-full"></div>';
+            activeCheck.classList.remove('border-gray-600');
+            activeCheck.classList.add('border-purple-500');
+
+            // Mostrar/esconder seções de consultório
+            const isConsultorio = planoId === 2;
+            document.querySelectorAll('.section-consultorio').forEach(secao => {
+                secao.classList.toggle('visible', isConsultorio);
+            });
+
+            // Atualizar labels
+            if (isConsultorio) {
+                document.getElementById('labelDadosClinica').textContent = 'Dados da Clínica';
+                document.getElementById('labelNomeFantasia').textContent = 'Nome Fantasia';
+                document.getElementById('inputNomeFantasia').placeholder = 'Ex: Clínica Saúde Total';
+            } else {
+                document.getElementById('labelDadosClinica').textContent = 'Dados do Profissional';
+                document.getElementById('labelNomeFantasia').textContent = 'Nome do Consultório';
+                document.getElementById('inputNomeFantasia').placeholder = 'Ex: Consultório Dr. João Silva';
+            }
+
+            // Atualizar campos required do segundo médico
+            ['medico2_nome', 'medico2_especialidade', 'medico2_registro', 'medico2_email'].forEach(campo => {
+                const input = document.querySelector(`[name="${campo}"]`);
+                if (input) input.required = isConsultorio;
+            });
+
+            atualizarResumo();
+        }
+
+        // Toggle desconto
+        function toggleDesconto() {
+            incluirDesconto = document.getElementById('checkDesconto').checked;
+            const campos = document.getElementById('camposDesconto');
+            campos.classList.toggle('visible', incluirDesconto);
+
+            if (!incluirDesconto) {
+                document.getElementById('valorDesconto').value = '';
+            }
+
+            atualizarResumo();
+        }
+
+        // Toggle parceiro
+        function toggleParceiro() {
+            incluirParceiro = document.getElementById('checkParceiro').checked;
+            const campos = document.getElementById('camposParceiro');
+            campos.classList.toggle('visible', incluirParceiro);
+
+            if (incluirParceiro && parceirosDisponiveis.length === 0) {
+                carregarParceiros();
+            }
+
+            if (!incluirParceiro) {
+                document.getElementById('selectParceiro').value = '';
+                parceiroSelecionado = null;
+                document.getElementById('previewComissao').classList.add('hidden');
+            }
+        }
+
+        // Carregar parceiros disponíveis
+        async function carregarParceiros() {
+            try {
+                const response = await fetch('/api/interno/parceiros?ativo=true', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // API retorna array diretamente
+                    parceirosDisponiveis = Array.isArray(data) ? data : (data.parceiros || []);
+
+                    const select = document.getElementById('selectParceiro');
+                    select.innerHTML = '<option value="">Selecione o parceiro...</option>';
+
+                    parceirosDisponiveis.forEach(p => {
+                        const option = document.createElement('option');
+                        option.value = p.id;
+                        option.textContent = `${p.nome} (${p.percentual_comissao || 40}%)`;
+                        option.dataset.percentual = p.percentual_comissao || 40;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar parceiros:', error);
+            }
+        }
+
+        // Atualizar preview da comissão
+        function atualizarPreviewComissao() {
+            const select = document.getElementById('selectParceiro');
+            const parceiroId = select.value;
+            const preview = document.getElementById('previewComissao');
+
+            if (!parceiroId) {
+                preview.classList.add('hidden');
+                parceiroSelecionado = null;
+                return;
+            }
+
+            parceiroSelecionado = parceirosDisponiveis.find(p => p.id == parceiroId);
+            if (!parceiroSelecionado) {
+                preview.classList.add('hidden');
+                return;
+            }
+
+            const percentual = parceiroSelecionado.percentual_comissao || 40;
+
+            // Calcular valor final atual
+            const plano = planos[planoAtual];
+            const periodo = document.getElementById('periodoCobranca').value;
+            const linhaWhatsapp = document.getElementById('linhaWhatsapp').value;
+            const tipoDesconto = document.getElementById('tipoDesconto').value;
+            const valorDescontoInput = parseFloat(document.getElementById('valorDesconto').value) || 0;
+
+            let valorPlano = plano.valor;
+            let valorExtras = planoAtual === 2 ? profissionaisExtras * plano.valorExtra : 0;
+            let valorLinha = linhaWhatsapp === 'dedicada' ? 40 : 0;
+            let subtotal = valorPlano + valorExtras + valorLinha;
+
+            const percentualPeriodo = descontosPeriodo[periodo];
+            const valorDescontoPeriodo = subtotal * (percentualPeriodo / 100);
+
+            let valorDescontoPromo = 0;
+            if (incluirDesconto && valorDescontoInput > 0) {
+                if (tipoDesconto === 'percentual') {
+                    valorDescontoPromo = (subtotal - valorDescontoPeriodo) * (valorDescontoInput / 100);
+                } else {
+                    valorDescontoPromo = valorDescontoInput;
+                }
+            }
+
+            const valorFinal = subtotal - valorDescontoPeriodo - valorDescontoPromo;
+            const valorComissao = valorFinal * (percentual / 100);
+
+            document.getElementById('previewPercentual').textContent = `${percentual}%`;
+            document.getElementById('previewValorComissao').textContent = `R$ ${valorComissao.toFixed(2).replace('.', ',')}`;
+            preview.classList.remove('hidden');
+        }
+
+        // Toggle secretária
+        function toggleSecretaria() {
+            incluirSecretaria = document.getElementById('checkSecretaria').checked;
+            const campos = document.getElementById('camposSecretaria');
+            campos.classList.toggle('opacity-50', !incluirSecretaria);
+            campos.classList.toggle('pointer-events-none', !incluirSecretaria);
+
+            ['secretaria_nome', 'secretaria_email'].forEach(campo => {
+                const input = document.querySelector(`[name="${campo}"]`);
+                if (input) input.required = incluirSecretaria;
+            });
+        }
+
+        // Adicionar profissional extra
+        function adicionarProfissional() {
+            profissionaisExtras++;
+            const idx = profissionaisExtras + 2;
+
+            const container = document.getElementById('profissionaisExtras');
+            const html = `
+                <div class="bg-gray-800/50 rounded-lg p-4 border border-gray-700" id="profissionalExtra${profissionaisExtras}">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="text-white font-medium">
+                            <i class="fas fa-user-md mr-2 text-purple-400"></i>
+                            Profissional ${idx}
+                            <span class="ml-2 px-2 py-1 bg-yellow-900 text-yellow-300 rounded text-xs">+R$50/mês</span>
+                        </h4>
+                        <button type="button" onclick="removerProfissional(${profissionaisExtras})"
+                                class="text-red-400 hover:text-red-300 transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <input type="text" name="medicoExtra${profissionaisExtras}_nome" required
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="Nome completo">
+                        </div>
+                        <div>
+                            <input type="text" name="medicoExtra${profissionaisExtras}_especialidade" required
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="Especialidade">
+                        </div>
+                        <div>
+                            <input type="text" name="medicoExtra${profissionaisExtras}_registro" required
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="CRM/CRO">
+                        </div>
+                        <div>
+                            <input type="email" name="medicoExtra${profissionaisExtras}_email" required
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                   placeholder="Email para login">
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+            atualizarResumo();
+        }
+
+        function removerProfissional(idx) {
+            const elem = document.getElementById(`profissionalExtra${idx}`);
+            if (elem) {
+                elem.remove();
+                profissionaisExtras--;
+                atualizarResumo();
+            }
+        }
+
+        // Atualizar resumo
+        function atualizarResumo() {
+            const plano = planos[planoAtual];
+            const periodo = document.getElementById('periodoCobranca').value;
+            const linhaWhatsapp = document.getElementById('linhaWhatsapp').value;
+            const tipoDesconto = document.getElementById('tipoDesconto').value;
+            const valorDescontoInput = parseFloat(document.getElementById('valorDesconto').value) || 0;
+            const duracaoDesconto = parseInt(document.getElementById('duracaoDesconto').value);
+
+            // Calcular valor base
+            let valorPlano = plano.valor;
+            let valorExtras = planoAtual === 2 ? profissionaisExtras * plano.valorExtra : 0;
+            let valorLinha = linhaWhatsapp === 'dedicada' ? 40 : 0;
+            let subtotal = valorPlano + valorExtras + valorLinha;
+
+            // Calcular desconto do período
+            const percentualPeriodo = descontosPeriodo[periodo];
+            const valorDescontoPeriodo = subtotal * (percentualPeriodo / 100);
+
+            // Calcular desconto promocional
+            let valorDescontoPromo = 0;
+            if (incluirDesconto && valorDescontoInput > 0) {
+                if (tipoDesconto === 'percentual') {
+                    valorDescontoPromo = (subtotal - valorDescontoPeriodo) * (valorDescontoInput / 100);
+                } else {
+                    valorDescontoPromo = valorDescontoInput;
+                }
+            }
+
+            // Valor final
+            const total = subtotal - valorDescontoPeriodo - valorDescontoPromo;
+            const valorAposDesconto = subtotal - valorDescontoPeriodo;
+
+            // Atualizar UI
+            document.getElementById('resumoPlanoNome').textContent = plano.nome;
+            document.getElementById('resumoValorPlano').textContent = `R$ ${valorPlano.toFixed(2).replace('.', ',')}/mês`;
+
+            // Linha dedicada
+            const linhaLinhaDedicada = document.getElementById('linhaLinhaDedicada');
+            linhaLinhaDedicada.classList.toggle('hidden', linhaWhatsapp !== 'dedicada');
+
+            // Profissionais extras
+            const linhaProfissionaisExtras = document.getElementById('linhaProfissionaisExtras');
+            if (valorExtras > 0) {
+                linhaProfissionaisExtras.classList.remove('hidden');
+                document.getElementById('qtdExtras').textContent = profissionaisExtras;
+                document.getElementById('valorExtras').textContent = `R$ ${valorExtras.toFixed(2).replace('.', ',')}/mês`;
+            } else {
+                linhaProfissionaisExtras.classList.add('hidden');
+            }
+
+            document.getElementById('resumoSubtotal').textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}/mês`;
+
+            // Desconto período
+            const linhaDescontoPeriodo = document.getElementById('linhaDescontoPeriodo');
+            if (percentualPeriodo > 0) {
+                linhaDescontoPeriodo.classList.remove('hidden');
+                document.getElementById('percentualPeriodo').textContent = percentualPeriodo;
+                document.getElementById('valorDescontoPeriodo').textContent = `-R$ ${valorDescontoPeriodo.toFixed(2).replace('.', ',')}/mês`;
+            } else {
+                linhaDescontoPeriodo.classList.add('hidden');
+            }
+
+            // Desconto promocional
+            const linhaDescontoPromo = document.getElementById('linhaDescontoPromo');
+            if (valorDescontoPromo > 0) {
+                linhaDescontoPromo.classList.remove('hidden');
+                document.getElementById('valorDescontoPromo').textContent = `-R$ ${valorDescontoPromo.toFixed(2).replace('.', ',')}/mês`;
+            } else {
+                linhaDescontoPromo.classList.add('hidden');
+            }
+
+            document.getElementById('resumoTotal').textContent = `R$ ${total.toFixed(2).replace('.', ',')}/mês`;
+
+            // Info após desconto
+            const infoAposDesconto = document.getElementById('infoAposDesconto');
+            if (valorDescontoPromo > 0 && duracaoDesconto > 0) {
+                infoAposDesconto.classList.remove('hidden');
+                document.getElementById('textoAposDesconto').textContent =
+                    `Após ${duracaoDesconto} ${duracaoDesconto === 1 ? 'mês' : 'meses'}: R$ ${valorAposDesconto.toFixed(2).replace('.', ',')}/mês`;
+            } else {
+                infoAposDesconto.classList.add('hidden');
+            }
+
+            // Atualizar preview da comissão se parceiro selecionado
+            if (incluirParceiro && parceiroSelecionado) {
+                atualizarPreviewComissao();
+            }
+        }
+
+        // Formatadores
+        function formatarDocumento(input) {
+            let valor = input.value.replace(/\D/g, '');
+            if (valor.length <= 11) {
+                valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+                valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+                valor = valor.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            } else {
+                valor = valor.replace(/^(\d{2})(\d)/, '$1.$2');
+                valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+                valor = valor.replace(/\.(\d{3})(\d)/, '.$1/$2');
+                valor = valor.replace(/(\d{4})(\d)/, '$1-$2');
+            }
+            input.value = valor;
+        }
+
+        function formatarTelefone(input) {
+            let valor = input.value.replace(/\D/g, '');
+            if (valor.length <= 10) {
+                valor = valor.replace(/(\d{2})(\d)/, '($1) $2');
+                valor = valor.replace(/(\d{4})(\d)/, '$1-$2');
+            } else {
+                valor = valor.replace(/(\d{2})(\d)/, '($1) $2');
+                valor = valor.replace(/(\d{5})(\d)/, '$1-$2');
+            }
+            input.value = valor;
+        }
+
+        function showError(message) {
+            const alert = document.getElementById('alertError');
+            document.getElementById('alertErrorText').textContent = message;
+            alert.classList.remove('hidden');
+            alert.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function hideError() {
+            document.getElementById('alertError').classList.add('hidden');
+        }
+
+        function setLoading(loading) {
+            const btn = document.getElementById('btnSubmit');
+            const text = document.getElementById('btnSubmitText');
+            if (loading) {
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
+                text.innerHTML = '<span class="loader mr-2"></span>Criando...';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                text.innerHTML = 'Criar Cliente';
+            }
+        }
+
+        // Formulário
+        document.getElementById('formNovoCliente').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            hideError();
+            setLoading(true);
+
+            const formData = new FormData(this);
+            const periodo = document.getElementById('periodoCobranca').value;
+            const linhaWhatsapp = document.getElementById('linhaWhatsapp').value;
+
+            // Montar dados da assinatura
+            const assinatura = {
+                periodo_cobranca: periodo,
+                percentual_periodo: descontosPeriodo[periodo],
+                linha_dedicada: linhaWhatsapp === 'dedicada'
+            };
+
+            // Desconto promocional
+            if (incluirDesconto) {
+                const tipoDesconto = document.getElementById('tipoDesconto').value;
+                const valorDesconto = parseFloat(document.getElementById('valorDesconto').value) || 0;
+
+                if (valorDesconto > 0) {
+                    if (tipoDesconto === 'percentual') {
+                        assinatura.desconto_percentual = valorDesconto;
+                    } else {
+                        assinatura.desconto_valor_fixo = valorDesconto;
+                    }
+                    assinatura.desconto_duracao_meses = parseInt(document.getElementById('duracaoDesconto').value);
+                    assinatura.desconto_motivo = document.getElementById('motivoDesconto').value || null;
+                }
+            }
+
+            // Montar dados principais
+            const dados = {
+                nome_fantasia: formData.get('nome_fantasia'),
+                razao_social: formData.get('razao_social') || null,
+                documento: formData.get('documento').replace(/\D/g, ''),
+                email: formData.get('email'),
+                telefone: formData.get('telefone').replace(/\D/g, ''),
+                endereco: formData.get('endereco') || null,
+                plano_id: planoAtual,
+                assinatura: assinatura,
+                medico_principal: {
+                    nome: formData.get('medico_nome'),
+                    especialidade: formData.get('medico_especialidade'),
+                    registro_profissional: formData.get('medico_registro'),
+                    email: formData.get('medico_email'),
+                    telefone: formData.get('medico_telefone')?.replace(/\D/g, '') || null
+                }
+            };
+
+            // Adicionar parceiro se selecionado
+            if (incluirParceiro && parceiroSelecionado) {
+                dados.parceiro_id = parceiroSelecionado.id;
+            }
+
+            // Adicionar segundo médico se for consultório
+            if (planoAtual === 2) {
+                dados.medicos_adicionais = [{
+                    nome: formData.get('medico2_nome'),
+                    especialidade: formData.get('medico2_especialidade'),
+                    registro_profissional: formData.get('medico2_registro'),
+                    email: formData.get('medico2_email'),
+                    telefone: formData.get('medico2_telefone')?.replace(/\D/g, '') || null
+                }];
+
+                // Profissionais extras
+                for (let i = 1; i <= profissionaisExtras; i++) {
+                    const elem = document.getElementById(`profissionalExtra${i}`);
+                    if (elem) {
+                        dados.medicos_adicionais.push({
+                            nome: formData.get(`medicoExtra${i}_nome`),
+                            especialidade: formData.get(`medicoExtra${i}_especialidade`),
+                            registro_profissional: formData.get(`medicoExtra${i}_registro`),
+                            email: formData.get(`medicoExtra${i}_email`),
+                            telefone: null
+                        });
+                    }
+                }
+
+                // Secretária
+                if (incluirSecretaria) {
+                    dados.secretaria = {
+                        nome: formData.get('secretaria_nome'),
+                        email: formData.get('secretaria_email'),
+                        telefone: formData.get('secretaria_telefone')?.replace(/\D/g, '') || null
+                    };
+                }
+            }
+
+            try {
+                const response = await fetch('/api/admin/clientes', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Erro ao criar cliente');
+                }
+
+                clienteCriado = result;
+
+                // Preencher modal
+                document.getElementById('credencialUrl').textContent = result.credenciais.url_acesso;
+                document.getElementById('credencialEmail').textContent = result.credenciais.email;
+                document.getElementById('credencialSenha').textContent = result.credenciais.senha_temporaria;
+
+                // Resumo da assinatura no modal
+                if (result.assinatura) {
+                    const as = result.assinatura;
+                    document.getElementById('modalResumoAssinatura').innerHTML = `
+                        <p><span class="text-gray-500">Plano:</span> <span class="text-white">${as.plano || result.cliente.plano_nome}</span></p>
+                        <p><span class="text-gray-500">Valor:</span> <span class="text-green-400 font-bold">R$ ${as.valor_final.toFixed(2).replace('.', ',')}/mês</span></p>
+                        ${as.desconto_info ? `<p class="text-yellow-400 text-xs">${as.desconto_info}</p>` : ''}
+                    `;
+                }
+
+                // Mostrar comissão se houver
+                const modalComissao = document.getElementById('modalComissao');
+                if (result.comissao) {
+                    const cm = result.comissao;
+                    document.getElementById('modalComissaoInfo').innerHTML = `
+                        <p><span class="text-gray-500">Parceiro:</span> <span class="text-white">${cm.parceiro_nome}</span></p>
+                        <p><span class="text-gray-500">Percentual:</span> <span class="text-white">${cm.percentual}%</span></p>
+                        <p><span class="text-gray-500">Valor base:</span> <span class="text-white">R$ ${cm.valor_base.toFixed(2).replace('.', ',')}</span></p>
+                        <p><span class="text-gray-500">Comissão:</span> <span class="text-green-400 font-bold">R$ ${cm.valor_comissao.toFixed(2).replace('.', ',')}</span></p>
+                        <p class="text-gray-400 text-xs mt-2"><i class="fas fa-info-circle mr-1"></i>Status: Pendente de aprovação</p>
+                    `;
+                    modalComissao.classList.remove('hidden');
+                } else {
+                    modalComissao.classList.add('hidden');
+                }
+
+                // Credenciais adicionais
+                const containerAdicional = document.getElementById('credenciaisAdicionais');
+                containerAdicional.innerHTML = '';
+
+                if (result.medicos_adicionais && result.medicos_adicionais.length > 0) {
+                    result.medicos_adicionais.forEach((med, idx) => {
+                        containerAdicional.innerHTML += `
+                            <div class="bg-gray-800 rounded-lg p-4">
+                                <h4 class="text-sm font-semibold text-blue-400 mb-3">
+                                    <i class="fas fa-user-md mr-2"></i>Profissional ${idx + 2}: ${med.nome}
+                                </h4>
+                                <div class="space-y-1 text-sm">
+                                    <p><span class="text-gray-500">Email:</span> <span class="text-white">${med.email}</span></p>
+                                    <p><span class="text-gray-500">Senha:</span> <span class="text-yellow-400 font-bold">${med.senha_temporaria}</span></p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                if (result.secretaria) {
+                    containerAdicional.innerHTML += `
+                        <div class="bg-gray-800 rounded-lg p-4">
+                            <h4 class="text-sm font-semibold text-green-400 mb-3">
+                                <i class="fas fa-user mr-2"></i>Secretária: ${result.secretaria.nome}
+                            </h4>
+                            <div class="space-y-1 text-sm">
+                                <p><span class="text-gray-500">Email:</span> <span class="text-white">${result.secretaria.email}</span></p>
+                                <p><span class="text-gray-500">Senha:</span> <span class="text-yellow-400 font-bold">${result.secretaria.senha_temporaria}</span></p>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                document.getElementById('modalSucesso').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                showError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function copiarCredenciais() {
+            if (!clienteCriado) return;
+
+            let texto = `Credenciais de Acesso - Horário Inteligente
+
+URL: ${clienteCriado.credenciais.url_acesso}
+
+=== PROFISSIONAL PRINCIPAL (Admin) ===
+Email: ${clienteCriado.credenciais.email}
+Senha: ${clienteCriado.credenciais.senha_temporaria}`;
+
+            if (clienteCriado.medicos_adicionais) {
+                clienteCriado.medicos_adicionais.forEach((med, idx) => {
+                    texto += `
+
+=== PROFISSIONAL ${idx + 2}: ${med.nome} ===
+Email: ${med.email}
+Senha: ${med.senha_temporaria}`;
+                });
+            }
+
+            if (clienteCriado.secretaria) {
+                texto += `
+
+=== SECRETÁRIA: ${clienteCriado.secretaria.nome} ===
+Email: ${clienteCriado.secretaria.email}
+Senha: ${clienteCriado.secretaria.senha_temporaria}`;
+            }
+
+            texto += `
+
+Acesse o sistema e altere a senha no primeiro login.`;
+
+            navigator.clipboard.writeText(texto.trim()).then(() => {
+                alert('Credenciais copiadas!');
+            });
+        }
+
+        function enviarWhatsApp() {
+            if (!clienteCriado) return;
+
+            const telefone = document.querySelector('input[name="telefone"]').value.replace(/\D/g, '');
+
+            let msg = `Olá! Seja bem-vindo ao *Horário Inteligente*!
+
+*URL de Acesso:* ${clienteCriado.credenciais.url_acesso}
+
+*Profissional Principal (Admin):*
+Email: ${clienteCriado.credenciais.email}
+Senha: ${clienteCriado.credenciais.senha_temporaria}`;
+
+            if (clienteCriado.medicos_adicionais && clienteCriado.medicos_adicionais.length > 0) {
+                clienteCriado.medicos_adicionais.forEach((med, idx) => {
+                    msg += `
+
+*Profissional ${idx + 2} - ${med.nome}:*
+Email: ${med.email}
+Senha: ${med.senha_temporaria}`;
+                });
+            }
+
+            if (clienteCriado.secretaria) {
+                msg += `
+
+*Secretária - ${clienteCriado.secretaria.nome}:*
+Email: ${clienteCriado.secretaria.email}
+Senha: ${clienteCriado.secretaria.senha_temporaria}`;
+            }
+
+            msg += `
+
+Acesse o sistema e altere a senha no primeiro login.
+
+Qualquer dúvida, estamos à disposição!`;
+
+            window.open(`https://wa.me/55${telefone}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        // Inicializar
+        atualizarResumo();
+    </script>
+</body>
+</html>

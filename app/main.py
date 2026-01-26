@@ -223,6 +223,7 @@ try:
     from app.api.reminders import router as reminders_router
     from app.api.tenant import router as tenant_router
     from app.api.admin import router as admin_router
+    from app.api.admin_clientes import router as admin_clientes_router
     from app.api.financeiro import router as financeiro_router
 
     # Registrar webhook router (prioridade alta)
@@ -273,6 +274,12 @@ try:
         tags=["Admin"]
     )
 
+    # Router Admin Clientes (gestão de clínicas)
+    app.include_router(
+        admin_clientes_router,
+        tags=["Admin - Clientes"]
+    )
+
     # Router Financeiro (gestão interna SaaS)
     app.include_router(
         financeiro_router,
@@ -285,12 +292,14 @@ try:
     from app.api.custos_operacionais import router as custos_operacionais_router
     from app.api.planos import router as planos_router
     from app.api.analytics import router as analytics_router
+    from app.api.admin_comissoes import router as admin_comissoes_router
 
     app.include_router(usuarios_internos_router, tags=["Usuarios Internos"])
     app.include_router(parceiros_comerciais_router, tags=["Parceiros Comerciais"])
     app.include_router(custos_operacionais_router, tags=["Custos Operacionais"])
     app.include_router(planos_router, tags=["Planos e Assinaturas"])
     app.include_router(analytics_router, tags=["Analytics"])
+    app.include_router(admin_comissoes_router, tags=["Admin - Comissões"])
 
     # Router de Pré-Cadastro (leads de lançamento)
     from app.api.pre_cadastro import router as pre_cadastro_router

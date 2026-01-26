@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parceiros Comerciais - Admin Horário Inteligente</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .loader {
+            border: 3px solid #374151;
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .tab-active {
+            border-bottom: 2px solid #a855f7;
+            color: #a855f7;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/admin/dashboard.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600">
+                    <i class="fas fa-handshake text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Parceiros Comerciais</h1>
+                    <p class="text-sm text-gray-400">Gestão de indicadores e comissões</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-gray-300 hidden sm:inline" id="adminName">
+                    <i class="fas fa-user-circle mr-2"></i>
+                    Carregando...
+                </span>
+                <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Ações -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div class="flex items-center gap-3">
+                <button onclick="abrirModalNovo()"
+                   class="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    Novo Parceiro
+                </button>
+                <a href="/static/admin/comissoes.html"
+                   class="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition flex items-center gap-2">
+                    <i class="fas fa-coins"></i>
+                    Ver Comissões
+                </a>
+            </div>
+
+            <!-- Filtros -->
+            <div class="flex items-center gap-3">
+                <select id="filtroStatus" onchange="carregarParceiros()"
+                        class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="todos">Todos</option>
+                    <option value="ativos" selected>Ativos</option>
+                    <option value="inativos">Inativos</option>
+                </select>
+                <button onclick="carregarParceiros()" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Estatísticas Rápidas -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-handshake text-green-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statTotal">0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Total Parceiros</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-users text-blue-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statClientes">0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Clientes Indicados</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-clock text-yellow-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statPendente">R$ 0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Comissões Pendentes</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-check-circle text-emerald-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statPago">R$ 0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Total Pago</p>
+            </div>
+        </div>
+
+        <!-- Tabela de Parceiros -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+            <!-- Loading -->
+            <div id="loadingState" class="flex items-center justify-center py-12">
+                <div class="loader"></div>
+                <span class="text-gray-400 ml-3">Carregando parceiros...</span>
+            </div>
+
+            <!-- Tabela -->
+            <div id="tabelaContainer" class="hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300">Parceiro</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300 hidden md:table-cell">Contato</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Comissão</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Clientes</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Status</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaBody" class="divide-y divide-gray-800">
+                        <!-- Preenchido via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Estado Vazio -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <i class="fas fa-handshake text-gray-600 text-5xl mb-4"></i>
+                <p class="text-gray-400">Nenhum parceiro encontrado</p>
+                <button onclick="abrirModalNovo()" class="text-green-400 hover:text-green-300 mt-2 inline-block">
+                    <i class="fas fa-plus mr-1"></i>Cadastrar primeiro parceiro
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Criar/Editar Parceiro -->
+    <div id="modalParceiro" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-2xl my-8">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white" id="modalTitulo">Novo Parceiro</h3>
+                    <button onclick="fecharModal()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <form id="formParceiro" onsubmit="salvarParceiro(event)">
+                    <input type="hidden" id="parceiroId" value="">
+
+                    <!-- Dados Básicos -->
+                    <div class="space-y-4 mb-6">
+                        <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Dados Básicos</h4>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Nome *</label>
+                                <input type="text" id="parceiroNome" required
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="Nome do parceiro ou empresa">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Tipo de Pessoa</label>
+                                <select id="parceiroTipoPessoa"
+                                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <option value="PF">Pessoa Física</option>
+                                    <option value="PJ">Pessoa Jurídica</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">CPF/CNPJ</label>
+                                <input type="text" id="parceiroCpfCnpj"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="000.000.000-00">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                                <input type="email" id="parceiroEmail"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="email@exemplo.com">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Telefone</label>
+                                <input type="text" id="parceiroTelefone"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="(00) 00000-0000">
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Endereço</label>
+                                <input type="text" id="parceiroEndereco"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="Rua, número - Bairro - Cidade/UF">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configuração de Comissão -->
+                    <div class="space-y-4 mb-6">
+                        <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Configuração de Comissão</h4>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Tipo de Comissão</label>
+                                <select id="parceiroTipoComissao"
+                                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <option value="percentual">Percentual</option>
+                                    <option value="fixo">Valor Fixo</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Percentual (%)</label>
+                                <input type="number" id="parceiroPercentual" step="0.01" min="0" max="100" value="40"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="40">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Valor Fixo (R$)</label>
+                                <input type="number" id="parceiroValorFixo" step="0.01" min="0"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <div class="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-4">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="parceiroParceriaLancamento"
+                                       class="w-5 h-5 rounded border-gray-600 text-yellow-600 focus:ring-yellow-500 bg-gray-800">
+                                <span class="ml-3 text-yellow-300 font-medium">Parceria Estratégica de Lançamento</span>
+                            </label>
+                            <p class="text-yellow-400/70 text-sm mt-2 ml-8">Limite de 40 clientes com condições especiais</p>
+                        </div>
+                    </div>
+
+                    <!-- Dados Bancários -->
+                    <div class="space-y-4 mb-6">
+                        <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Dados Bancários (para pagamento)</h4>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Banco</label>
+                                <input type="text" id="bancoBanco"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="Ex: 341 - Itaú">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Agência</label>
+                                <input type="text" id="bancoAgencia"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="0000">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Conta</label>
+                                <input type="text" id="bancoConta"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="00000-0">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Tipo de Conta</label>
+                                <select id="bancoTipoConta"
+                                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                                    <option value="">Selecione...</option>
+                                    <option value="corrente">Corrente</option>
+                                    <option value="poupanca">Poupança</option>
+                                </select>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Chave PIX</label>
+                                <input type="text" id="bancoPix"
+                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                       placeholder="CPF, email, telefone ou chave aleatória">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Observações -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Observações</label>
+                        <textarea id="parceiroObservacoes" rows="3"
+                                  class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                  placeholder="Anotações sobre o parceiro..."></textarea>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="flex gap-3">
+                        <button type="submit"
+                                class="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition">
+                            <i class="fas fa-save mr-2"></i>
+                            <span id="btnSalvarText">Cadastrar Parceiro</span>
+                        </button>
+                        <button type="button" onclick="fecharModal()"
+                                class="px-6 bg-gray-700 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalhes do Parceiro -->
+    <div id="modalDetalhes" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-3xl my-8">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white" id="detalhesNome">Detalhes do Parceiro</h3>
+                    <button onclick="fecharModalDetalhes()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex border-b border-gray-700 mb-6">
+                    <button onclick="mostrarTab('info')" id="tabInfo" class="px-4 py-2 text-gray-400 hover:text-white tab-active">
+                        <i class="fas fa-info-circle mr-2"></i>Informações
+                    </button>
+                    <button onclick="mostrarTab('clientes')" id="tabClientes" class="px-4 py-2 text-gray-400 hover:text-white">
+                        <i class="fas fa-users mr-2"></i>Clientes
+                    </button>
+                    <button onclick="mostrarTab('comissoes')" id="tabComissoes" class="px-4 py-2 text-gray-400 hover:text-white">
+                        <i class="fas fa-coins mr-2"></i>Comissões
+                    </button>
+                </div>
+
+                <!-- Tab Content -->
+                <div id="tabContentInfo">
+                    <!-- Preenchido via JavaScript -->
+                </div>
+
+                <div id="tabContentClientes" class="hidden">
+                    <!-- Preenchido via JavaScript -->
+                </div>
+
+                <div id="tabContentComissoes" class="hidden">
+                    <!-- Preenchido via JavaScript -->
+                </div>
+
+                <!-- Ações -->
+                <div class="flex gap-3 mt-6 pt-6 border-t border-gray-700">
+                    <button onclick="editarParceiro()" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                        <i class="fas fa-edit mr-2"></i>Editar
+                    </button>
+                    <button onclick="fecharModalDetalhes()" class="px-6 bg-gray-700 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Função de escape para prevenir XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Verificar autenticação
+        const token = localStorage.getItem('adminToken');
+        let adminData = {};
+        try {
+            adminData = JSON.parse(localStorage.getItem('adminData') || '{}');
+        } catch (e) {
+            console.error('Erro ao parsear adminData:', e);
+        }
+
+        if (!token) {
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Atualizar nome do admin
+        document.getElementById('adminName').innerHTML = `
+            <i class="fas fa-user-circle mr-2"></i>
+            ${escapeHtml(adminData.nome) || 'Admin'}
+        `;
+
+        let parceirosData = [];
+        let parceiroAtual = null;
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminData');
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Carregar parceiros
+        async function carregarParceiros() {
+            const loadingState = document.getElementById('loadingState');
+            const tabelaContainer = document.getElementById('tabelaContainer');
+            const emptyState = document.getElementById('emptyState');
+            const tabelaBody = document.getElementById('tabelaBody');
+
+            loadingState.classList.remove('hidden');
+            tabelaContainer.classList.add('hidden');
+            emptyState.classList.add('hidden');
+
+            try {
+                const filtro = document.getElementById('filtroStatus').value;
+                let url = '/api/interno/parceiros';
+                if (filtro === 'ativos') url += '?ativo=true';
+                else if (filtro === 'inativos') url += '?ativo=false';
+
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar parceiros');
+
+                const data = await response.json();
+                parceirosData = Array.isArray(data) ? data : [];
+
+                // Carregar resumo de comissões
+                await carregarResumoComissoes();
+
+                // Atualizar estatísticas
+                document.getElementById('statTotal').textContent = parceirosData.length;
+                const totalClientes = parceirosData.reduce((sum, p) => sum + (p.total_clientes || 0), 0);
+                document.getElementById('statClientes').textContent = totalClientes;
+
+                if (parceirosData.length === 0) {
+                    loadingState.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                // Renderizar tabela
+                tabelaBody.innerHTML = parceirosData.map(p => `
+                    <tr class="hover:bg-gray-800/50 transition cursor-pointer" onclick="verDetalhes(${p.id})">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                                    <span class="text-white font-bold">${escapeHtml(p.nome?.charAt(0)?.toUpperCase()) || '?'}</span>
+                                </div>
+                                <div>
+                                    <p class="text-white font-medium">${escapeHtml(p.nome) || '-'}</p>
+                                    <p class="text-gray-400 text-sm">${p.tipo_pessoa === 'PJ' ? 'Pessoa Jurídica' : 'Pessoa Física'}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 hidden md:table-cell">
+                            <p class="text-gray-300 text-sm">${escapeHtml(p.email) || '-'}</p>
+                            <p class="text-gray-500 text-sm">${escapeHtml(p.telefone) || '-'}</p>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <span class="text-green-400 font-bold">${p.percentual_comissao || 0}%</span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <span class="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-sm font-medium">
+                                ${p.total_clientes || 0}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            ${p.ativo
+                                ? '<span class="bg-green-900/50 text-green-300 px-3 py-1 rounded-full text-sm">Ativo</span>'
+                                : '<span class="bg-red-900/50 text-red-300 px-3 py-1 rounded-full text-sm">Inativo</span>'
+                            }
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <button onclick="event.stopPropagation(); verDetalhes(${p.id})" class="text-blue-400 hover:text-blue-300 mx-1" title="Ver detalhes">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); editarParceiroById(${p.id})" class="text-yellow-400 hover:text-yellow-300 mx-1" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${p.ativo
+                                ? `<button onclick="event.stopPropagation(); desativarParceiro(${p.id})" class="text-red-400 hover:text-red-300 mx-1" title="Desativar">
+                                    <i class="fas fa-ban"></i>
+                                   </button>`
+                                : `<button onclick="event.stopPropagation(); reativarParceiro(${p.id})" class="text-green-400 hover:text-green-300 mx-1" title="Reativar">
+                                    <i class="fas fa-check"></i>
+                                   </button>`
+                            }
+                        </td>
+                    </tr>
+                `).join('');
+
+                loadingState.classList.add('hidden');
+                tabelaContainer.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            }
+        }
+
+        // Carregar resumo de comissões
+        async function carregarResumoComissoes() {
+            try {
+                const response = await fetch('/api/admin/comissoes/resumo', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const pendente = data.totais_por_status?.pendente?.total || 0;
+                    const pago = data.totais_por_status?.paga?.total || 0;
+
+                    document.getElementById('statPendente').textContent = `R$ ${pendente.toFixed(0)}`;
+                    document.getElementById('statPago').textContent = `R$ ${pago.toFixed(0)}`;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar resumo:', error);
+            }
+        }
+
+        // Modal Novo Parceiro
+        function abrirModalNovo() {
+            document.getElementById('modalTitulo').textContent = 'Novo Parceiro';
+            document.getElementById('btnSalvarText').textContent = 'Cadastrar Parceiro';
+            document.getElementById('parceiroId').value = '';
+            document.getElementById('formParceiro').reset();
+            document.getElementById('parceiroPercentual').value = '40';
+            document.getElementById('modalParceiro').classList.remove('hidden');
+        }
+
+        function fecharModal() {
+            document.getElementById('modalParceiro').classList.add('hidden');
+        }
+
+        // Salvar Parceiro
+        async function salvarParceiro(event) {
+            event.preventDefault();
+
+            const parceiroId = document.getElementById('parceiroId').value;
+            const isEdit = !!parceiroId;
+
+            const dados = {
+                nome: document.getElementById('parceiroNome').value,
+                tipo_pessoa: document.getElementById('parceiroTipoPessoa').value,
+                cpf_cnpj: document.getElementById('parceiroCpfCnpj').value || null,
+                email: document.getElementById('parceiroEmail').value || null,
+                telefone: document.getElementById('parceiroTelefone').value || null,
+                endereco: document.getElementById('parceiroEndereco').value || null,
+                tipo_comissao: document.getElementById('parceiroTipoComissao').value,
+                percentual_comissao: parseFloat(document.getElementById('parceiroPercentual').value) || 0,
+                valor_fixo_comissao: parseFloat(document.getElementById('parceiroValorFixo').value) || null,
+                observacoes: document.getElementById('parceiroObservacoes').value || null,
+                dados_bancarios: {
+                    banco: document.getElementById('bancoBanco').value || null,
+                    agencia: document.getElementById('bancoAgencia').value || null,
+                    conta: document.getElementById('bancoConta').value || null,
+                    tipo_conta: document.getElementById('bancoTipoConta').value || null,
+                    pix: document.getElementById('bancoPix').value || null
+                }
+            };
+
+            // Verificar parceria de lançamento
+            if (document.getElementById('parceiroParceriaLancamento').checked) {
+                dados.parceria_lancamento = true;
+                dados.limite_clientes_lancamento = 40;
+            }
+
+            try {
+                const url = isEdit ? `/api/interno/parceiros/${parceiroId}` : '/api/interno/parceiros';
+                const method = isEdit ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erro ao salvar parceiro');
+                }
+
+                fecharModal();
+                carregarParceiros();
+                alert(isEdit ? 'Parceiro atualizado com sucesso!' : 'Parceiro cadastrado com sucesso!');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro: ' + error.message);
+            }
+        }
+
+        // Ver Detalhes
+        async function verDetalhes(id) {
+            try {
+                const response = await fetch(`/api/interno/parceiros/${id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar detalhes');
+
+                parceiroAtual = await response.json();
+
+                document.getElementById('detalhesNome').textContent = parceiroAtual.nome;
+
+                // Renderizar tab de informações
+                renderizarTabInfo();
+
+                // Renderizar tab de clientes
+                renderizarTabClientes();
+
+                // Carregar comissões do parceiro
+                await carregarComissoesParceiro(id);
+
+                // Mostrar modal
+                mostrarTab('info');
+                document.getElementById('modalDetalhes').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao carregar detalhes do parceiro');
+            }
+        }
+
+        function renderizarTabInfo() {
+            const p = parceiroAtual;
+            document.getElementById('tabContentInfo').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">Tipo de Pessoa</p>
+                            <p class="text-white">${p.tipo_pessoa === 'PJ' ? 'Pessoa Jurídica' : 'Pessoa Física'}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-sm">CPF/CNPJ</p>
+                            <p class="text-white">${escapeHtml(p.cpf_cnpj) || '-'}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-sm">Email</p>
+                            <p class="text-white">${escapeHtml(p.email) || '-'}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-sm">Telefone</p>
+                            <p class="text-white">${escapeHtml(p.telefone) || '-'}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 text-sm">Endereço</p>
+                            <p class="text-white">${escapeHtml(p.endereco) || '-'}</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="bg-green-900/30 border border-green-500/30 rounded-lg p-4">
+                            <p class="text-green-400 text-sm font-semibold mb-2">Comissão</p>
+                            <p class="text-3xl font-bold text-white">${parseFloat(p.percentual_comissao) || 0}%</p>
+                            <p class="text-gray-400 text-sm mt-1">Tipo: ${escapeHtml(p.tipo_comissao) || 'percentual'}</p>
+                        </div>
+                        ${p.parceria_lancamento ? `
+                            <div class="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-4">
+                                <p class="text-yellow-400 text-sm font-semibold">
+                                    <i class="fas fa-star mr-1"></i>Parceria de Lançamento
+                                </p>
+                                <p class="text-gray-400 text-sm mt-1">Limite: ${parseInt(p.limite_clientes_lancamento) || 40} clientes</p>
+                            </div>
+                        ` : ''}
+                        ${p.dados_bancarios ? `
+                            <div class="bg-gray-800 rounded-lg p-4">
+                                <p class="text-gray-400 text-sm font-semibold mb-2">Dados Bancários</p>
+                                <p class="text-white text-sm">Banco: ${escapeHtml(p.dados_bancarios.banco) || '-'}</p>
+                                <p class="text-white text-sm">Agência: ${escapeHtml(p.dados_bancarios.agencia) || '-'}</p>
+                                <p class="text-white text-sm">Conta: ${escapeHtml(p.dados_bancarios.conta) || '-'}</p>
+                                <p class="text-white text-sm">PIX: ${escapeHtml(p.dados_bancarios.pix) || '-'}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+                ${p.observacoes ? `
+                    <div class="mt-6 bg-gray-800 rounded-lg p-4">
+                        <p class="text-gray-400 text-sm font-semibold mb-2">Observações</p>
+                        <p class="text-white">${escapeHtml(p.observacoes)}</p>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        function renderizarTabClientes() {
+            const clientes = parceiroAtual.clientes || [];
+            if (clientes.length === 0) {
+                document.getElementById('tabContentClientes').innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-users text-gray-600 text-4xl mb-4"></i>
+                        <p class="text-gray-400">Nenhum cliente vinculado</p>
+                    </div>
+                `;
+                return;
+            }
+
+            document.getElementById('tabContentClientes').innerHTML = `
+                <div class="space-y-3">
+                    ${clientes.map(c => `
+                        <div class="bg-gray-800 rounded-lg p-4 flex justify-between items-center">
+                            <div>
+                                <p class="text-white font-medium">${escapeHtml(c.cliente_nome) || '-'}</p>
+                                <p class="text-gray-400 text-sm">Vinculado em: ${escapeHtml(c.data_vinculo) || '-'}</p>
+                            </div>
+                            <span class="${c.ativo ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'} px-3 py-1 rounded-full text-sm">
+                                ${c.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        async function carregarComissoesParceiro(parceiroId) {
+            try {
+                const response = await fetch(`/api/admin/comissoes/parceiro/${parceiroId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar comissões');
+
+                const data = await response.json();
+                const comissoes = data.comissoes || [];
+                const resumo = data.resumo || {};
+
+                if (comissoes.length === 0) {
+                    document.getElementById('tabContentComissoes').innerHTML = `
+                        <div class="text-center py-8">
+                            <i class="fas fa-coins text-gray-600 text-4xl mb-4"></i>
+                            <p class="text-gray-400">Nenhuma comissão registrada</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('tabContentComissoes').innerHTML = `
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-4 text-center">
+                            <p class="text-yellow-400 text-sm">Pendente</p>
+                            <p class="text-2xl font-bold text-white">R$ ${(resumo.total_pendente || 0).toFixed(2)}</p>
+                        </div>
+                        <div class="bg-green-900/30 border border-green-500/30 rounded-lg p-4 text-center">
+                            <p class="text-green-400 text-sm">Pago</p>
+                            <p class="text-2xl font-bold text-white">R$ ${(resumo.total_pago || 0).toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div class="space-y-3 max-h-64 overflow-y-auto">
+                        ${comissoes.map(c => `
+                            <div class="bg-gray-800 rounded-lg p-4 flex justify-between items-center">
+                                <div>
+                                    <p class="text-white font-medium">${escapeHtml(c.cliente_nome) || '-'}</p>
+                                    <p class="text-gray-400 text-sm">Mês ${parseInt(c.mes_referencia) || 1} - ${escapeHtml(c.data_referencia) || '-'}</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-green-400 font-bold">R$ ${(parseFloat(c.valor_comissao) || 0).toFixed(2)}</p>
+                                    <span class="${getStatusClass(c.status)} px-2 py-1 rounded text-xs">
+                                        ${escapeHtml(c.status) || '-'}
+                                    </span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('tabContentComissoes').innerHTML = `
+                    <div class="text-center py-8">
+                        <p class="text-red-400">Erro ao carregar comissões</p>
+                    </div>
+                `;
+            }
+        }
+
+        function getStatusClass(status) {
+            switch(status) {
+                case 'pendente': return 'bg-yellow-900/50 text-yellow-300';
+                case 'aprovada': return 'bg-blue-900/50 text-blue-300';
+                case 'paga': return 'bg-green-900/50 text-green-300';
+                case 'cancelada': return 'bg-red-900/50 text-red-300';
+                default: return 'bg-gray-700 text-gray-300';
+            }
+        }
+
+        function mostrarTab(tab) {
+            // Esconder todos os conteúdos
+            document.getElementById('tabContentInfo').classList.add('hidden');
+            document.getElementById('tabContentClientes').classList.add('hidden');
+            document.getElementById('tabContentComissoes').classList.add('hidden');
+
+            // Remover classe ativa de todas as tabs
+            document.getElementById('tabInfo').classList.remove('tab-active');
+            document.getElementById('tabClientes').classList.remove('tab-active');
+            document.getElementById('tabComissoes').classList.remove('tab-active');
+
+            // Mostrar tab selecionada
+            document.getElementById(`tabContent${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.remove('hidden');
+            document.getElementById(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`).classList.add('tab-active');
+        }
+
+        function fecharModalDetalhes() {
+            document.getElementById('modalDetalhes').classList.add('hidden');
+            parceiroAtual = null;
+        }
+
+        function editarParceiro() {
+            if (!parceiroAtual) return;
+            fecharModalDetalhes();
+            editarParceiroById(parceiroAtual.id);
+        }
+
+        async function editarParceiroById(id) {
+            try {
+                const response = await fetch(`/api/interno/parceiros/${id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar parceiro');
+
+                const p = await response.json();
+
+                document.getElementById('modalTitulo').textContent = 'Editar Parceiro';
+                document.getElementById('btnSalvarText').textContent = 'Salvar Alterações';
+                document.getElementById('parceiroId').value = p.id;
+                document.getElementById('parceiroNome').value = p.nome || '';
+                document.getElementById('parceiroTipoPessoa').value = p.tipo_pessoa || 'PF';
+                document.getElementById('parceiroCpfCnpj').value = p.cpf_cnpj || '';
+                document.getElementById('parceiroEmail').value = p.email || '';
+                document.getElementById('parceiroTelefone').value = p.telefone || '';
+                document.getElementById('parceiroEndereco').value = p.endereco || '';
+                document.getElementById('parceiroTipoComissao').value = p.tipo_comissao || 'percentual';
+                document.getElementById('parceiroPercentual').value = p.percentual_comissao || 0;
+                document.getElementById('parceiroValorFixo').value = p.valor_fixo_comissao || '';
+                document.getElementById('parceiroObservacoes').value = p.observacoes || '';
+                document.getElementById('parceiroParceriaLancamento').checked = p.parceria_lancamento || false;
+
+                if (p.dados_bancarios) {
+                    document.getElementById('bancoBanco').value = p.dados_bancarios.banco || '';
+                    document.getElementById('bancoAgencia').value = p.dados_bancarios.agencia || '';
+                    document.getElementById('bancoConta').value = p.dados_bancarios.conta || '';
+                    document.getElementById('bancoTipoConta').value = p.dados_bancarios.tipo_conta || '';
+                    document.getElementById('bancoPix').value = p.dados_bancarios.pix || '';
+                }
+
+                document.getElementById('modalParceiro').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao carregar parceiro para edição');
+            }
+        }
+
+        async function desativarParceiro(id) {
+            if (!confirm('Deseja desativar este parceiro?')) return;
+
+            try {
+                const response = await fetch(`/api/interno/parceiros/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Erro ao desativar parceiro');
+
+                carregarParceiros();
+                alert('Parceiro desativado com sucesso!');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao desativar parceiro');
+            }
+        }
+
+        async function reativarParceiro(id) {
+            if (!confirm('Deseja reativar este parceiro?')) return;
+
+            try {
+                const response = await fetch(`/api/interno/parceiros/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ativo: true })
+                });
+
+                if (!response.ok) throw new Error('Erro ao reativar parceiro');
+
+                carregarParceiros();
+                alert('Parceiro reativado com sucesso!');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao reativar parceiro');
+            }
+        }
+
+        // Inicializar
+        carregarParceiros();
+    </script>
+</body>
+</html>

@@ -98,7 +98,20 @@
         </div>
 
         <!-- Atalhos Rápidos -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+            <!-- Gerenciar Clientes -->
+            <a href="/static/admin/clientes.html" class="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-purple-500 transition group">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                        <i class="fas fa-building text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-semibold group-hover:text-purple-400 transition">Clientes</h3>
+                        <p class="text-gray-400 text-sm">Gerenciar clínicas</p>
+                    </div>
+                </div>
+            </a>
+
             <!-- Pré-Cadastros (Leads) -->
             <a href="/static/admin/pre-cadastros.html" class="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-emerald-500 transition group">
                 <div class="flex items-center gap-4">
@@ -150,22 +163,53 @@
                     </div>
                 </div>
             </a>
+
+            <!-- Parceiros -->
+            <a href="/static/admin/parceiros.html" class="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-green-500 transition group">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500">
+                        <i class="fas fa-handshake text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-semibold group-hover:text-green-400 transition">Parceiros</h3>
+                        <p class="text-gray-400 text-sm">Indicadores</p>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Comissões -->
+            <a href="/static/admin/comissoes.html" class="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-amber-500 transition group">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500">
+                        <i class="fas fa-coins text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-semibold group-hover:text-amber-400 transition">Comissões</h3>
+                        <p class="text-gray-400 text-sm">Gestão de comissões</p>
+                    </div>
+                </div>
+            </a>
         </div>
 
         <!-- Seção de Clientes -->
         <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-white">
-                    <i class="fas fa-building mr-2 text-purple-500"></i>
-                    Clientes
-                </h2>
-                <button
-                    onclick="alert('Funcionalidade em desenvolvimento')"
+                <div class="flex items-center gap-4">
+                    <h2 class="text-2xl font-bold text-white">
+                        <i class="fas fa-building mr-2 text-purple-500"></i>
+                        Clientes
+                    </h2>
+                    <a href="/static/admin/clientes.html" class="text-purple-400 hover:text-purple-300 text-sm">
+                        Ver todos <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+                <a
+                    href="/static/admin/clientes-novo.html"
                     class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition flex items-center gap-2"
                 >
                     <i class="fas fa-plus"></i>
                     Novo Cliente
-                </button>
+                </a>
             </div>
 
             <!-- Tabela de Clientes -->
@@ -329,7 +373,7 @@
         }
 
         function verDetalhes(clienteId) {
-            alert(`Detalhes do cliente ${clienteId} - Em desenvolvimento`);
+            window.location.href = `/static/admin/clientes-detalhes.html?id=${clienteId}`;
         }
 
         function logout() {

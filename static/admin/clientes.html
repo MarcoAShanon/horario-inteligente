@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes - Admin Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .loader {
+            border: 3px solid #374151;
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/admin/dashboard.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500">
+                    <i class="fas fa-building text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Gestão de Clientes</h1>
+                    <p class="text-sm text-gray-400">Clínicas e profissionais</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-gray-300 hidden sm:inline" id="adminName">
+                    <i class="fas fa-user-circle mr-2"></i>
+                    Carregando...
+                </span>
+                <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Ações -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div class="flex items-center gap-3">
+                <a href="/static/admin/clientes-novo.html"
+                   class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    Novo Cliente
+                </a>
+            </div>
+
+            <!-- Filtros -->
+            <div class="flex items-center gap-3">
+                <select id="filtroStatus" onchange="carregarClientes()"
+                        class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <option value="todos">Todos</option>
+                    <option value="ativos" selected>Ativos</option>
+                    <option value="inativos">Inativos</option>
+                </select>
+                <button onclick="carregarClientes()" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Estatísticas Rápidas -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-building text-blue-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statTotal">0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Total</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statAtivos">0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Ativos</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-user-md text-purple-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statMedicos">0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Profissionais</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-plus-circle text-pink-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statNovos">0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Novos (7d)</p>
+            </div>
+        </div>
+
+        <!-- Tabela de Clientes -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+            <!-- Loading -->
+            <div id="loadingState" class="flex items-center justify-center py-12">
+                <div class="loader"></div>
+                <span class="text-gray-400 ml-3">Carregando clientes...</span>
+            </div>
+
+            <!-- Tabela -->
+            <div id="tabelaContainer" class="hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300">Cliente</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300 hidden md:table-cell">Subdomain</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300 hidden lg:table-cell">Plano</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Status</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300 hidden lg:table-cell">Criado em</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaBody" class="divide-y divide-gray-800">
+                        <!-- Preenchido via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Estado Vazio -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <i class="fas fa-building text-gray-600 text-5xl mb-4"></i>
+                <p class="text-gray-400">Nenhum cliente encontrado</p>
+                <a href="/static/admin/clientes-novo.html" class="text-purple-400 hover:text-purple-300 mt-2 inline-block">
+                    <i class="fas fa-plus mr-1"></i>Cadastrar primeiro cliente
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Detalhes Rápidos -->
+    <div id="modalDetalhes" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white">Detalhes do Cliente</h3>
+                    <button onclick="fecharModal()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="modalContent">
+                    <!-- Preenchido via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar autenticação
+        const token = localStorage.getItem('adminToken');
+        const adminData = JSON.parse(localStorage.getItem('adminData') || '{}');
+
+        if (!token) {
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Atualizar nome do admin
+        document.getElementById('adminName').innerHTML = `
+            <i class="fas fa-user-circle mr-2"></i>
+            ${adminData.nome || 'Admin'}
+        `;
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminData');
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Carregar clientes
+        async function carregarClientes() {
+            const loadingState = document.getElementById('loadingState');
+            const tabelaContainer = document.getElementById('tabelaContainer');
+            const emptyState = document.getElementById('emptyState');
+            const tabelaBody = document.getElementById('tabelaBody');
+
+            loadingState.classList.remove('hidden');
+            tabelaContainer.classList.add('hidden');
+            emptyState.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/admin/clientes', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Host': 'admin.horariointeligente.com.br'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar clientes');
+                }
+
+                const clientes = await response.json();
+                const filtro = document.getElementById('filtroStatus').value;
+
+                // Filtrar
+                let clientesFiltrados = clientes;
+                if (filtro === 'ativos') {
+                    clientesFiltrados = clientes.filter(c => c.ativo);
+                } else if (filtro === 'inativos') {
+                    clientesFiltrados = clientes.filter(c => !c.ativo);
+                }
+
+                // Atualizar estatísticas
+                document.getElementById('statTotal').textContent = clientes.length;
+                document.getElementById('statAtivos').textContent = clientes.filter(c => c.ativo).length;
+
+                // Calcular novos (últimos 7 dias)
+                const umaSemanaAtras = new Date();
+                umaSemanaAtras.setDate(umaSemanaAtras.getDate() - 7);
+                const novos = clientes.filter(c => new Date(c.criado_em) > umaSemanaAtras);
+                document.getElementById('statNovos').textContent = novos.length;
+
+                loadingState.classList.add('hidden');
+
+                if (clientesFiltrados.length === 0) {
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                tabelaContainer.classList.remove('hidden');
+                tabelaBody.innerHTML = clientesFiltrados.map(cliente => `
+                    <tr class="hover:bg-gray-800/50 transition">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                                    <i class="fas fa-building text-white"></i>
+                                </div>
+                                <div>
+                                    <p class="text-white font-medium">${cliente.nome}</p>
+                                    <p class="text-gray-400 text-sm">${cliente.email || '-'}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 hidden md:table-cell">
+                            <a href="https://${cliente.subdomain}.horariointeligente.com.br" target="_blank"
+                               class="text-purple-400 hover:text-purple-300 text-sm">
+                                ${cliente.subdomain}
+                                <i class="fas fa-external-link-alt ml-1 text-xs"></i>
+                            </a>
+                        </td>
+                        <td class="px-4 py-4 hidden lg:table-cell">
+                            <span class="px-2 py-1 rounded text-xs font-medium ${
+                                cliente.plano === 'individual' ? 'bg-blue-900/50 text-blue-300' : 'bg-purple-900/50 text-purple-300'
+                            }">
+                                ${cliente.plano === 'individual' ? 'Individual' : 'Consultório'}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <span class="px-2 py-1 rounded text-xs font-medium ${
+                                cliente.ativo ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
+                            }">
+                                ${cliente.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-gray-400 text-sm hidden lg:table-cell">
+                            ${formatarData(cliente.criado_em)}
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="verDetalhes(${cliente.id})"
+                                        class="text-blue-400 hover:text-blue-300 p-2" title="Ver detalhes">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button onclick="toggleStatus(${cliente.id}, ${cliente.ativo})"
+                                        class="${cliente.ativo ? 'text-red-400 hover:text-red-300' : 'text-green-400 hover:text-green-300'} p-2"
+                                        title="${cliente.ativo ? 'Desativar' : 'Ativar'}">
+                                    <i class="fas fa-${cliente.ativo ? 'ban' : 'check-circle'}"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.innerHTML = `
+                    <i class="fas fa-exclamation-triangle text-red-500 text-5xl mb-4"></i>
+                    <p class="text-red-400">Erro ao carregar clientes</p>
+                    <button onclick="carregarClientes()" class="text-purple-400 hover:text-purple-300 mt-2">
+                        <i class="fas fa-sync-alt mr-1"></i>Tentar novamente
+                    </button>
+                `;
+            }
+        }
+
+        function formatarData(dataStr) {
+            if (!dataStr) return '-';
+            const data = new Date(dataStr);
+            return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        async function verDetalhes(clienteId) {
+            const modal = document.getElementById('modalDetalhes');
+            const content = document.getElementById('modalContent');
+
+            content.innerHTML = `
+                <div class="flex items-center justify-center py-8">
+                    <div class="loader"></div>
+                    <span class="text-gray-400 ml-3">Carregando...</span>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Host': 'admin.horariointeligente.com.br'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar detalhes');
+
+                const cliente = await response.json();
+
+                content.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="bg-gray-800 rounded-lg p-4">
+                            <h4 class="text-gray-400 text-sm mb-2">Informações</h4>
+                            <p class="text-white font-medium">${cliente.nome}</p>
+                            <p class="text-gray-400 text-sm">${cliente.email}</p>
+                            <p class="text-gray-400 text-sm">${cliente.telefone || '-'}</p>
+                        </div>
+
+                        <div class="bg-gray-800 rounded-lg p-4">
+                            <h4 class="text-gray-400 text-sm mb-2">Acesso</h4>
+                            <p class="text-purple-400">
+                                <i class="fas fa-globe mr-2"></i>
+                                <a href="https://${cliente.subdomain}.horariointeligente.com.br" target="_blank" class="hover:underline">
+                                    ${cliente.subdomain}.horariointeligente.com.br
+                                </a>
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="bg-gray-800 rounded-lg p-3 text-center">
+                                <p class="text-2xl font-bold text-white">${cliente.total_medicos || 0}</p>
+                                <p class="text-gray-400 text-xs">Médicos</p>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-3 text-center">
+                                <p class="text-2xl font-bold text-white">${cliente.total_pacientes || 0}</p>
+                                <p class="text-gray-400 text-xs">Pacientes</p>
+                            </div>
+                            <div class="bg-gray-800 rounded-lg p-3 text-center">
+                                <p class="text-2xl font-bold text-white">${cliente.total_agendamentos || 0}</p>
+                                <p class="text-gray-400 text-xs">Agendamentos</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 mt-6">
+                            <a href="/static/admin/clientes-detalhes.html?id=${cliente.id}"
+                               class="flex-1 bg-purple-600 text-white py-2 rounded-lg text-center hover:bg-purple-700 transition">
+                                <i class="fas fa-edit mr-2"></i>Editar
+                            </a>
+                            <button onclick="fecharModal()"
+                                    class="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-600 transition">
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Erro:', error);
+                content.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-3xl mb-4"></i>
+                        <p class="text-red-400">Erro ao carregar detalhes</p>
+                    </div>
+                `;
+            }
+        }
+
+        function fecharModal() {
+            document.getElementById('modalDetalhes').classList.add('hidden');
+        }
+
+        async function toggleStatus(clienteId, atualmenteAtivo) {
+            const acao = atualmenteAtivo ? 'desativar' : 'ativar';
+            if (!confirm(`Deseja ${acao} este cliente?`)) return;
+
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Host': 'admin.horariointeligente.com.br'
+                    },
+                    body: JSON.stringify({
+                        ativo: !atualmenteAtivo,
+                        motivo: `${acao === 'desativar' ? 'Desativado' : 'Reativado'} via painel admin`
+                    })
+                });
+
+                if (!response.ok) throw new Error('Erro ao alterar status');
+
+                await carregarClientes();
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao alterar status do cliente');
+            }
+        }
+
+        // Fechar modal ao clicar fora
+        document.getElementById('modalDetalhes').addEventListener('click', function(e) {
+            if (e.target === this) fecharModal();
+        });
+
+        // Carregar ao iniciar
+        carregarClientes();
+    </script>
+</body>
+</html>
