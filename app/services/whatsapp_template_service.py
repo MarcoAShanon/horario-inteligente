@@ -283,6 +283,45 @@ class WhatsAppTemplateService:
             components=components
         )
 
+    async def enviar_necessidade_reagendamento(
+        self,
+        telefone: str,
+        paciente: str,
+        medico: str,
+        data: str,
+        hora: str,
+        motivo: str
+    ) -> SendResult:
+        """
+        Envia notificação de necessidade de reagendamento (sem nova data definida).
+
+        Usado quando a clínica precisa cancelar mas ainda não tem nova data.
+        Ex: médico doente, emergência, imprevisto.
+
+        Template: necessidade_reagendamento
+        Botões: "Ok quais os horários disponíveis?", "Remarcarei em outra oportunidade"
+
+        Args:
+            telefone: Número do paciente
+            paciente: Nome do paciente
+            medico: Nome do médico
+            data: Data da consulta original (formato: DD/MM/AAAA)
+            hora: Horário da consulta original (formato: HH:MM)
+            motivo: Motivo do reagendamento (ex: "Imprevisto médico")
+
+        Returns:
+            SendResult com status do envio
+        """
+        variables = [paciente, medico, data, hora, motivo]
+        components = self._build_body_components(variables)
+
+        return await self.whatsapp.send_template(
+            to=telefone,
+            template_name="necessidade_reagendamento",
+            language_code="pt_BR",
+            components=components
+        )
+
     # ==================== TEMPLATES DE RETORNO ====================
 
     async def enviar_retorno_agendado(
