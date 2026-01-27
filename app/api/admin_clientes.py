@@ -533,20 +533,20 @@ async def criar_cliente(
         # 8. Commit da transação
         db.commit()
 
-        # 9. Log de auditoria
+        # 9. Log de auditoria (não-crítico, não deve afetar a transação principal)
         try:
             db.execute(
                 text("""
                     INSERT INTO log_auditoria (
-                        tabela, registro_id, acao, dados_novos,
+                        recurso, recurso_id, acao, dados_novos,
                         usuario_id, usuario_tipo, ip_address, criado_em
                     ) VALUES (
-                        'clientes', :registro_id, 'INSERT', :dados,
+                        'clientes', :recurso_id, 'CREATE', :dados,
                         :usuario_id, 'admin', :ip, :criado_em
                     )
                 """),
                 {
-                    "registro_id": cliente_id,
+                    "recurso_id": cliente_id,
                     "dados": f'{{"nome": "{dados.nome_fantasia}", "plano": "{plano[1]}", "medico": "{dados.medico_principal.nome}"}}',
                     "usuario_id": admin.get("id"),
                     "ip": request.client.host if request.client else "unknown",
@@ -555,6 +555,7 @@ async def criar_cliente(
             )
             db.commit()
         except Exception as e:
+            db.rollback()  # Limpar estado da transação para não afetar operações seguintes
             logger.warning(f"[Onboarding] Erro ao criar log de auditoria: {e}")
 
         logger.info(f"[Onboarding] ✅ Cliente {dados.nome_fantasia} criado com sucesso!")
