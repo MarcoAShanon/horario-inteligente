@@ -19,17 +19,19 @@ from sqlalchemy import and_, or_
 from app.models import Agendamento, Paciente, Medico, Cliente
 from app.models.lembrete import Lembrete, TipoLembrete, StatusLembrete
 from app.services.whatsapp_official_service import WhatsAppOfficialService
+from app.services.whatsapp_template_service import get_template_service
 from app.services.anthropic_service import AnthropicService
 from app.database import SessionLocal
 from app.utils.timezone_helper import now_brazil, format_brazil
 
 logger = logging.getLogger(__name__)
 
-# Template da Meta para lembretes (deve ser aprovado)
-# Formato: "Olá {{1}}! Lembrete da sua consulta com {{2}} amanhã às {{3}}. Confirma presença?"
-TEMPLATE_LEMBRETE_24H = os.getenv("WHATSAPP_TEMPLATE_LEMBRETE_24H", "lembrete_consulta_24h")
-TEMPLATE_LEMBRETE_3H = os.getenv("WHATSAPP_TEMPLATE_LEMBRETE_3H", "lembrete_consulta_3h")
-TEMPLATE_LEMBRETE_1H = os.getenv("WHATSAPP_TEMPLATE_LEMBRETE_1H", "lembrete_consulta_1h")
+# Templates aprovados na Meta (atualizados em 26/01/2026)
+# lembrete_24h: 4 variáveis (paciente, medico, data, hora) + botões
+# lembrete_2h: 3 variáveis (paciente, medico, hora) + botões
+TEMPLATE_LEMBRETE_24H = os.getenv("WHATSAPP_TEMPLATE_LEMBRETE_24H", "lembrete_24h")
+TEMPLATE_LEMBRETE_2H = os.getenv("WHATSAPP_TEMPLATE_LEMBRETE_2H", "lembrete_2h")  # Campo no BD ainda é "3h"
+TEMPLATE_LEMBRETE_1H = None  # Não temos template de 1h aprovado
 
 
 class LembreteService:
@@ -46,6 +48,7 @@ class LembreteService:
 
     def __init__(self):
         self.whatsapp = WhatsAppOfficialService()
+        self.template_service = get_template_service()
 
     # ==================== CRIAÇÃO DE LEMBRETES ====================
 
@@ -122,10 +125,11 @@ class LembreteService:
         lembrete: Lembrete
     ) -> Tuple[bool, str]:
         """
-        Envia um lembrete específico via WhatsApp.
+        Envia um lembrete específico via WhatsApp usando templates aprovados.
 
-        Usa template Meta fora da janela de 24h.
-        Dentro da janela, pode usar mensagem normal.
+        Templates disponíveis:
+        - lembrete_24h: 4 variáveis (paciente, medico, data, hora)
+        - lembrete_2h: 3 variáveis (paciente, medico, hora)
 
         Args:
             db: Sessão do banco de dados
@@ -154,37 +158,47 @@ class LembreteService:
             if not paciente or not medico:
                 return False, "Paciente ou médico não encontrado"
 
-            # Formatar data/hora
-            data_hora = format_brazil(agendamento.data_hora)
+            # Extrair primeiro nome do paciente
+            primeiro_nome = paciente.nome.split()[0] if paciente.nome else "Paciente"
 
-            # Selecionar template baseado no tipo
+            # Formatar nome do médico
+            nome_medico = f"Dr(a). {medico.nome}" if medico.nome else "Médico"
+
+            # Formatar data e hora SEPARADAMENTE (nossos templates usam variáveis separadas)
+            data_formatada = agendamento.data_hora.strftime("%d/%m/%Y")
+            hora_formatada = agendamento.data_hora.strftime("%H:%M")
+
+            # Enviar baseado no tipo de lembrete
             if lembrete.tipo == TipoLembrete.LEMBRETE_24H.value:
+                # Template lembrete_24h: 4 variáveis (paciente, medico, data, hora)
+                result = await self.template_service.enviar_lembrete_24h(
+                    telefone=paciente.telefone,
+                    paciente=primeiro_nome,
+                    medico=nome_medico,
+                    data=data_formatada,
+                    hora=hora_formatada
+                )
                 template_name = TEMPLATE_LEMBRETE_24H
+
             elif lembrete.tipo == TipoLembrete.LEMBRETE_3H.value:
-                template_name = TEMPLATE_LEMBRETE_3H
+                # Template lembrete_2h: 3 variáveis (paciente, medico, hora)
+                # Campo no BD ainda é "3h" mas usamos template de 2h
+                result = await self.template_service.enviar_lembrete_2h(
+                    telefone=paciente.telefone,
+                    paciente=primeiro_nome,
+                    medico=nome_medico,
+                    hora=hora_formatada
+                )
+                template_name = TEMPLATE_LEMBRETE_2H
+
             else:
-                template_name = TEMPLATE_LEMBRETE_1H
-
-            # Montar componentes do template
-            # Formato esperado: {{1}}=nome, {{2}}=médico, {{3}}=data/hora
-            components = [
-                {
-                    "type": "body",
-                    "parameters": [
-                        {"type": "text", "text": paciente.nome.split()[0]},  # Primeiro nome
-                        {"type": "text", "text": f"Dr(a). {medico.nome}"},
-                        {"type": "text", "text": data_hora}
-                    ]
-                }
-            ]
-
-            # Enviar via template
-            result = await self.whatsapp.send_template(
-                to=paciente.telefone,
-                template_name=template_name,
-                language_code="pt_BR",
-                components=components
-            )
+                # Lembrete de 1h - não temos template aprovado
+                # Ignora silenciosamente ou envia mensagem de texto se dentro da janela 24h
+                logger.warning(
+                    f"⚠️ Lembrete de 1h ignorado - template não disponível "
+                    f"(agendamento {agendamento.id})"
+                )
+                return False, "Template de 1h não disponível"
 
             if result.success:
                 lembrete.marcar_enviado(
@@ -195,7 +209,7 @@ class LembreteService:
 
                 logger.info(
                     f"✅ Lembrete {lembrete.tipo} enviado para {paciente.nome} "
-                    f"(agendamento {agendamento.id})"
+                    f"(agendamento {agendamento.id}) via {template_name}"
                 )
                 return True, result.message_id
 
@@ -538,19 +552,17 @@ Sempre termine perguntando se confirma a presença na consulta."""
                 now + timedelta(hours=24, minutes=10)
             )
 
-            # Processar lembretes de 3h
+            # Processar lembretes de 2h (campo no BD ainda é "3h" por compatibilidade)
+            # Janela: consultas entre 1h50 e 2h10 a partir de agora
             stats["3h"] = await self._processar_tipo_lembrete(
                 db, TipoLembrete.LEMBRETE_3H.value,
-                now + timedelta(hours=2, minutes=50),
-                now + timedelta(hours=3, minutes=10)
+                now + timedelta(hours=1, minutes=50),
+                now + timedelta(hours=2, minutes=10)
             )
 
-            # Processar lembretes de 1h
-            stats["1h"] = await self._processar_tipo_lembrete(
-                db, TipoLembrete.LEMBRETE_1H.value,
-                now + timedelta(minutes=50),
-                now + timedelta(hours=1, minutes=10)
-            )
+            # Lembrete de 1h desativado - não temos template aprovado
+            # stats["1h"] permanece zerado
+            logger.debug("⚠️ Lembrete de 1h desativado - template não disponível")
 
             logger.info(f"✅ Processamento de lembretes concluído: {stats}")
 

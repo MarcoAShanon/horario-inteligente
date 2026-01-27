@@ -76,7 +76,8 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
         self,
         to: str,
         message: str,
-        instance: Optional[str] = None  # Ignorado na API oficial
+        instance: Optional[str] = None,  # Ignorado na API oficial
+        phone_number_id: Optional[str] = None  # Multi-tenant: ID do número WhatsApp do cliente
     ) -> SendResult:
         """Envia mensagem de texto simples."""
 
@@ -91,7 +92,7 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
             }
         }
 
-        return await self._send_request(payload)
+        return await self._send_request(payload, phone_number_id)
 
     async def send_interactive_buttons(
         self,
@@ -100,7 +101,8 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
         buttons: List[InteractiveButton],
         header: Optional[str] = None,
         footer: Optional[str] = None,
-        instance: Optional[str] = None
+        instance: Optional[str] = None,
+        phone_number_id: Optional[str] = None  # Multi-tenant: ID do número WhatsApp do cliente
     ) -> SendResult:
         """
         Envia mensagem com botões de resposta rápida.
@@ -150,7 +152,7 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
             "interactive": interactive
         }
 
-        return await self._send_request(payload)
+        return await self._send_request(payload, phone_number_id)
 
     async def send_interactive_list(
         self,
@@ -160,7 +162,8 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
         sections: List[ListSection],
         header: Optional[str] = None,
         footer: Optional[str] = None,
-        instance: Optional[str] = None
+        instance: Optional[str] = None,
+        phone_number_id: Optional[str] = None  # Multi-tenant: ID do número WhatsApp do cliente
     ) -> SendResult:
         """
         Envia mensagem com lista de opções.
@@ -210,14 +213,15 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
             "interactive": interactive
         }
 
-        return await self._send_request(payload)
+        return await self._send_request(payload, phone_number_id)
 
     async def send_audio(
         self,
         to: str,
         audio_url: Optional[str] = None,
         audio_base64: Optional[str] = None,
-        instance: Optional[str] = None
+        instance: Optional[str] = None,
+        phone_number_id: Optional[str] = None  # Multi-tenant: ID do número WhatsApp do cliente
     ) -> SendResult:
         """Envia mensagem de áudio."""
 
@@ -234,7 +238,7 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
             }
         elif audio_base64:
             # Para base64, primeiro precisa fazer upload para obter media_id
-            media_id = await self._upload_media(audio_base64, "audio/mpeg")
+            media_id = await self._upload_media(audio_base64, "audio/mpeg", phone_number_id)
             if not media_id:
                 return SendResult(success=False, error="Falha ao fazer upload do áudio")
 
@@ -250,7 +254,7 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
         else:
             return SendResult(success=False, error="Nenhum áudio fornecido")
 
-        return await self._send_request(payload)
+        return await self._send_request(payload, phone_number_id)
 
     async def send_image(
         self,
@@ -258,14 +262,15 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
         image_url: Optional[str] = None,
         image_base64: Optional[str] = None,
         caption: Optional[str] = None,
-        instance: Optional[str] = None
+        instance: Optional[str] = None,
+        phone_number_id: Optional[str] = None  # Multi-tenant: ID do número WhatsApp do cliente
     ) -> SendResult:
         """Envia imagem."""
 
         if image_url:
             image_data = {"link": image_url}
         elif image_base64:
-            media_id = await self._upload_media(image_base64, "image/jpeg")
+            media_id = await self._upload_media(image_base64, "image/jpeg", phone_number_id)
             if not media_id:
                 return SendResult(success=False, error="Falha ao fazer upload da imagem")
             image_data = {"id": media_id}
@@ -283,7 +288,7 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
             "image": image_data
         }
 
-        return await self._send_request(payload)
+        return await self._send_request(payload, phone_number_id)
 
     async def send_template(
         self,
@@ -291,7 +296,8 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
         template_name: str,
         language_code: str = "pt_BR",
         components: Optional[List[Dict]] = None,
-        instance: Optional[str] = None
+        instance: Optional[str] = None,
+        phone_number_id: Optional[str] = None  # Multi-tenant: ID do número WhatsApp do cliente
     ) -> SendResult:
         """
         Envia mensagem usando template pré-aprovado.
@@ -316,17 +322,21 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
             "template": template
         }
 
-        return await self._send_request(payload)
+        return await self._send_request(payload, phone_number_id)
 
     # ==================== MÉTODOS AUXILIARES ====================
 
-    async def _send_request(self, payload: Dict) -> SendResult:
+    async def _send_request(self, payload: Dict, phone_number_id: Optional[str] = None) -> SendResult:
         """Envia requisição para a API do WhatsApp."""
+
+        # Usar phone_number_id específico ou o padrão do .env
+        target_phone_id = phone_number_id or self.phone_id
+        messages_url = f"{self.base_url}/{target_phone_id}/messages"
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
-                    self.messages_url,
+                    messages_url,
                     headers=self.headers,
                     json=payload
                 )
@@ -353,7 +363,7 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
             print(f"[WhatsApp Official] Exceção: {e}")
             return SendResult(success=False, error=str(e))
 
-    async def _upload_media(self, base64_data: str, mime_type: str) -> Optional[str]:
+    async def _upload_media(self, base64_data: str, mime_type: str, phone_number_id: Optional[str] = None) -> Optional[str]:
         """
         Faz upload de mídia para obter media_id.
         Retorna o media_id ou None em caso de erro.
@@ -361,7 +371,9 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
 
         import base64
 
-        upload_url = f"{self.base_url}/{self.phone_id}/media"
+        # Usar phone_number_id específico ou o padrão do .env
+        target_phone_id = phone_number_id or self.phone_id
+        upload_url = f"{self.base_url}/{target_phone_id}/media"
 
         try:
             # Decodifica base64
@@ -437,6 +449,11 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
             changes = entry.get("changes", [{}])[0]
             value = changes.get("value", {})
 
+            # Extrair metadata para multi-tenant
+            metadata = value.get("metadata", {})
+            phone_number_id = metadata.get("phone_number_id", "")
+            display_phone_number = metadata.get("display_phone_number", "")
+
             messages = value.get("messages", [])
             if not messages:
                 return None
@@ -501,7 +518,9 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
                 image_url=image_url,
                 button_reply_id=button_reply_id,
                 list_reply_id=list_reply_id,
-                raw_data=webhook_data
+                raw_data=webhook_data,
+                phone_number_id=phone_number_id,
+                display_phone_number=display_phone_number
             )
 
         except Exception as e:

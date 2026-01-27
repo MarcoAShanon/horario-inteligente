@@ -20,6 +20,7 @@ from app.api.calendar.calendar_routes import router as calendar_router
 from app.api.usuarios_internos import router as usuarios_internos_router
 from app.api.parceiros_comerciais import router as parceiros_comerciais_router
 from app.api.custos_operacionais import router as custos_operacionais_router
+from app.api.admin_comissoes import router as admin_comissoes_router
 
 # Criar aplicação FastAPI
 app = FastAPI(
@@ -50,6 +51,7 @@ app.include_router(calendar_router)
 app.include_router(usuarios_internos_router)
 app.include_router(parceiros_comerciais_router)
 app.include_router(custos_operacionais_router)
+app.include_router(admin_comissoes_router)
 
 @app.get("/", response_class=HTMLResponse)
 async def root():

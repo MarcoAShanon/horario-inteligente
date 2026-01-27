@@ -40,6 +40,9 @@ from app.services.audio_preference_service import deve_enviar_audio, detectar_pr
 # Imports para lembretes inteligentes
 from app.services.lembrete_service import lembrete_service
 
+# Imports para tratamento de botões interativos
+from app.services.button_handler_service import get_button_handler
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -131,8 +134,8 @@ async def process_message(message: WhatsAppMessage):
     db = SessionLocal()
 
     try:
-        # 1. Determina o cliente_id (tenant)
-        cliente_id = get_cliente_id_from_phone(message.sender, db)
+        # 1. Determina o cliente_id (tenant) baseado no phone_number_id
+        cliente_id = get_cliente_id_from_phone_number_id(message.phone_number_id, db)
 
         # 2. Criar ou recuperar conversa no PostgreSQL
         conversa = ConversaService.criar_ou_recuperar_conversa(
@@ -270,7 +273,8 @@ async def process_message(message: WhatsAppMessage):
                 # Enviar resposta pelo WhatsApp
                 await whatsapp_service.send_text(
                     to=message.sender,
-                    message=texto_resposta
+                    message=texto_resposta,
+                    phone_number_id=message.phone_number_id
                 )
 
                 # Salvar no contexto Redis
@@ -294,6 +298,81 @@ async def process_message(message: WhatsAppMessage):
             # Se ação é aguardar resposta, não processa mais
             # Se for confirmar/cancelar, já processou
             return
+
+        # 5.2 Verificar se é clique em botão de template
+        if message.message_type == "button":
+            logger.info(f"[Webhook Official] 🔘 Botão clicado: '{message.text}'")
+
+            button_handler = get_button_handler()
+            resultado_botao = await button_handler.processar_botao(
+                db=db,
+                telefone=message.sender,
+                button_text=message.text,
+                cliente_id=cliente_id
+            )
+
+            if resultado_botao.get("handled"):
+                texto_resposta = resultado_botao.get("response", "")
+
+                if texto_resposta:
+                    # Salvar resposta no PostgreSQL
+                    mensagem_ia = ConversaService.adicionar_mensagem(
+                        db=db,
+                        conversa_id=conversa.id,
+                        direcao=DirecaoMensagem.SAIDA,
+                        remetente=RemetenteMensagem.IA,
+                        conteudo=texto_resposta,
+                        tipo=TipoMensagem.TEXTO
+                    )
+
+                    # Notificar via WebSocket
+                    await websocket_manager.send_nova_mensagem(
+                        cliente_id=cliente_id,
+                        conversa_id=conversa.id,
+                        mensagem={
+                            "id": mensagem_ia.id,
+                            "direcao": "saida",
+                            "remetente": "ia",
+                            "tipo": "texto",
+                            "conteudo": texto_resposta,
+                            "timestamp": mensagem_ia.timestamp.isoformat()
+                        }
+                    )
+
+                    # Enviar resposta pelo WhatsApp
+                    await whatsapp_service.send_text(
+                        to=message.sender,
+                        message=texto_resposta,
+                        phone_number_id=message.phone_number_id
+                    )
+
+                    # Salvar no contexto Redis
+                    conversation_manager.add_message(
+                        phone=message.sender,
+                        message_type="user",
+                        text=message.text,
+                        intencao=f"botao_{resultado_botao.get('action', '')}",
+                        dados_coletados={},
+                        cliente_id=cliente_id
+                    )
+                    conversation_manager.add_message(
+                        phone=message.sender,
+                        message_type="assistant",
+                        text=texto_resposta,
+                        intencao=resultado_botao.get("action", ""),
+                        dados_coletados={},
+                        cliente_id=cliente_id
+                    )
+
+                logger.info(
+                    f"[Webhook Official] ✅ Botão processado: "
+                    f"ação={resultado_botao.get('action')}, "
+                    f"notificar_clinica={resultado_botao.get('notify_clinic')}"
+                )
+
+                # ButtonHandler já enviou resposta, não chamar IA novamente
+                # A próxima mensagem do paciente será processada normalmente pela IA
+                return
 
         # 6. Obtém contexto da conversa do Redis
         contexto = conversation_manager.get_context(
@@ -409,13 +488,15 @@ async def process_message(message: WhatsAppMessage):
             await whatsapp_service.send_interactive_buttons(
                 to=message.sender,
                 text=texto_resposta,
-                buttons=buttons
+                buttons=buttons,
+                phone_number_id=message.phone_number_id
             )
         else:
             # Envia texto simples
             await whatsapp_service.send_text(
                 to=message.sender,
-                message=texto_resposta
+                message=texto_resposta,
+                phone_number_id=message.phone_number_id
             )
 
         # 11.4 Enviar áudio se habilitado e preferência permitir
@@ -436,7 +517,8 @@ async def process_message(message: WhatsAppMessage):
                         # Enviar áudio
                         result = await whatsapp_service.send_audio(
                             to=message.sender,
-                            audio_base64=audio_base64
+                            audio_base64=audio_base64,
+                            phone_number_id=message.phone_number_id
                         )
 
                         if result.success:
@@ -464,7 +546,8 @@ async def process_message(message: WhatsAppMessage):
         if mensagem_preferencia:
             await whatsapp_service.send_text(
                 to=message.sender,
-                message=mensagem_preferencia
+                message=mensagem_preferencia,
+                phone_number_id=message.phone_number_id
             )
 
     except Exception as e:
@@ -475,7 +558,8 @@ async def process_message(message: WhatsAppMessage):
         # Envia mensagem de erro amigável
         await whatsapp_service.send_text(
             to=message.sender,
-            message="Desculpe, estou com dificuldades técnicas no momento. Por favor, tente novamente em alguns instantes."
+            message="Desculpe, estou com dificuldades técnicas no momento. Por favor, tente novamente em alguns instantes.",
+            phone_number_id=message.phone_number_id
         )
 
     finally:
@@ -627,16 +711,27 @@ async def criar_agendamento_from_ia(
         return None
 
 
-def get_cliente_id_from_phone(phone: str, db: Session) -> int:
+def get_cliente_id_from_phone_number_id(phone_number_id: str, db: Session) -> int:
     """
-    Determina o cliente_id baseado no número.
-    Por enquanto retorna cliente padrão (demo).
-
-    TODO: Implementar lógica de roteamento quando houver múltiplos clientes.
+    Identifica o cliente pelo phone_number_id do WhatsApp.
+    Este é o identificador único do número que RECEBEU a mensagem.
     """
+    from app.models.cliente import Cliente
 
-    # Cliente demo por padrão
-    return int(os.getenv("DEFAULT_CLIENTE_ID", "3"))
+    if phone_number_id:
+        cliente = db.query(Cliente).filter(
+            Cliente.whatsapp_phone_number_id == phone_number_id,
+            Cliente.ativo == True
+        ).first()
+
+        if cliente:
+            logger.info(f"[Multi-tenant] Cliente {cliente.id} ({cliente.nome}) identificado pelo phone_number_id {phone_number_id}")
+            return cliente.id
+
+    # Fallback para cliente padrão
+    default_id = int(os.getenv("DEFAULT_CLIENTE_ID", "3"))
+    logger.warning(f"[Multi-tenant] phone_number_id '{phone_number_id}' não encontrado, usando cliente padrão {default_id}")
+    return default_id
 
 
 # ==================== ENDPOINTS AUXILIARES ====================
@@ -666,4 +761,297 @@ async def send_test_message(to: str, message: str):
         "success": result.success,
         "message_id": result.message_id,
         "error": result.error
+    }
+
+
+@router.post("/webhook/whatsapp-official/test-template")
+async def test_template(to: str):
+    """
+    Endpoint temporário para testar envio de template hello_world.
+    Valida que a infraestrutura de templates está funcionando.
+    """
+
+    result = await whatsapp_service.send_template(
+        to=to,
+        template_name="hello_world",
+        language_code="en_US",
+        components=None
+    )
+
+    return {
+        "success": result.success,
+        "message_id": result.message_id,
+        "error": result.error,
+        "template": "hello_world",
+        "raw_response": result.raw_response
+    }
+
+
+@router.post("/webhook/whatsapp-official/test-lembrete-24h")
+async def test_lembrete_24h(
+    to: str,
+    paciente: str = "Marco",
+    medico: str = "Dr. João Silva",
+    data: str = "27/01/2026",
+    horario: str = "14:30"
+):
+    """
+    Testa o template lembrete_24h com variáveis.
+    Os botões 'Confirmar presença' e 'Preciso remarcar' são definidos no template.
+    """
+
+    components = [
+        {
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": paciente},
+                {"type": "text", "text": medico},
+                {"type": "text", "text": data},
+                {"type": "text", "text": horario}
+            ]
+        }
+    ]
+
+    result = await whatsapp_service.send_template(
+        to=to,
+        template_name="lembrete_24h",
+        language_code="pt_BR",
+        components=components
+    )
+
+    return {
+        "success": result.success,
+        "message_id": result.message_id,
+        "error": result.error,
+        "template": "lembrete_24h",
+        "variables": {
+            "paciente": paciente,
+            "medico": medico,
+            "data": data,
+            "horario": horario
+        },
+        "raw_response": result.raw_response
+    }
+
+
+@router.post("/webhook/whatsapp-official/test-template-service")
+async def test_template_service(
+    telefone: str = "5524988493257",
+    paciente: str = "Marco",
+    medico: str = "Dra. Ana Costa",
+    data: str = "28/01/2026",
+    hora: str = "10:00"
+):
+    """
+    Testa o WhatsAppTemplateService com enviar_lembrete_24h.
+    Valida que a camada de abstração está funcionando.
+    """
+    from app.services.whatsapp_template_service import get_template_service
+
+    template_service = get_template_service()
+
+    result = await template_service.enviar_lembrete_24h(
+        telefone=telefone,
+        paciente=paciente,
+        medico=medico,
+        data=data,
+        hora=hora
+    )
+
+    return {
+        "success": result.success,
+        "message_id": result.message_id,
+        "error": result.error,
+        "service": "WhatsAppTemplateService",
+        "method": "enviar_lembrete_24h",
+        "variables": {
+            "telefone": telefone,
+            "paciente": paciente,
+            "medico": medico,
+            "data": data,
+            "hora": hora
+        },
+        "raw_response": result.raw_response
+    }
+
+
+@router.post("/webhook/whatsapp-official/test-pagamento")
+async def test_pagamento_pendente(
+    telefone: str = "5524988493257",
+    cliente: str = "Marco",
+    valor: str = "199,90",
+    vencimento: str = "30/01/2026",
+    url_pagamento: str = "https://www.google.com"
+):
+    """
+    Testa o template pagamento_pendente com botão URL dinâmica.
+    Valida que a estrutura de botão URL está funcionando.
+    """
+    from app.services.whatsapp_template_service import get_template_service
+
+    template_service = get_template_service()
+
+    result = await template_service.enviar_pagamento_pendente(
+        telefone=telefone,
+        cliente=cliente,
+        valor=valor,
+        vencimento=vencimento,
+        url_pagamento=url_pagamento
+    )
+
+    return {
+        "success": result.success,
+        "message_id": result.message_id,
+        "error": result.error,
+        "service": "WhatsAppTemplateService",
+        "method": "enviar_pagamento_pendente",
+        "variables": {
+            "telefone": telefone,
+            "cliente": cliente,
+            "valor": valor,
+            "vencimento": vencimento,
+            "url_pagamento": url_pagamento
+        },
+        "raw_response": result.raw_response
+    }
+
+
+@router.post("/webhook/whatsapp-official/test-lembrete-service")
+async def test_lembrete_service(
+    tipo: str = "24h",
+    telefone: str = "5524988493257",
+    paciente: str = "Marco Teste",
+    medico: str = "Dr. Scheduler",
+    data: str = "27/01/2026",
+    hora: str = "15:00"
+):
+    """
+    Testa o LembreteService modificado com envio direto via WhatsAppTemplateService.
+
+    Tipos disponíveis: 24h, 2h
+    """
+    from app.services.whatsapp_template_service import get_template_service
+
+    template_service = get_template_service()
+
+    if tipo == "24h":
+        result = await template_service.enviar_lembrete_24h(
+            telefone=telefone,
+            paciente=paciente,
+            medico=medico,
+            data=data,
+            hora=hora
+        )
+        template_name = "lembrete_24h"
+        variables = {
+            "paciente": paciente,
+            "medico": medico,
+            "data": data,
+            "hora": hora
+        }
+    elif tipo == "2h":
+        result = await template_service.enviar_lembrete_2h(
+            telefone=telefone,
+            paciente=paciente,
+            medico=medico,
+            hora=hora
+        )
+        template_name = "lembrete_2h"
+        variables = {
+            "paciente": paciente,
+            "medico": medico,
+            "hora": hora
+        }
+    else:
+        return {
+            "success": False,
+            "error": f"Tipo '{tipo}' não suportado. Use '24h' ou '2h'."
+        }
+
+    return {
+        "success": result.success,
+        "message_id": result.message_id,
+        "error": result.error,
+        "service": "LembreteService (via WhatsAppTemplateService)",
+        "template": template_name,
+        "tipo": tipo,
+        "telefone": telefone,
+        "variables": variables,
+        "raw_response": result.raw_response
+    }
+
+
+@router.post("/webhook/whatsapp-official/test-consulta-confirmada")
+async def test_consulta_confirmada(
+    to: str = "5524988493257",
+    paciente: str = "Marco Teste",
+    medico: str = "Dr. Cardoso",
+    data: str = "28/01/2026",
+    hora: str = "15:00",
+    local: str = "Rua das Flores, 123"
+):
+    """
+    Testa o template consulta_confirmada.
+    Botões: "Confirmar" e "Cancelar"
+    """
+    from app.services.whatsapp_template_service import get_template_service
+
+    template_service = get_template_service()
+    result = await template_service.enviar_consulta_confirmada(
+        telefone=to,
+        paciente=paciente,
+        medico=medico,
+        data=data,
+        hora=hora,
+        local=local
+    )
+
+    return {
+        "success": result.success,
+        "message_id": result.message_id,
+        "error": result.error,
+        "template": "consulta_confirmada",
+        "variables": {
+            "paciente": paciente,
+            "medico": medico,
+            "data": data,
+            "hora": hora,
+            "local": local
+        },
+        "raw_response": result.raw_response
+    }
+
+
+@router.post("/webhook/whatsapp-official/test-pesquisa-satisfacao")
+async def test_pesquisa_satisfacao(
+    to: str = "5524988493257",
+    paciente: str = "Marco Teste",
+    medico: str = "Dr. Cardoso",
+    data_consulta: str = "26/01/2026"
+):
+    """
+    Testa o template pesquisa_satisfacao.
+    Botões: "1-2", "3", "4-5"
+    """
+    from app.services.whatsapp_template_service import get_template_service
+
+    template_service = get_template_service()
+    result = await template_service.enviar_pesquisa_satisfacao(
+        telefone=to,
+        paciente=paciente,
+        medico=medico,
+        data_consulta=data_consulta
+    )
+
+    return {
+        "success": result.success,
+        "message_id": result.message_id,
+        "error": result.error,
+        "template": "pesquisa_satisfacao",
+        "variables": {
+            "paciente": paciente,
+            "medico": medico,
+            "data_consulta": data_consulta
+        },
+        "raw_response": result.raw_response
     }

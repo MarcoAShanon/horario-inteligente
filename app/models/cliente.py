@@ -17,6 +17,7 @@ class Cliente(BaseModel):
     subdomain = Column(String(100), unique=True, nullable=True, index=True)  # drmarco, prosaude, etc
     whatsapp_instance = Column(String(100), nullable=True)  # Nome da instância Evolution API
     whatsapp_numero = Column(String(20), nullable=True)  # Número WhatsApp da clínica
+    whatsapp_phone_number_id = Column(String(50), nullable=True, index=True)  # Phone Number ID da Meta
 
     # Branding e Identidade Visual (NOVO - v3.4.0)
     logo_url = Column(String(500), nullable=True)  # URL da logo (ex: /static/logos/prosaude.png)

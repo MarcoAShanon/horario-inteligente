@@ -32,6 +32,9 @@ class WhatsAppMessage:
     button_reply_id: Optional[str] = None      # ID do botão clicado
     list_reply_id: Optional[str] = None        # ID do item de lista selecionado
     raw_data: Optional[Dict] = None            # Dados brutos originais
+    # Multi-tenant - identificação do número que recebeu
+    phone_number_id: Optional[str] = None         # ID do número da clínica (Meta)
+    display_phone_number: Optional[str] = None    # Número formatado da clínica
 
 
 @dataclass
