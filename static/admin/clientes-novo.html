@@ -514,8 +514,8 @@
                 </div>
             </div>
 
-            <!-- PASSO 5: Secretária (Só para Consultório) -->
-            <div id="secaoSecretaria" class="section-consultorio">
+            <!-- PASSO 5: Secretária (Opcional para todos os planos) -->
+            <div id="secaoSecretaria">
                 <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
                     <div class="flex items-center justify-between mb-2">
                         <h2 class="text-lg font-semibold text-white flex items-center">
@@ -1130,15 +1130,15 @@
                         });
                     }
                 }
+            }
 
-                // Secretária
-                if (incluirSecretaria) {
-                    dados.secretaria = {
-                        nome: formData.get('secretaria_nome'),
-                        email: formData.get('secretaria_email'),
-                        telefone: formData.get('secretaria_telefone')?.replace(/\D/g, '') || null
-                    };
-                }
+            // Secretária (disponível para todos os planos)
+            if (incluirSecretaria) {
+                dados.secretaria = {
+                    nome: formData.get('secretaria_nome'),
+                    email: formData.get('secretaria_email'),
+                    telefone: formData.get('secretaria_telefone')?.replace(/\D/g, '') || null
+                };
             }
 
             try {

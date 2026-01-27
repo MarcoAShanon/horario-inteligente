@@ -29,7 +29,11 @@ class Medico(BaseModel):
     # Status
     ativo = Column(Boolean, default=True, nullable=False)
     observacoes = Column(Text, nullable=True)
-    
+
+    # Controle de acesso (secretária vs médico)
+    is_secretaria = Column(Boolean, default=False, nullable=False)
+    pode_ver_financeiro = Column(Boolean, default=True, nullable=False)
+
     # Relacionamentos
     cliente = relationship("Cliente", back_populates="medicos")
     agendamentos = relationship("Agendamento", back_populates="medico", cascade="all, delete-orphan")

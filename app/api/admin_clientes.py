@@ -322,11 +322,13 @@ async def criar_cliente(
                     cliente_id, nome, crm, especialidade,
                     email, telefone, senha, ativo,
                     pode_fazer_login, is_admin, email_verificado,
+                    is_secretaria, pode_ver_financeiro,
                     criado_em, atualizado_em
                 ) VALUES (
                     :cliente_id, :nome, :crm, :especialidade,
                     :email, :telefone, :senha, true,
                     true, true, true,
+                    false, true,
                     :criado_em, :atualizado_em
                 )
                 RETURNING id
@@ -570,11 +572,13 @@ async def criar_cliente(
                             cliente_id, nome, crm, especialidade,
                             email, telefone, senha, ativo,
                             pode_fazer_login, is_admin, email_verificado,
+                            is_secretaria, pode_ver_financeiro,
                             criado_em, atualizado_em
                         ) VALUES (
                             :cliente_id, :nome, :crm, :especialidade,
                             :email, :telefone, :senha, true,
                             true, false, true,
+                            false, true,
                             :criado_em, :atualizado_em
                         )
                         RETURNING id
@@ -603,7 +607,7 @@ async def criar_cliente(
 
             db.commit()
 
-        # 11. Criar secretária (se houver)
+        # 11. Criar secretária (se houver) - na tabela medicos com is_secretaria=true
         secretaria_response = None
         if dados.secretaria:
             sec_senha = gerar_senha_temporaria()
@@ -611,13 +615,17 @@ async def criar_cliente(
 
             result_sec = db.execute(
                 text("""
-                    INSERT INTO usuarios_internos (
-                        cliente_id, nome, email, telefone,
-                        senha_hash, perfil, ativo, email_verificado,
+                    INSERT INTO medicos (
+                        cliente_id, nome, crm, especialidade,
+                        email, telefone, senha, ativo,
+                        pode_fazer_login, is_admin, email_verificado,
+                        is_secretaria, pode_ver_financeiro,
                         criado_em, atualizado_em
                     ) VALUES (
-                        :cliente_id, :nome, :email, :telefone,
-                        :senha_hash, 'secretaria', true, true,
+                        :cliente_id, :nome, 'N/A', 'Secretária',
+                        :email, :telefone, :senha, true,
+                        true, false, true,
+                        true, false,
                         :criado_em, :atualizado_em
                     )
                     RETURNING id
@@ -627,7 +635,7 @@ async def criar_cliente(
                     "nome": dados.secretaria.nome,
                     "email": dados.secretaria.email,
                     "telefone": dados.secretaria.telefone,
-                    "senha_hash": sec_senha_hash,
+                    "senha": sec_senha_hash,
                     "criado_em": agora,
                     "atualizado_em": agora
                 }
@@ -639,9 +647,10 @@ async def criar_cliente(
                 "id": sec_id,
                 "nome": dados.secretaria.nome,
                 "email": dados.secretaria.email,
-                "senha_temporaria": sec_senha
+                "senha_temporaria": sec_senha,
+                "tipo": "secretaria"
             }
-            logger.info(f"[Onboarding] Secretária criada: {dados.secretaria.nome} (ID={sec_id})")
+            logger.info(f"[Onboarding] Secretária criada na tabela medicos: {dados.secretaria.nome} (ID={sec_id})")
 
         # Enviar notificação via Telegram (não bloqueante)
         try:
@@ -842,11 +851,13 @@ async def adicionar_medico(
                     cliente_id, nome, crm, especialidade,
                     email, telefone, senha, ativo,
                     pode_fazer_login, is_admin, email_verificado,
+                    is_secretaria, pode_ver_financeiro,
                     criado_em, atualizado_em
                 ) VALUES (
                     :cliente_id, :nome, :crm, :especialidade,
                     :email, :telefone, :senha, true,
                     :pode_login, :is_admin, true,
+                    false, true,
                     :criado_em, :atualizado_em
                 )
                 RETURNING id
@@ -893,6 +904,94 @@ async def adicionar_medico(
     except Exception as e:
         db.rollback()
         logger.error(f"[Admin] Erro ao adicionar médico: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/clientes/{cliente_id}/secretarias")
+async def adicionar_secretaria(
+    cliente_id: int,
+    dados: SecretariaOnboarding,
+    admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Adiciona secretária a uma clínica existente.
+    Secretárias são criadas na tabela medicos com is_secretaria=true.
+    """
+    try:
+        # Verificar cliente
+        cliente = db.execute(
+            text("SELECT id, nome FROM clientes WHERE id = :id AND ativo = true"),
+            {"id": cliente_id}
+        ).fetchone()
+
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado ou inativo")
+
+        # Verificar email disponível
+        if not verificar_email_disponivel(db, dados.email, "medicos"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Email {dados.email} já está em uso"
+            )
+
+        # Gerar senha
+        senha_temporaria = gerar_senha_temporaria()
+        senha_hash = hash_senha(senha_temporaria)
+
+        # Criar secretária na tabela medicos
+        agora = datetime.now()
+        result = db.execute(
+            text("""
+                INSERT INTO medicos (
+                    cliente_id, nome, crm, especialidade,
+                    email, telefone, senha, ativo,
+                    pode_fazer_login, is_admin, email_verificado,
+                    is_secretaria, pode_ver_financeiro,
+                    criado_em, atualizado_em
+                ) VALUES (
+                    :cliente_id, :nome, 'N/A', 'Secretária',
+                    :email, :telefone, :senha, true,
+                    true, false, true,
+                    true, false,
+                    :criado_em, :atualizado_em
+                )
+                RETURNING id
+            """),
+            {
+                "cliente_id": cliente_id,
+                "nome": dados.nome,
+                "email": dados.email,
+                "telefone": dados.telefone,
+                "senha": senha_hash,
+                "criado_em": agora,
+                "atualizado_em": agora
+            }
+        )
+        secretaria_id = result.fetchone()[0]
+        db.commit()
+
+        logger.info(f"[Admin] Secretária {dados.nome} adicionada ao cliente {cliente_id}")
+
+        return {
+            "success": True,
+            "secretaria": {
+                "id": secretaria_id,
+                "nome": dados.nome,
+                "email": dados.email,
+                "tipo": "secretaria"
+            },
+            "credenciais": {
+                "email": dados.email,
+                "senha_temporaria": senha_temporaria
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[Admin] Erro ao adicionar secretária: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -1056,23 +1155,25 @@ async def listar_medicos_cliente(
     admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Lista médicos de um cliente específico"""
+    """Lista médicos e secretárias de um cliente específico"""
     try:
         result = db.execute(
             text("""
                 SELECT
                     id, nome, crm, especialidade, email, telefone,
-                    ativo, pode_fazer_login, is_admin, criado_em
+                    ativo, pode_fazer_login, is_admin, criado_em,
+                    is_secretaria, pode_ver_financeiro
                 FROM medicos
                 WHERE cliente_id = :cliente_id
-                ORDER BY is_admin DESC, nome
+                ORDER BY is_secretaria ASC, is_admin DESC, nome
             """),
             {"cliente_id": cliente_id}
         ).fetchall()
 
         medicos = []
+        secretarias = []
         for row in result:
-            medicos.append({
+            item = {
                 "id": row[0],
                 "nome": row[1],
                 "crm": row[2],
@@ -1082,10 +1183,21 @@ async def listar_medicos_cliente(
                 "ativo": row[6],
                 "pode_fazer_login": row[7],
                 "is_admin": row[8],
-                "criado_em": row[9].isoformat() if row[9] else None
-            })
+                "criado_em": row[9].isoformat() if row[9] else None,
+                "is_secretaria": row[10],
+                "pode_ver_financeiro": row[11]
+            }
+            if row[10]:  # is_secretaria
+                secretarias.append(item)
+            else:
+                medicos.append(item)
 
-        return {"medicos": medicos, "total": len(medicos)}
+        return {
+            "medicos": medicos,
+            "secretarias": secretarias,
+            "total_medicos": len(medicos),
+            "total_secretarias": len(secretarias)
+        }
 
     except Exception as e:
         logger.error(f"[Admin] Erro ao listar médicos: {e}")
