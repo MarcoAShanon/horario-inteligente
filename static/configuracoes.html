@@ -99,6 +99,13 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-sm text-gray-600 hidden md:inline" id="userName">Carregando...</span>
+                    <!-- Botões para secretária -->
+                    <a id="btnCalendario" href="/static/calendario-unificado.html" class="hidden text-blue-600 hover:text-blue-700 transition" title="Calendário de Agendamentos">
+                        <i class="fas fa-calendar-alt text-xl"></i>
+                    </a>
+                    <a id="btnWhatsApp" href="/static/conversas.html" class="hidden text-green-600 hover:text-green-700 transition" title="Conversas WhatsApp">
+                        <i class="fab fa-whatsapp text-xl"></i>
+                    </a>
                     <button onclick="logout()" class="text-gray-500 hover:text-red-600 transition" title="Sair">
                         <i class="fas fa-sign-out-alt text-lg"></i>
                     </button>
@@ -821,7 +828,7 @@
                             <i class="fas fa-envelope"></i>
                             Email
                         </a>
-                        <a href="https://wa.me/5511999999999" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                        <a href="https://wa.me/5524988493257" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
                             <i class="fab fa-whatsapp"></i>
                             WhatsApp
                         </a>
@@ -901,6 +908,8 @@
         // ==================== VARIÁVEIS GLOBAIS ====================
         let currentUser = null;
         let medicoId = null;
+        let isSecretaria = false;
+        let medicoVinculadoNome = null;
         let diasAtendimento = [1, 2, 3, 4, 5]; // Seg a Sex por padrão
         let convenios = [];
         let bloqueios = [];
@@ -922,10 +931,38 @@
                 if (!response.ok) throw new Error('Token inválido');
 
                 currentUser = await response.json();
-                medicoId = currentUser.id;
-                // Só exibe "Dr(a)." se for médico
-                const prefixo = currentUser.tipo === 'medico' ? 'Dr(a). ' : '';
-                document.getElementById('userName').textContent = `${prefixo}${currentUser.nome}`;
+
+                // Verificar se é secretária (usar dados do /api/auth/me que são mais atualizados)
+                isSecretaria = currentUser.is_secretaria === true;
+
+                console.log('currentUser:', currentUser);
+                console.log('isSecretaria:', isSecretaria);
+
+                if (isSecretaria) {
+                    // Secretária: usar ID do médico vinculado
+                    medicoId = currentUser.medico_vinculado_id;
+
+                    console.log('medico_vinculado_id:', medicoId);
+
+                    if (!medicoId) {
+                        alert('Erro: Secretária não está vinculada a nenhum médico. Entre em contato com o administrador.');
+                        window.location.href = '/static/conversas.html';
+                        return;
+                    }
+
+                    // Buscar nome do médico vinculado
+                    await buscarNomeMedicoVinculado(medicoId);
+
+                    // Configurar UI para secretária
+                    configurarUISecretaria();
+                } else {
+                    // Médico: usar próprio ID
+                    medicoId = currentUser.id;
+                    const prefixo = currentUser.tipo === 'medico' ? 'Dr(a). ' : '';
+                    document.getElementById('userName').textContent = `${prefixo}${currentUser.nome}`;
+                }
+
+                console.log('medicoId final:', medicoId);
 
                 // Verificar se é demo
                 if (window.location.hostname.includes('demo')) {
@@ -936,7 +973,7 @@
                 await Promise.all([
                     carregarConfiguracaoHorarios(),
                     carregarBloqueios(),
-                    carregarValores(),
+                    isSecretaria ? Promise.resolve() : carregarValores(),
                     carregarLembretes()
                 ]);
 
@@ -944,6 +981,64 @@
                 console.error('Erro na autenticação:', error);
                 localStorage.removeItem('authToken');
                 window.location.href = '/static/login.html';
+            }
+        }
+
+        async function buscarNomeMedicoVinculado(id) {
+            try {
+                const token = localStorage.getItem('authToken');
+                const response = await fetch(`/api/medicos/${id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const medico = await response.json();
+                    medicoVinculadoNome = medico.nome;
+                }
+            } catch (error) {
+                console.error('Erro ao buscar médico vinculado:', error);
+            }
+        }
+
+        function configurarUISecretaria() {
+            // Atualizar título da página
+            const tituloConfig = document.querySelector('nav .flex.items-center span.text-lg');
+            if (tituloConfig && medicoVinculadoNome) {
+                tituloConfig.textContent = `Configurações - Dr(a). ${medicoVinculadoNome}`;
+            }
+
+            // Atualizar nome do usuário no header
+            document.getElementById('userName').textContent = currentUser.nome;
+
+            // Mostrar botões de navegação para secretária
+            const btnWhatsApp = document.getElementById('btnWhatsApp');
+            if (btnWhatsApp) {
+                btnWhatsApp.classList.remove('hidden');
+            }
+            const btnCalendario = document.getElementById('btnCalendario');
+            if (btnCalendario) {
+                btnCalendario.classList.remove('hidden');
+            }
+
+            // Ocultar abas restritas: Valores e Assinatura
+            const tabValores = document.getElementById('tab-valores');
+            const tabAssinatura = document.getElementById('tab-assinatura');
+
+            if (tabValores) tabValores.style.display = 'none';
+            if (tabAssinatura) tabAssinatura.style.display = 'none';
+
+            // Atualizar link de voltar para ir às conversas
+            const voltarLink = document.querySelector('nav a[href="/static/dashboard.html"]');
+            if (voltarLink) {
+                voltarLink.href = '/static/conversas.html';
+                voltarLink.title = 'Voltar às Conversas';
+            }
+
+            // Ajustar grid das tabs (agora são 3 em vez de 5)
+            const tabsContainer = document.querySelector('.grid.grid-cols-2.sm\\:grid-cols-5');
+            if (tabsContainer) {
+                tabsContainer.classList.remove('sm:grid-cols-5');
+                tabsContainer.classList.add('sm:grid-cols-3');
             }
         }
 
@@ -1322,7 +1417,8 @@
                 });
 
                 if (response.ok) {
-                    bloqueios = await response.json();
+                    const data = await response.json();
+                    bloqueios = data.bloqueios || [];
                     renderizarBloqueios();
                 }
             } catch (error) {

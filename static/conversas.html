@@ -319,9 +319,22 @@
             </div>
 
             <!-- Navigation -->
-            <a href="/static/dashboard.html" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Painel">
-                <i class="fas fa-chart-line"></i>
-            </a>
+            <div id="navMedico" class="flex items-center gap-2">
+                <a href="/static/dashboard.html" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Painel">
+                    <i class="fas fa-chart-line"></i>
+                </a>
+            </div>
+            <div id="navSecretaria" class="hidden flex items-center gap-2">
+                <a href="/static/calendario-unificado.html" class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg" title="Calendário de Agendamentos">
+                    <i class="fas fa-calendar-alt"></i>
+                </a>
+                <a href="/static/configuracoes.html" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Configurações do Médico">
+                    <i class="fas fa-cog"></i>
+                </a>
+                <a href="/static/alterar-senha.html" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Alterar Senha">
+                    <i class="fas fa-key"></i>
+                </a>
+            </div>
             <button onclick="logout()" class="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Sair">
                 <i class="fas fa-sign-out-alt"></i>
             </button>
@@ -482,10 +495,34 @@
         let janelaAtual = { ativa: true, expira_em: null }; // Status da janela 24h
 
         // ==================== INIT ====================
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             if (!token) {
                 window.location.href = '/static/login.html';
                 return;
+            }
+
+            // Verificar se é secretária usando /api/auth/me (dados atualizados)
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const currentUser = await response.json();
+
+                    // Atualizar localStorage com dados mais recentes
+                    localStorage.setItem('userData', JSON.stringify(currentUser));
+
+                    if (currentUser.is_secretaria) {
+                        document.getElementById('navMedico').classList.add('hidden');
+                        document.getElementById('navSecretaria').classList.remove('hidden');
+                    } else {
+                        document.getElementById('navMedico').classList.remove('hidden');
+                        document.getElementById('navSecretaria').classList.add('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao verificar usuário:', error);
             }
 
             carregarConversas();

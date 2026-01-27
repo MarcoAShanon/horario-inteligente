@@ -34,10 +34,23 @@ class Medico(BaseModel):
     is_secretaria = Column(Boolean, default=False, nullable=False)
     pode_ver_financeiro = Column(Boolean, default=True, nullable=False)
 
+    # Vínculo secretária -> médico (apenas para is_secretaria=true)
+    medico_vinculado_id = Column(Integer, ForeignKey("medicos.id"), nullable=True)
+
     # Relacionamentos
     cliente = relationship("Cliente", back_populates="medicos")
+    medico_vinculado = relationship(
+        "Medico",
+        foreign_keys=[medico_vinculado_id],
+        remote_side="Medico.id"
+    )
     agendamentos = relationship("Agendamento", back_populates="medico", cascade="all, delete-orphan")
     push_subscriptions = relationship("PushSubscription", back_populates="medico", cascade="all, delete-orphan")
+
+    # Relacionamentos de configuração de agenda
+    configuracoes = relationship("ConfiguracoesMedico", back_populates="medico", uselist=False, cascade="all, delete-orphan")
+    bloqueios = relationship("BloqueioAgenda", back_populates="medico", cascade="all, delete-orphan")
+    horarios_especiais = relationship("HorarioEspecial", back_populates="medico", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Medico(nome='{self.nome}', especialidade='{self.especialidade}')>"

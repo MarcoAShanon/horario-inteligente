@@ -370,6 +370,13 @@
                     return;
                 }
 
+                // Secretárias não têm acesso ao perfil completo, apenas alteração de senha
+                const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+                if (userData.is_secretaria) {
+                    window.location.href = '/static/alterar-senha.html';
+                    return;
+                }
+
                 const response = await fetch('/api/perfil', {
                     headers: {
                         'Authorization': `Bearer ${token}`

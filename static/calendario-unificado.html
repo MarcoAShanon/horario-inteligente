@@ -715,9 +715,14 @@
                         <i class="fas fa-user-circle mr-1"></i>
                         <span id="userName"></span>
                     </span>
-                    <button onclick="window.location.href='/static/perfil.html'" class="inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 whitespace-nowrap">
+                    <button id="btnPerfil" onclick="window.location.href='/static/perfil.html'" class="inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 whitespace-nowrap">
                         <i class="fas fa-user-edit sm:mr-2"></i>
                         <span class="hidden md:inline">Perfil</span>
+                    </button>
+                    <!-- Botão WhatsApp para Secretária (oculto por padrão) -->
+                    <button id="btnWhatsAppCal" onclick="window.location.href='/static/conversas.html'" class="hidden inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 whitespace-nowrap">
+                        <i class="fab fa-whatsapp sm:mr-2"></i>
+                        <span class="hidden md:inline">Conversas</span>
                     </button>
                     <!-- Botão de Instalação PWA (oculto por padrão) -->
                     <button id="installButton" onclick="instalarApp()" class="hidden px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 whitespace-nowrap shadow-lg">
@@ -732,7 +737,7 @@
                         <i class="fas fa-cog sm:mr-2"></i>
                         <span class="hidden md:inline">Configurações</span>
                     </button>
-                    <button onclick="window.location.href='/static/dashboard.html'" class="hidden lg:inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 whitespace-nowrap">
+                    <button id="btnPainel" onclick="window.location.href='/static/dashboard.html'" class="hidden lg:inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 whitespace-nowrap">
                         <i class="fas fa-arrow-left sm:mr-2"></i>
                         <span class="hidden md:inline">Painel</span>
                     </button>
@@ -756,15 +761,20 @@
             <!-- Mobile Menu Dropdown -->
             <div id="mobileMenu" class="hidden sm:hidden bg-white border-t border-gray-200 py-2">
                 <div class="flex flex-col space-y-2">
-                    <button onclick="window.location.href='/static/perfil.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
+                    <button id="btnPerfilMobile" onclick="window.location.href='/static/perfil.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-user-edit mr-3 text-purple-600"></i>
                         Meu Perfil
+                    </button>
+                    <!-- Botão WhatsApp para Secretária Mobile (oculto por padrão) -->
+                    <button id="btnWhatsAppMobile" onclick="window.location.href='/static/conversas.html'" class="hidden flex items-center px-4 py-2 text-sm text-green-700 hover:bg-green-50 rounded">
+                        <i class="fab fa-whatsapp mr-3 text-green-600"></i>
+                        Conversas WhatsApp
                     </button>
                     <button onclick="window.location.href='/static/configuracoes.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-cog mr-3 text-indigo-600"></i>
                         Configurações
                     </button>
-                    <button onclick="window.location.href='/static/dashboard.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
+                    <button id="btnPainelMobile" onclick="window.location.href='/static/dashboard.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-arrow-left mr-3 text-gray-600"></i>
                         Dashboard
                     </button>
@@ -1226,6 +1236,8 @@
                 const userNameEl = document.getElementById('userName');
                 if (currentUser.tipo === 'medico') {
                     userNameEl.textContent = `Dr(a). ${currentUser.nome}`;
+                } else if (currentUser.is_secretaria) {
+                    userNameEl.textContent = `${currentUser.nome} (Secretária)`;
                 } else {
                     userNameEl.textContent = currentUser.nome;
                 }
@@ -1236,6 +1248,11 @@
                     if (filtroContainer) {
                         filtroContainer.style.display = 'none';
                     }
+                }
+
+                // Configurar navegação para secretária
+                if (currentUser.is_secretaria) {
+                    configurarNavegacaoSecretaria();
                 }
 
             } catch (error) {
@@ -1304,6 +1321,47 @@
                 localStorage.removeItem('userData');
                 window.location.href = '/static/login.html';
             }
+        }
+
+        // Configurar navegação para secretária
+        function configurarNavegacaoSecretaria() {
+            // Desktop: Esconder botão Perfil (secretária não tem perfil próprio)
+            const btnPerfil = document.getElementById('btnPerfil');
+            if (btnPerfil) {
+                btnPerfil.style.display = 'none';
+            }
+
+            // Desktop: Esconder botão Painel/Dashboard
+            const btnPainel = document.getElementById('btnPainel');
+            if (btnPainel) {
+                btnPainel.style.display = 'none';
+            }
+
+            // Desktop: Mostrar botão WhatsApp/Conversas
+            const btnWhatsApp = document.getElementById('btnWhatsAppCal');
+            if (btnWhatsApp) {
+                btnWhatsApp.classList.remove('hidden');
+            }
+
+            // Mobile: Esconder botão Perfil
+            const btnPerfilMobile = document.getElementById('btnPerfilMobile');
+            if (btnPerfilMobile) {
+                btnPerfilMobile.style.display = 'none';
+            }
+
+            // Mobile: Esconder botão Painel/Dashboard
+            const btnPainelMobile = document.getElementById('btnPainelMobile');
+            if (btnPainelMobile) {
+                btnPainelMobile.style.display = 'none';
+            }
+
+            // Mobile: Mostrar botão WhatsApp
+            const btnWhatsAppMobile = document.getElementById('btnWhatsAppMobile');
+            if (btnWhatsAppMobile) {
+                btnWhatsAppMobile.classList.remove('hidden');
+            }
+
+            console.log('Navegação configurada para secretária');
         }
 
         // Função para toggle do menu mobile

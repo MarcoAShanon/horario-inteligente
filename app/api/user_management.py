@@ -922,7 +922,8 @@ async def change_password(
         user_id = current_user.get("id")
 
         # Buscar senha atual do banco
-        if user_type == "medico":
+        # Secretárias também estão na tabela medicos
+        if user_type in ("medico", "secretaria"):
             result = db.execute(text("""
                 SELECT senha FROM medicos WHERE id = :user_id
             """), {"user_id": user_id}).fetchone()
@@ -976,3 +977,120 @@ async def change_password(
         db.rollback()
         logger.error(f"Erro ao alterar senha: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Erro ao alterar senha")
+
+# ============================================
+# ENDPOINTS DE BLOQUEIOS DE AGENDA
+# ============================================
+from app.models.configuracoes import BloqueioAgenda
+from app.models.agendamento import Agendamento
+
+class BloqueioRequest(BaseModel):
+    medico_id: int
+    tipo: str  # ferias, emergencia, particular, manutencao
+    motivo: Optional[str] = None
+    data_inicio: str
+    data_fim: str
+
+@router.get("/bloqueios")
+async def listar_bloqueios_api(
+    medico_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista bloqueios de agenda de um médico"""
+    from datetime import datetime
+    bloqueios = db.query(BloqueioAgenda).filter(
+        BloqueioAgenda.medico_id == medico_id,
+        BloqueioAgenda.ativo == True
+    ).order_by(BloqueioAgenda.data_inicio.desc()).all()
+
+    return {
+        "sucesso": True,
+        "bloqueios": [
+            {
+                "id": b.id,
+                "medico_id": b.medico_id,
+                "tipo": b.tipo,
+                "motivo": b.motivo,
+                "data_inicio": b.data_inicio.isoformat() if b.data_inicio else None,
+                "data_fim": b.data_fim.isoformat() if b.data_fim else None,
+                "ativo": b.ativo
+            }
+            for b in bloqueios
+        ]
+    }
+
+@router.post("/bloqueios")
+async def criar_bloqueio_api(
+    dados: BloqueioRequest,
+    cancelar_agendamentos: bool = False,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Cria um novo bloqueio de agenda"""
+    from datetime import datetime
+    try:
+        data_inicio = datetime.fromisoformat(dados.data_inicio.replace('Z', '+00:00').replace('T', ' ').split('+')[0])
+        data_fim = datetime.fromisoformat(dados.data_fim.replace('Z', '+00:00').replace('T', ' ').split('+')[0])
+
+        conflitos = db.query(Agendamento).filter(
+            Agendamento.medico_id == dados.medico_id,
+            Agendamento.data_hora >= data_inicio,
+            Agendamento.data_hora <= data_fim,
+            Agendamento.status.in_(['agendado', 'confirmado'])
+        ).all()
+
+        if conflitos and not cancelar_agendamentos:
+            return {
+                "sucesso": False,
+                "conflitos": [
+                    {
+                        "id": a.id,
+                        "paciente_nome": a.paciente.nome if a.paciente else "Desconhecido",
+                        "data_hora": a.data_hora.isoformat()
+                    }
+                    for a in conflitos
+                ]
+            }
+
+        if cancelar_agendamentos and conflitos:
+            for agendamento in conflitos:
+                agendamento.status = 'cancelado'
+
+        bloqueio = BloqueioAgenda(
+            medico_id=dados.medico_id,
+            tipo=dados.tipo,
+            motivo=dados.motivo,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            ativo=True
+        )
+        db.add(bloqueio)
+        db.commit()
+        db.refresh(bloqueio)
+
+        return {
+            "sucesso": True,
+            "bloqueio": {
+                "id": bloqueio.id,
+                "data_inicio": bloqueio.data_inicio.isoformat(),
+                "data_fim": bloqueio.data_fim.isoformat()
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/bloqueios/{bloqueio_id}")
+async def deletar_bloqueio_api(
+    bloqueio_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Remove um bloqueio de agenda"""
+    bloqueio = db.query(BloqueioAgenda).filter(BloqueioAgenda.id == bloqueio_id).first()
+    if not bloqueio:
+        raise HTTPException(status_code=404, detail="Bloqueio não encontrado")
+    bloqueio.ativo = False
+    db.commit()
+    return {"sucesso": True}
