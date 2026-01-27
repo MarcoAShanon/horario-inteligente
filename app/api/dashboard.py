@@ -377,10 +377,10 @@ async def get_metricas_periodo(
         for row in resultado_convenio
     ]
 
-    # Horários mais populares
+    # Horários mais populares (convertido para horário de Brasília)
     query_horarios = text(f"""
         SELECT
-            EXTRACT(HOUR FROM a.data_hora) as hora,
+            EXTRACT(HOUR FROM a.data_hora AT TIME ZONE 'America/Sao_Paulo') as hora,
             COUNT(*) as quantidade
         FROM agendamentos a
         JOIN pacientes p ON a.paciente_id = p.id
@@ -388,7 +388,7 @@ async def get_metricas_periodo(
         AND DATE(a.data_hora) <= :fim
         AND p.cliente_id = :cliente_id
         {filtro_medico}
-        GROUP BY EXTRACT(HOUR FROM a.data_hora)
+        GROUP BY EXTRACT(HOUR FROM a.data_hora AT TIME ZONE 'America/Sao_Paulo')
         ORDER BY quantidade DESC
         LIMIT 5
     """)
@@ -518,6 +518,185 @@ async def get_horarios():
         {"dia_semana": 3, "dia": "Quinta", "inicio": "08:00", "fim": "18:00", "ativo": True},
         {"dia_semana": 4, "dia": "Sexta", "inicio": "08:00", "fim": "18:00", "ativo": True},
     ]
+
+
+@router.get("/financeiro")
+async def get_dados_financeiros(
+    periodo: str = Query("mes_atual", description="mes_atual, mes_anterior ou 12_meses"),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna dados financeiros para o dashboard: faturamento, breakdown por tipo/convênio
+    """
+    user_type = current_user.get("tipo")
+    user_id = current_user.get("id")
+    cliente_id = current_user.get("cliente_id")
+    medico_id = user_id if user_type == "medico" else None
+
+    hoje = date.today()
+
+    # Definir período
+    if periodo == "mes_atual":
+        inicio_periodo = date(hoje.year, hoje.month, 1)
+        if hoje.month == 12:
+            fim_periodo = date(hoje.year, 12, 31)
+        else:
+            fim_periodo = date(hoje.year, hoje.month + 1, 1) - timedelta(days=1)
+    elif periodo == "mes_anterior":
+        if hoje.month == 1:
+            inicio_periodo = date(hoje.year - 1, 12, 1)
+            fim_periodo = date(hoje.year - 1, 12, 31)
+        else:
+            inicio_periodo = date(hoje.year, hoje.month - 1, 1)
+            fim_periodo = date(hoje.year, hoje.month, 1) - timedelta(days=1)
+    else:  # 12_meses
+        inicio_periodo = hoje - timedelta(days=365)
+        fim_periodo = hoje
+
+    medico_filter = "AND a.medico_id = :medico_id" if medico_id else ""
+
+    # Status válidos para faturamento (realizados + previstos, exclui cancelados e faltas)
+    status_faturamento = "('realizado', 'realizada', 'concluido', 'concluida', 'confirmado', 'confirmada', 'agendado', 'agendada', 'pendente')"
+
+    # Faturamento total (realizados + previstos)
+    result_total = db.execute(text(f"""
+        SELECT
+            COUNT(*) as total_atendimentos,
+            COALESCE(SUM(CAST(NULLIF(a.valor_consulta, '') AS DECIMAL)), 0) as faturamento_total
+        FROM agendamentos a
+        JOIN pacientes p ON a.paciente_id = p.id
+        WHERE DATE(a.data_hora) >= :inicio
+        AND DATE(a.data_hora) <= :fim
+        AND a.status IN {status_faturamento}
+        AND p.cliente_id = :cliente_id
+        {medico_filter}
+    """), {
+        "inicio": inicio_periodo,
+        "fim": fim_periodo,
+        "cliente_id": cliente_id,
+        "medico_id": medico_id
+    }).fetchone()
+
+    total_atendimentos = int(result_total[0]) if result_total[0] else 0
+    faturamento_total = float(result_total[1]) if result_total[1] else 0.0
+
+    # Particular vs Convênio (realizados + previstos)
+    result_particular = db.execute(text(f"""
+        SELECT
+            COUNT(*) as quantidade,
+            COALESCE(SUM(CAST(NULLIF(a.valor_consulta, '') AS DECIMAL)), 0) as valor
+        FROM agendamentos a
+        JOIN pacientes p ON a.paciente_id = p.id
+        WHERE DATE(a.data_hora) >= :inicio
+        AND DATE(a.data_hora) <= :fim
+        AND a.status IN {status_faturamento}
+        AND (a.forma_pagamento = 'particular' OR a.forma_pagamento IS NULL OR a.forma_pagamento = '')
+        AND p.cliente_id = :cliente_id
+        {medico_filter}
+    """), {
+        "inicio": inicio_periodo,
+        "fim": fim_periodo,
+        "cliente_id": cliente_id,
+        "medico_id": medico_id
+    }).fetchone()
+
+    qtd_particular = int(result_particular[0]) if result_particular[0] else 0
+    valor_particular = float(result_particular[1]) if result_particular[1] else 0.0
+
+    result_convenio = db.execute(text(f"""
+        SELECT
+            COUNT(*) as quantidade,
+            COALESCE(SUM(CAST(NULLIF(a.valor_consulta, '') AS DECIMAL)), 0) as valor
+        FROM agendamentos a
+        JOIN pacientes p ON a.paciente_id = p.id
+        WHERE DATE(a.data_hora) >= :inicio
+        AND DATE(a.data_hora) <= :fim
+        AND a.status IN {status_faturamento}
+        AND a.forma_pagamento IS NOT NULL
+        AND a.forma_pagamento != ''
+        AND a.forma_pagamento != 'particular'
+        AND p.cliente_id = :cliente_id
+        {medico_filter}
+    """), {
+        "inicio": inicio_periodo,
+        "fim": fim_periodo,
+        "cliente_id": cliente_id,
+        "medico_id": medico_id
+    }).fetchone()
+
+    qtd_convenio = int(result_convenio[0]) if result_convenio[0] else 0
+    valor_convenio = float(result_convenio[1]) if result_convenio[1] else 0.0
+
+    # Ticket médio
+    ticket_medio = faturamento_total / total_atendimentos if total_atendimentos > 0 else 0
+
+    # Breakdown por convênio (para gráfico de pizza)
+    por_convenio = []
+
+    if valor_particular > 0 or qtd_particular > 0:
+        por_convenio.append({
+            "nome": "Particular",
+            "valor": round(valor_particular, 2),
+            "quantidade": qtd_particular,
+            "percent": round((valor_particular / faturamento_total * 100) if faturamento_total > 0 else 0, 1)
+        })
+
+    # Buscar convênios específicos - extrair nome do JSON convenios_aceitos do médico
+    # forma_pagamento guarda 'convenio_0', 'convenio_1', etc. (índice do array)
+    result_convenios = db.execute(text(f"""
+        SELECT
+            COALESCE(
+                m.convenios_aceitos::jsonb -> CAST(SUBSTRING(a.forma_pagamento FROM 'convenio_([0-9]+)') AS INTEGER) ->> 'nome',
+                'Convênio'
+            ) as convenio_nome,
+            COUNT(*) as quantidade,
+            COALESCE(SUM(CAST(NULLIF(a.valor_consulta, '') AS DECIMAL)), 0) as valor
+        FROM agendamentos a
+        JOIN pacientes p ON a.paciente_id = p.id
+        JOIN medicos m ON a.medico_id = m.id
+        WHERE DATE(a.data_hora) >= :inicio
+        AND DATE(a.data_hora) <= :fim
+        AND a.status IN {status_faturamento}
+        AND a.forma_pagamento IS NOT NULL
+        AND a.forma_pagamento != ''
+        AND a.forma_pagamento LIKE 'convenio_%'
+        AND p.cliente_id = :cliente_id
+        {medico_filter}
+        GROUP BY convenio_nome
+        ORDER BY valor DESC
+        LIMIT 5
+    """), {
+        "inicio": inicio_periodo,
+        "fim": fim_periodo,
+        "cliente_id": cliente_id,
+        "medico_id": medico_id
+    }).fetchall()
+
+    for row in result_convenios:
+        convenio_nome = row[0] or "Convênio"
+        convenio_valor = float(row[2]) if row[2] else 0
+        por_convenio.append({
+            "nome": convenio_nome,
+            "valor": round(convenio_valor, 2),
+            "quantidade": int(row[1]),
+            "percent": round((convenio_valor / faturamento_total * 100) if faturamento_total > 0 else 0, 1)
+        })
+
+    return {
+        "faturamento_total": round(faturamento_total, 2),
+        "total_atendimentos": total_atendimentos,
+        "particular": {
+            "valor": round(valor_particular, 2),
+            "quantidade": qtd_particular
+        },
+        "convenio": {
+            "valor": round(valor_convenio, 2),
+            "quantidade": qtd_convenio
+        },
+        "ticket_medio": round(ticket_medio, 2),
+        "por_convenio": por_convenio
+    }
 
 
 @router.get("/financeiro/resumo")

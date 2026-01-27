@@ -436,6 +436,12 @@
         }
 
         const user = JSON.parse(userData);
+
+        // Secretárias não têm acesso ao dashboard
+        if (user.is_secretaria) {
+            window.location.href = '/static/conversas.html';
+        }
+
         document.getElementById('userName').innerHTML = `<i class="fas fa-user-circle mr-2"></i>${user.nome}`;
 
         // Função de Logout
@@ -540,39 +546,27 @@
             renderizarBreakdown(data.por_convenio);
         }
 
-        // Função para renderizar dados demo (quando não há API)
+        // Função para mostrar dados zerados quando não há dados financeiros reais
         function renderizarDadosFinanceirosDemo() {
-            // Dados simulados baseados nos valores do banco demo
-            document.getElementById('faturamentoTotal').textContent = 'R$ 10.500';
-            document.getElementById('qtdAtendimentos').textContent = '65 atendimentos';
+            // Sem dados reais - mostrar zeros
+            document.getElementById('faturamentoTotal').textContent = 'R$ 0';
+            document.getElementById('qtdAtendimentos').textContent = '0 atendimentos';
 
-            document.getElementById('faturamentoParticular').textContent = 'R$ 4.250';
-            document.getElementById('qtdParticular').textContent = '11 consultas';
+            document.getElementById('faturamentoParticular').textContent = 'R$ 0';
+            document.getElementById('qtdParticular').textContent = '0 consultas';
 
-            document.getElementById('faturamentoConvenio').textContent = 'R$ 6.250';
-            document.getElementById('qtdConvenio').textContent = '54 consultas';
+            document.getElementById('faturamentoConvenio').textContent = 'R$ 0';
+            document.getElementById('qtdConvenio').textContent = '0 consultas';
 
-            document.getElementById('ticketMedio').textContent = 'R$ 161';
+            document.getElementById('ticketMedio').textContent = 'R$ 0';
 
-            // Breakdown por tipo
-            const breakdownData = [
-                { nome: 'Particular', valor: 4250, cor: 'indigo', percent: 40 },
-                { nome: 'SulAmérica', valor: 2470, cor: 'green', percent: 24 },
-                { nome: 'Amil', valor: 2100, cor: 'blue', percent: 20 },
-                { nome: 'Unimed', valor: 1680, cor: 'orange', percent: 16 }
-            ];
-
-            renderizarBreakdown(breakdownData);
+            // Sem breakdown - array vazio
+            renderizarBreakdown([]);
         }
 
         // Função para renderizar breakdown por tipo/convênio
         function renderizarBreakdown(data) {
             const container = document.getElementById('faturamentoPorTipo');
-
-            if (!data || data.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-center py-4">Sem dados disponíveis</p>';
-                return;
-            }
 
             const coresHex = {
                 'Particular': '#6366f1',
@@ -592,8 +586,14 @@
                 'Hapvida': 'teal'
             };
 
-            // Renderizar gráfico de pizza
-            renderizarGraficoFinanceiro(data, coresHex);
+            // Sempre renderizar o gráfico (mesmo com dados vazios)
+            renderizarGraficoFinanceiro(data || [], coresHex);
+
+            // Verificar se há dados para o detalhamento
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Sem dados disponíveis</p>';
+                return;
+            }
 
             // Renderizar lista de detalhamento
             container.innerHTML = data.map((item, index) => {
@@ -627,7 +627,34 @@
             // Destruir gráfico anterior se existir
             if (chartFinanceiroInstance) {
                 chartFinanceiroInstance.destroy();
+                chartFinanceiroInstance = null;
             }
+
+            // Se não houver dados, mostrar mensagem no lugar do gráfico
+            if (!data || data.length === 0) {
+                // Limpar canvas e mostrar mensagem
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const container = canvas.parentElement;
+
+                // Verificar se já existe mensagem de "sem dados"
+                let msgElement = container.querySelector('.no-data-msg');
+                if (!msgElement) {
+                    msgElement = document.createElement('div');
+                    msgElement.className = 'no-data-msg text-gray-500 text-center py-8';
+                    msgElement.innerHTML = '<i class="fas fa-chart-pie text-4xl text-gray-300 mb-2"></i><p>Sem dados para exibir</p>';
+                    container.appendChild(msgElement);
+                }
+                canvas.style.display = 'none';
+                return;
+            }
+
+            // Remover mensagem de "sem dados" se existir e mostrar canvas
+            const container = canvas.parentElement;
+            const msgElement = container.querySelector('.no-data-msg');
+            if (msgElement) {
+                msgElement.remove();
+            }
+            canvas.style.display = 'block';
 
             const labels = data.map(item => item.nome);
             const valores = data.map(item => item.valor);
