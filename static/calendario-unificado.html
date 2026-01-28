@@ -551,6 +551,88 @@
 
         /* ========== FIM CALENDÁRIO CUSTOMIZADO ========== */
 
+        /* ========== INDICAÇÃO DE INDISPONIBILIDADE ========== */
+
+        /* Dia indisponível (visualização mensal) */
+        .cal-day.indisponivel {
+            background: #f1f5f9 !important;
+            cursor: not-allowed;
+        }
+        .cal-day.indisponivel:hover {
+            background: #f1f5f9 !important;
+        }
+        .cal-day.indisponivel .cal-day-number {
+            color: #94a3b8;
+        }
+        .cal-day.indisponivel .cal-day-events {
+            opacity: 0.5;
+        }
+
+        /* Slot indisponível (visualização semanal) */
+        .cal-week-slot.indisponivel {
+            background: repeating-linear-gradient(
+                45deg,
+                #f8fafc,
+                #f8fafc 5px,
+                #f1f5f9 5px,
+                #f1f5f9 10px
+            );
+            cursor: not-allowed;
+        }
+        .cal-week-slot.indisponivel:hover {
+            background: repeating-linear-gradient(
+                45deg,
+                #f8fafc,
+                #f8fafc 5px,
+                #f1f5f9 5px,
+                #f1f5f9 10px
+            );
+        }
+
+        /* Slot indisponível (visualização diária) */
+        .cal-day-slot.indisponivel {
+            background: #f8fafc;
+        }
+        .cal-day-slot.indisponivel .cal-day-slot-events {
+            cursor: not-allowed;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 5px,
+                rgba(148, 163, 184, 0.1) 5px,
+                rgba(148, 163, 184, 0.1) 10px
+            );
+        }
+        .cal-day-slot.indisponivel .cal-day-slot-events:hover {
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 5px,
+                rgba(148, 163, 184, 0.1) 5px,
+                rgba(148, 163, 184, 0.1) 10px
+            );
+        }
+        .cal-day-slot.indisponivel .cal-day-slot-time {
+            color: #94a3b8;
+        }
+
+        /* Indicador visual de dia bloqueado */
+        .cal-day.bloqueado::after {
+            content: '';
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+        }
+        .cal-day {
+            position: relative;
+        }
+
+        /* ========== FIM INDICAÇÃO DE INDISPONIBILIDADE ========== */
+
         /* ========== MELHORIAS DE USABILIDADE ========== */
 
         /* FAB Nova Consulta */
@@ -940,7 +1022,7 @@
                             Médico *
                         </label>
                         <select id="medico_id" name="medico_id"
-                                onchange="verificarHorariosDisponiveis()"
+                                onchange="verificarHorariosDisponiveis(); carregarFormasPagamento();"
                                 class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                             <option value="1">Dra. Tânia Maria - Alergista</option>
                             <option value="2">Dr. Marco Aurélio - Cardiologista</option>
@@ -1104,6 +1186,18 @@
                         <div class="mt-2 sm:mt-3">
                             <span class="text-gray-600 text-xs sm:text-sm">Motivo:</span>
                             <p class="font-medium text-xs sm:text-sm break-words" id="det_motivo"></p>
+                        </div>
+                    </div>
+
+                    <!-- Informações de Pagamento -->
+                    <div class="bg-purple-50 rounded-lg p-3 sm:p-4">
+                        <h4 class="font-semibold text-sm sm:text-base text-gray-700 mb-2 sm:mb-3 flex items-center">
+                            <i class="fas fa-credit-card mr-1 sm:mr-2 text-purple-600"></i>
+                            Pagamento
+                        </h4>
+                        <div class="text-xs sm:text-sm">
+                            <span class="text-gray-600">Forma de Pagamento:</span>
+                            <p class="font-medium" id="det_forma_pagamento"></p>
                         </div>
                     </div>
 
@@ -1422,6 +1516,12 @@
         let medicosData = []; // Armazenar dados dos médicos
         let todosEventos = []; // Armazenar todos os eventos
 
+        // ==========================================
+        // DISPONIBILIDADE - Variáveis para indicação visual
+        // ==========================================
+        let configMedicoSelecionado = null;  // Configurações de horários do médico
+        let bloqueiosPeriodo = [];           // Bloqueios do período visível
+
         // Paleta de cores para médicos (cores distintas e agradáveis)
         const coresMedicos = [
             '#3b82f6', // Azul
@@ -1559,7 +1659,7 @@
             });
         }
 
-        function navegarCalendario(direcao) {
+        async function navegarCalendario(direcao) {
             if (currentView === 'month') {
                 currentDate.setMonth(currentDate.getMonth() + direcao);
             } else if (currentView === 'week') {
@@ -1567,11 +1667,25 @@
             } else if (currentView === 'day') {
                 currentDate.setDate(currentDate.getDate() + direcao);
             }
+
+            // Recarregar bloqueios para o novo período se há médico selecionado
+            const medicoSelecionado = parseInt(document.getElementById('filtroMedico')?.value || 0);
+            if (medicoSelecionado > 0) {
+                await carregarBloqueiosPeriodo(medicoSelecionado);
+            }
+
             renderizarCalendario();
         }
 
-        function irParaHoje() {
+        async function irParaHoje() {
             currentDate = new Date();
+
+            // Recarregar bloqueios para o novo período se há médico selecionado
+            const medicoSelecionado = parseInt(document.getElementById('filtroMedico')?.value || 0);
+            if (medicoSelecionado > 0) {
+                await carregarBloqueiosPeriodo(medicoSelecionado);
+            }
+
             renderizarCalendario();
         }
 
@@ -1672,6 +1786,17 @@
             let dataCorreta = new Date(ano, mes, dia);
             divDia.dataset.date = dataCorreta.toISOString().split('T')[0];
 
+            // Verificar disponibilidade do dia
+            const disponivel = verificarDiaDisponivel(dataCorreta);
+            const bloqueado = verificarDataBloqueada(dataCorreta);
+
+            if (!disponivel) {
+                divDia.classList.add('indisponivel');
+            }
+            if (bloqueado) {
+                divDia.classList.add('bloqueado');
+            }
+
             const spanNum = document.createElement('span');
             spanNum.className = 'cal-day-number';
             spanNum.textContent = dia;
@@ -1681,15 +1806,17 @@
             divEventos.className = 'cal-day-events';
             divDia.appendChild(divEventos);
 
-            // Click para criar novo agendamento
-            divDia.addEventListener('click', (e) => {
-                if (e.target.classList.contains('cal-event') || e.target.closest('.cal-event')) return;
-                const data = divDia.dataset.date;
-                selectedDate = data;
-                document.getElementById('data').value = data;
-                document.getElementById('hora').value = '09:00';
-                abrirModalAgendamento();
-            });
+            // Click para criar novo agendamento - apenas se disponível
+            if (disponivel) {
+                divDia.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('cal-event') || e.target.closest('.cal-event')) return;
+                    const data = divDia.dataset.date;
+                    selectedDate = data;
+                    document.getElementById('data').value = data;
+                    document.getElementById('hora').value = '09:00';
+                    abrirModalAgendamento();
+                });
+            }
 
             return divDia;
         }
@@ -1833,12 +1960,18 @@
                     slot.className = 'cal-week-slot';
                     slot.dataset.hour = hora;
 
-                    slot.addEventListener('click', () => {
-                        selectedDate = dataStr;
-                        document.getElementById('data').value = dataStr;
-                        document.getElementById('hora').value = `${hora.toString().padStart(2, '0')}:00`;
-                        abrirModalAgendamento();
-                    });
+                    // Verificar disponibilidade do horário
+                    const disponivel = verificarHorarioDisponivel(dia, hora);
+                    if (!disponivel) {
+                        slot.classList.add('indisponivel');
+                    } else {
+                        slot.addEventListener('click', () => {
+                            selectedDate = dataStr;
+                            document.getElementById('data').value = dataStr;
+                            document.getElementById('hora').value = `${hora.toString().padStart(2, '0')}:00`;
+                            abrirModalAgendamento();
+                        });
+                    }
 
                     coluna.appendChild(slot);
                 }
@@ -1967,6 +2100,12 @@
                 const slot = document.createElement('div');
                 slot.className = 'cal-day-slot';
 
+                // Verificar disponibilidade do horário
+                const disponivel = verificarHorarioDisponivel(currentDate, hora);
+                if (!disponivel) {
+                    slot.classList.add('indisponivel');
+                }
+
                 const timeDiv = document.createElement('div');
                 timeDiv.className = 'cal-day-slot-time';
                 timeDiv.textContent = `${hora.toString().padStart(2, '0')}:00`;
@@ -1982,14 +2121,16 @@
                     eventsDiv.appendChild(divEvento);
                 });
 
-                // Click para criar novo agendamento
-                eventsDiv.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('cal-day-event') || e.target.closest('.cal-day-event')) return;
-                    selectedDate = dataStr;
-                    document.getElementById('data').value = dataStr;
-                    document.getElementById('hora').value = `${hora.toString().padStart(2, '0')}:00`;
-                    abrirModalAgendamento();
-                });
+                // Click para criar novo agendamento - apenas se disponível
+                if (disponivel) {
+                    eventsDiv.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('cal-day-event') || e.target.closest('.cal-day-event')) return;
+                        selectedDate = dataStr;
+                        document.getElementById('data').value = dataStr;
+                        document.getElementById('hora').value = `${hora.toString().padStart(2, '0')}:00`;
+                        abrirModalAgendamento();
+                    });
+                }
 
                 slot.appendChild(eventsDiv);
                 slotsContainer.appendChild(slot);
@@ -2154,7 +2295,31 @@
                    `;
                    legendaDiv.appendChild(bloqueioItem);
 
+                   // Adicionar item para indisponível
+                   const indisponivelItem = document.createElement('div');
+                   indisponivelItem.className = 'flex items-center';
+                   indisponivelItem.innerHTML = `
+                       <span class="w-4 h-4 rounded mr-2" style="background: repeating-linear-gradient(45deg, #f8fafc, #f8fafc 2px, #e2e8f0 2px, #e2e8f0 4px);"></span>
+                       <span class="text-sm text-gray-500">Fora do Expediente</span>
+                   `;
+                   legendaDiv.appendChild(indisponivelItem);
+
                    console.log('Médicos carregados:', data.medicos.length);
+
+                   // Carregar formas de pagamento do primeiro médico
+                   await carregarFormasPagamento();
+
+                   // Se usuário é médico (apenas 1 médico na lista), carregar sua disponibilidade automaticamente
+                   // Ou se é secretária mas há médico selecionado no filtro
+                   if (data.medicos.length === 1) {
+                       // Médico logado vê apenas sua própria agenda
+                       const medicoId = data.medicos[0].id;
+                       filtroMedico.value = medicoId;
+                       await carregarDisponibilidadeMedico(medicoId);
+                       console.log('✅ Disponibilidade carregada automaticamente para médico:', medicoId);
+                       // Re-renderizar calendário com as indicações de disponibilidade
+                       renderizarCalendario();
+                   }
                 }
             } catch (error) {
                 console.error('Erro ao carregar médicos:', error);
@@ -2164,8 +2329,11 @@
         // Variável para armazenar eventos filtrados
         let eventosFiltrados = [];
 
-        function aplicarFiltroMedico() {
+        async function aplicarFiltroMedico() {
             const medicoSelecionado = parseInt(document.getElementById('filtroMedico').value);
+
+            // Carregar disponibilidade do médico selecionado
+            await carregarDisponibilidadeMedico(medicoSelecionado);
 
             // Filtrar eventos
             eventosFiltrados = medicoSelecionado === 0
@@ -2185,6 +2353,229 @@
             console.log(`Filtro aplicado: ${eventosFiltrados.length} eventos exibidos`);
         }
 
+        // ==========================================
+        // DISPONIBILIDADE - Funções de verificação
+        // ==========================================
+
+        // Carregar configurações e bloqueios do médico selecionado
+        async function carregarDisponibilidadeMedico(medicoId) {
+            console.log('🔄 carregarDisponibilidadeMedico chamada para médico:', medicoId);
+
+            if (!medicoId || medicoId === 0) {
+                console.log('❌ Médico não selecionado, limpando configurações');
+                configMedicoSelecionado = null;
+                bloqueiosPeriodo = [];
+                return;
+            }
+
+            try {
+                // Carregar configurações do médico
+                console.log('📡 Buscando configurações do médico...');
+                const configResp = await fetch(`/api/medicos/${medicoId}/configuracoes`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                console.log('📡 Resposta status:', configResp.status);
+
+                if (configResp.ok) {
+                    const configData = await configResp.json();
+                    console.log('📡 Dados recebidos:', configData);
+
+                    if (configData.sucesso) {
+                        configMedicoSelecionado = configData.configuracoes;
+                        console.log('✅ Configurações do médico carregadas:', configMedicoSelecionado);
+                        console.log('   - dias_atendimento:', configMedicoSelecionado.dias_atendimento);
+                        console.log('   - horario_inicio:', configMedicoSelecionado.horario_inicio);
+                        console.log('   - horario_fim:', configMedicoSelecionado.horario_fim);
+                    } else {
+                        console.log('⚠️ API retornou sucesso=false, usando configurações padrão');
+                        // Usar configurações padrão se a API não retornou sucesso
+                        configMedicoSelecionado = {
+                            dias_atendimento: '[1,2,3,4,5]',
+                            horario_inicio: '08:00',
+                            horario_fim: '18:00'
+                        };
+                    }
+                } else {
+                    console.log('❌ Erro na requisição:', configResp.status, configResp.statusText);
+                    // Usar configurações padrão se houve erro na requisição
+                    configMedicoSelecionado = {
+                        dias_atendimento: '[1,2,3,4,5]',
+                        horario_inicio: '08:00',
+                        horario_fim: '18:00'
+                    };
+                }
+
+                // Carregar bloqueios do período visível
+                await carregarBloqueiosPeriodo(medicoId);
+
+            } catch (error) {
+                console.error('❌ Erro ao carregar disponibilidade do médico:', error);
+                // Em caso de erro, usar configurações padrão em vez de null
+                configMedicoSelecionado = {
+                    dias_atendimento: '[1,2,3,4,5]',
+                    horario_inicio: '08:00',
+                    horario_fim: '18:00'
+                };
+                bloqueiosPeriodo = [];
+            }
+        }
+
+        // Carregar bloqueios do período visível
+        async function carregarBloqueiosPeriodo(medicoId) {
+            console.log('🔄 carregarBloqueiosPeriodo chamada para médico:', medicoId);
+
+            if (!medicoId || medicoId === 0) {
+                bloqueiosPeriodo = [];
+                return;
+            }
+
+            try {
+                const resp = await fetch(`/api/medicos/${medicoId}/bloqueios`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                console.log('📡 Resposta bloqueios status:', resp.status);
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    console.log('📡 Dados bloqueios:', data);
+
+                    if (data.sucesso && data.bloqueios) {
+                        // Filtrar bloqueios ativos para o período visível
+                        const { inicio, fim } = obterPeriodoVisivel();
+                        console.log('📅 Período visível:', inicio, '-', fim);
+
+                        bloqueiosPeriodo = data.bloqueios.filter(b => {
+                            const bInicio = new Date(b.data_inicio);
+                            const bFim = new Date(b.data_fim);
+                            return bInicio <= fim && bFim >= inicio;
+                        });
+                        console.log('✅ Bloqueios do período carregados:', bloqueiosPeriodo.length);
+                    }
+                } else {
+                    console.log('❌ Erro na requisição de bloqueios:', resp.status);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao carregar bloqueios:', error);
+                bloqueiosPeriodo = [];
+            }
+        }
+
+        // Obter período visível no calendário (início e fim)
+        function obterPeriodoVisivel() {
+            let inicio, fim;
+
+            if (currentView === 'month') {
+                // Primeiro dia do mês com margem para dias do mês anterior
+                inicio = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                inicio.setDate(inicio.getDate() - 7); // Margem para dias do mês anterior
+                // Último dia do mês com margem para dias do próximo mês
+                fim = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+                fim.setDate(fim.getDate() + 7); // Margem para dias do próximo mês
+            } else if (currentView === 'week') {
+                // Início da semana
+                inicio = new Date(currentDate);
+                inicio.setDate(currentDate.getDate() - currentDate.getDay());
+                // Fim da semana
+                fim = new Date(inicio);
+                fim.setDate(inicio.getDate() + 6);
+            } else {
+                // Visualização diária
+                inicio = new Date(currentDate);
+                inicio.setHours(0, 0, 0, 0);
+                fim = new Date(currentDate);
+                fim.setHours(23, 59, 59, 999);
+            }
+
+            return { inicio, fim };
+        }
+
+        // Verificar se um dia está disponível para agendamento
+        function verificarDiaDisponivel(data) {
+            // Se não há médico selecionado no filtro, todos os dias são clicáveis
+            if (!configMedicoSelecionado) {
+                return true;
+            }
+
+            // Verificar se o dia da semana está ativo nas configurações
+            const diasAtendimento = configMedicoSelecionado.dias_atendimento;
+            if (diasAtendimento) {
+                try {
+                    // dias_atendimento pode ser string JSON ou array
+                    const dias = typeof diasAtendimento === 'string'
+                        ? JSON.parse(diasAtendimento)
+                        : diasAtendimento;
+
+                    // Backend usa: 1=Segunda, 2=Terça, ..., 7=Domingo
+                    // JavaScript: 0=Domingo, 1=Segunda, ..., 6=Sábado
+                    const diaSemanaJS = data.getDay(); // 0-6 (Dom-Sáb)
+                    const diaSemanaBackend = diaSemanaJS === 0 ? 7 : diaSemanaJS; // Converter para formato backend
+
+                    if (!dias.includes(diaSemanaBackend)) {
+                        return false;
+                    }
+                } catch (e) {
+                    console.error('Erro ao parsear dias_atendimento:', e);
+                }
+            }
+
+            // Verificar se está em período bloqueado
+            if (verificarDataBloqueada(data)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        // Verificar se um horário específico está disponível
+        function verificarHorarioDisponivel(data, hora) {
+            // Se o dia não está disponível, o horário também não está
+            if (!verificarDiaDisponivel(data)) return false;
+
+            // Se não há configurações do médico, considerar disponível
+            if (!configMedicoSelecionado) return true;
+
+            // Verificar se hora está dentro do expediente
+            const horarioInicio = configMedicoSelecionado.horario_inicio || '08:00';
+            const horarioFim = configMedicoSelecionado.horario_fim || '18:00';
+            const horaStr = `${hora.toString().padStart(2, '0')}:00`;
+
+            if (horaStr < horarioInicio || horaStr >= horarioFim) {
+                return false;
+            }
+
+            // Verificar intervalo de almoço
+            const almocoInicio = configMedicoSelecionado.intervalo_almoco_inicio;
+            const almocoFim = configMedicoSelecionado.intervalo_almoco_fim;
+
+            if (almocoInicio && almocoFim) {
+                if (horaStr >= almocoInicio && horaStr < almocoFim) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        // Verificar se uma data está em período bloqueado
+        function verificarDataBloqueada(data) {
+            if (!bloqueiosPeriodo || bloqueiosPeriodo.length === 0) return false;
+
+            // Normalizar a data para comparação (apenas data, sem hora)
+            const dataStr = data.toISOString().split('T')[0];
+
+            return bloqueiosPeriodo.some(b => {
+                const inicio = b.data_inicio.split('T')[0];
+                const fim = b.data_fim.split('T')[0];
+                return dataStr >= inicio && dataStr <= fim;
+            });
+        }
+
+        // ==========================================
+        // FIM DISPONIBILIDADE
+        // ==========================================
+
         function abrirModalAgendamento() {
             document.getElementById('modalAgendamento').classList.remove('hidden');
 
@@ -2199,18 +2590,26 @@
                 document.getElementById('hora').value = '';
             }
 
-            carregarConvenios();
+            carregarFormasPagamento();
         }
 
-        // Carregar lista de convênios da API (Particular + Convênios cadastrados)
-        async function carregarConvenios() {
+        // Carregar formas de pagamento do médico selecionado
+        // Busca do endpoint /api/medicos/{medico_id}/formas-pagamento
+        async function carregarFormasPagamento() {
             const convenioSelect = document.getElementById('convenio_id');
+            const medicoSelect = document.getElementById('medico_id');
+            const medicoId = medicoSelect?.value;
+
+            // Se não há médico selecionado, mostrar opção padrão
+            if (!medicoId) {
+                convenioSelect.innerHTML = '<option value="">Selecione um médico primeiro...</option>';
+                return;
+            }
+
+            convenioSelect.innerHTML = '<option value="">Carregando...</option>';
 
             try {
-                // Obter cliente_id do usuário logado
-                const clienteId = currentUser?.cliente_id || localStorage.getItem('cliente_id') || 3;
-
-                const response = await fetch(`/api/convenios?cliente_id=${clienteId}`, {
+                const response = await fetch(`/api/medicos/${medicoId}/formas-pagamento`, {
                     headers: {
                         'Authorization': `Bearer ${authToken}`
                     }
@@ -2218,34 +2617,46 @@
 
                 convenioSelect.innerHTML = '<option value="">Selecione...</option>';
 
-                // Adicionar "Particular" como primeira opção
-                const particularOption = document.createElement('option');
-                particularOption.value = 'particular';
-                particularOption.textContent = 'Particular';
-                convenioSelect.appendChild(particularOption);
-
                 if (response.ok) {
                     const data = await response.json();
 
-                    if (data.convenios && data.convenios.length > 0) {
-                        // Filtrar "Particular" se estiver cadastrado como convênio (evitar duplicidade)
-                        const conveniosFiltrados = data.convenios.filter(c =>
-                            c.codigo?.toLowerCase() !== 'particular' &&
-                            c.nome?.toLowerCase() !== 'particular'
-                        );
-
-                        conveniosFiltrados.forEach(convenio => {
+                    if (data.formas_pagamento && data.formas_pagamento.length > 0) {
+                        data.formas_pagamento.forEach(forma => {
                             const option = document.createElement('option');
-                            option.value = convenio.id;
-                            option.textContent = convenio.nome;
+                            option.value = forma.id;
+
+                            // Mostrar apenas o nome
+                            option.textContent = forma.nome;
+
+                            // Armazenar dados extras no data attribute (para uso posterior se necessário)
+                            option.dataset.valor = forma.valor || '';
+                            option.dataset.tipo = forma.tipo || '';
+
                             convenioSelect.appendChild(option);
                         });
+                    } else {
+                        // Fallback: apenas Particular
+                        const particularOption = document.createElement('option');
+                        particularOption.value = 'particular';
+                        particularOption.textContent = 'Particular';
+                        convenioSelect.appendChild(particularOption);
                     }
+                } else {
+                    // Se falhar, usar fallback
+                    const particularOption = document.createElement('option');
+                    particularOption.value = 'particular';
+                    particularOption.textContent = 'Particular';
+                    convenioSelect.appendChild(particularOption);
                 }
             } catch (error) {
-                console.error('Erro ao carregar convênios:', error);
+                console.error('Erro ao carregar formas de pagamento:', error);
                 convenioSelect.innerHTML = '<option value="">Selecione...</option><option value="particular">Particular</option>';
             }
+        }
+
+        // Função legada para compatibilidade (redireciona para nova função)
+        async function carregarConvenios() {
+            await carregarFormasPagamento();
         }
 
         function fecharModal() {
@@ -2288,6 +2699,9 @@
         function mostrarHorariosDisponiveis(horarios) {
             const container = document.getElementById('horariosDisponiveisContainer');
             const horariosDiv = document.getElementById('horariosDisponiveis');
+
+            // Esconder mensagem de aviso anterior (bug fix)
+            document.getElementById('indicadorDisponibilidade').classList.add('hidden');
 
             horariosDiv.innerHTML = '';
 
@@ -2414,6 +2828,12 @@
                 return;
             }
 
+            // Obter forma de pagamento selecionada e seu valor
+            const convenioSelect = document.getElementById('convenio_id');
+            const selectedOption = convenioSelect.options[convenioSelect.selectedIndex];
+            const formaPagamento = convenioSelect.value || 'particular';
+            const valorConsulta = selectedOption?.dataset?.valor || '';
+
             const formData = {
                 paciente_nome: document.getElementById('paciente_nome').value,
                 paciente_telefone: extrairNumerosTelefone(telefoneRaw), // Envia apenas números
@@ -2421,7 +2841,9 @@
                 data: document.getElementById('data').value,
                 hora: document.getElementById('hora').value,
                 duracao_minutos: parseInt(document.getElementById('duracao_minutos').value) || 30,
-                motivo_consulta: document.getElementById('motivo_consulta').value || 'Consulta'
+                motivo_consulta: document.getElementById('motivo_consulta').value || 'Consulta',
+                forma_pagamento: formaPagamento,
+                valor_consulta: valorConsulta
             };
 
             console.log('FormData:', formData);
@@ -2501,7 +2923,9 @@
                         paciente_telefone: ag.paciente?.telefone || ag.paciente_telefone,
                         medico_id: ag.medico?.id || ag.medico_id,
                         medico_nome: ag.medico?.nome || ag.medico_nome,
-                        especialidade: ag.medico?.especialidade || ag.especialidade
+                        especialidade: ag.medico?.especialidade || ag.especialidade,
+                        forma_pagamento: ag.forma_pagamento,
+                        valor_consulta: ag.valor_consulta
                     };
 
                     // Preencher detalhes no modal
@@ -2543,6 +2967,34 @@
 
                     document.getElementById('det_tipo').textContent = agendamentoAtual.tipo || '-';
                     document.getElementById('det_motivo').textContent = agendamentoAtual.motivo_consulta || 'Não informado';
+
+                    // Informações de pagamento
+                    const formaPagamento = agendamentoAtual.forma_pagamento || 'particular';
+                    let formaPagamentoTexto = 'Particular';
+                    if (formaPagamento.startsWith('convenio_')) {
+                        // Buscar nome do convênio do cadastro do médico
+                        const medicoData = medicosData.find(m => m.id === agendamentoAtual.medico_id);
+                        if (medicoData && medicoData.convenios_aceitos) {
+                            try {
+                                const idx = parseInt(formaPagamento.replace('convenio_', ''));
+                                const convenios = typeof medicoData.convenios_aceitos === 'string'
+                                    ? JSON.parse(medicoData.convenios_aceitos)
+                                    : medicoData.convenios_aceitos;
+                                if (convenios && convenios[idx]) {
+                                    formaPagamentoTexto = convenios[idx].nome || 'Convênio';
+                                } else {
+                                    formaPagamentoTexto = 'Convênio';
+                                }
+                            } catch (e) {
+                                formaPagamentoTexto = 'Convênio';
+                            }
+                        } else {
+                            formaPagamentoTexto = 'Convênio';
+                        }
+                    } else if (formaPagamento === 'particular') {
+                        formaPagamentoTexto = 'Particular';
+                    }
+                    document.getElementById('det_forma_pagamento').textContent = formaPagamentoTexto;
 
                     // Gerenciar botão "Marcar Falta"
                     const btnMarcarFalta = document.getElementById('btnMarcarFalta');

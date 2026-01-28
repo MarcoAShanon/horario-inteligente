@@ -188,12 +188,51 @@ source /root/sistema_agendamento/venv/bin/activate
 
 ---
 
+## Correções Realizadas (Sessão 28/01/2026)
+
+### 11. Indicação Visual de Horários Indisponíveis no Calendário
+- **Problema**: Calendário não mostrava visualmente quais horários/dias estavam indisponíveis
+- **Solução**: Implementada indicação visual com CSS e verificação de disponibilidade
+- **Arquivo principal**: `static/calendario-unificado.html`
+
+#### Funcionalidades Implementadas:
+1. **CSS para células indisponíveis** (linhas 554-634):
+   - Dias indisponíveis (mensal): fundo cinza, cursor not-allowed
+   - Slots indisponíveis (semanal): padrão listrado diagonal
+   - Slots indisponíveis (diário): fundo claro com padrão sutil
+
+2. **Variáveis globais**:
+   - `configMedicoSelecionado`: configurações de horário do médico
+   - `bloqueiosPeriodo`: bloqueios ativos do período visível
+
+3. **Funções de verificação**:
+   - `carregarDisponibilidadeMedico(medicoId)`: carrega config e bloqueios
+   - `carregarBloqueiosPeriodo(medicoId)`: carrega bloqueios do período
+   - `verificarDiaDisponivel(data)`: verifica dias de atendimento
+   - `verificarHorarioDisponivel(data, hora)`: verifica horário no expediente
+   - `verificarDataBloqueada(data)`: verifica bloqueios
+
+4. **Comportamento**:
+   - Médico logado: disponibilidade carregada automaticamente
+   - Secretária: disponibilidade carregada ao selecionar médico no filtro
+   - "Todos os médicos": sem indicação (todos clicáveis)
+   - Células indisponíveis: não abrem modal de agendamento
+
+5. **Legenda atualizada**: Adicionado item "Fora do Expediente"
+
+#### APIs Utilizadas:
+- `GET /api/medicos/{id}/configuracoes` - Configurações do médico
+- `GET /api/medicos/{id}/bloqueios` - Bloqueios ativos
+
+---
+
 ## Pendências / Próximos Passos
 
 - [x] ~~Testar criação de novo agendamento com convênio~~ (Funcionando)
 - [x] ~~Gráficos do dashboard financeiro renderizando~~ (Corrigido)
 - [x] ~~Dados demo atualizados com convênios~~ (Concluído)
 - [x] ~~Horários populares com fuso horário correto~~ (Corrigido)
+- [x] ~~Indicação visual de horários indisponíveis~~ (Implementado)
 - [ ] Validar exibição do nome do convênio no modal de detalhes
 
 ---
@@ -213,4 +252,4 @@ source /root/sistema_agendamento/venv/bin/activate
 
 ---
 
-*Última atualização: 27/01/2026 21:30*
+*Última atualização: 28/01/2026*
