@@ -337,7 +337,15 @@
                     }
 
                     // Vencimento
-                    document.getElementById('dadosVencimento').textContent = data.dia_vencimento ? `Todo dia ${data.dia_vencimento}` : '-';
+                    if (data.dia_vencimento) {
+                        const descVenc = {
+                            'mensal': `Todo dia ${data.dia_vencimento}`,
+                            'trimestral': `Dia ${data.dia_vencimento}, a cada 3 meses`,
+                            'semestral': `Dia ${data.dia_vencimento}, a cada 6 meses`,
+                            'anual': `Dia ${data.dia_vencimento}, a cada 12 meses`
+                        };
+                        document.getElementById('dadosVencimento').textContent = descVenc[periodo] || `Todo dia ${data.dia_vencimento}`;
+                    }
 
                     // Taxa de ativacao
                     if (data.ativacao_cortesia) {

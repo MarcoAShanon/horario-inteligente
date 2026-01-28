@@ -382,6 +382,10 @@
                         <span class="text-white font-semibold">TOTAL:</span>
                         <span class="text-green-400 font-bold text-xl" id="resumoTotal">R$ 150,00/mês</span>
                     </div>
+                    <div class="flex justify-between mt-2 hidden" id="linhaValorCiclo">
+                        <span class="text-yellow-400 font-semibold" id="labelValorCiclo">Cobranca trimestral:</span>
+                        <span class="text-yellow-400 font-bold text-xl" id="resumoValorCiclo">R$ 0,00</span>
+                    </div>
                     <div class="text-gray-400 text-xs mt-2 hidden" id="infoAposDesconto">
                         <i class="fas fa-info-circle mr-1"></i>
                         <span id="textoAposDesconto"></span>
@@ -1051,7 +1055,13 @@
             document.getElementById('resumoPeriodo').textContent = nomePeriodos[periodo] || periodo;
 
             const diaVenc = document.getElementById('diaVencimento').value;
-            document.getElementById('resumoVencimento').textContent = `Todo dia ${diaVenc}`;
+            const descVencimento = {
+                'mensal': `Todo dia ${diaVenc}`,
+                'trimestral': `Dia ${diaVenc}, a cada 3 meses`,
+                'semestral': `Dia ${diaVenc}, a cada 6 meses`,
+                'anual': `Dia ${diaVenc}, a cada 12 meses`
+            };
+            document.getElementById('resumoVencimento').textContent = descVencimento[periodo] || `Todo dia ${diaVenc}`;
 
             document.getElementById('resumoValorPlano').textContent = `R$ ${valorPlano.toFixed(2).replace('.', ',')}/mês`;
 
@@ -1091,6 +1101,19 @@
             }
 
             document.getElementById('resumoTotal').textContent = `R$ ${total.toFixed(2).replace('.', ',')}/mês`;
+
+            // Valor por ciclo de cobrança
+            const multiplicadorCiclo = { 'mensal': 1, 'trimestral': 3, 'semestral': 6, 'anual': 12 };
+            const nomeCobranca = { 'trimestral': 'Cobranca trimestral (3 meses):', 'semestral': 'Cobranca semestral (6 meses):', 'anual': 'Cobranca anual (12 meses):' };
+            const linhaValorCiclo = document.getElementById('linhaValorCiclo');
+            if (periodo !== 'mensal') {
+                const valorCiclo = total * multiplicadorCiclo[periodo];
+                linhaValorCiclo.classList.remove('hidden');
+                document.getElementById('labelValorCiclo').textContent = nomeCobranca[periodo];
+                document.getElementById('resumoValorCiclo').textContent = `R$ ${valorCiclo.toFixed(2).replace('.', ',')}`;
+            } else {
+                linhaValorCiclo.classList.add('hidden');
+            }
 
             // Info após desconto
             const infoAposDesconto = document.getElementById('infoAposDesconto');
