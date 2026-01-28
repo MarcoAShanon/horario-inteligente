@@ -14,9 +14,12 @@ import secrets
 import re
 import unicodedata
 
+from datetime import timedelta
+
 from app.database import get_db
 from app.api.admin import get_current_admin
 from app.services.telegram_service import alerta_novo_cliente, alerta_cliente_inativo
+from app.services.email_service import get_email_service
 import asyncio
 
 router = APIRouter(prefix="/api/admin", tags=["Admin - Clientes"])
@@ -67,10 +70,12 @@ class AssinaturaOnboarding(BaseModel):
     periodo_cobranca: str = "mensal"  # mensal, trimestral, semestral, anual
     percentual_periodo: float = 0  # Desconto pelo período (10%, 15%, 20%)
     linha_dedicada: bool = False  # Se usa linha WhatsApp dedicada (+R$40)
+    dia_vencimento: int = 10  # Dia do vencimento: 1, 5 ou 10
     desconto_percentual: Optional[float] = None  # Desconto promocional percentual
     desconto_valor_fixo: Optional[float] = None  # Desconto promocional fixo
     desconto_duracao_meses: Optional[int] = None  # Duração do desconto (null=permanente)
     desconto_motivo: Optional[str] = None  # Motivo do desconto
+    ativacao_cortesia: bool = False  # Isentar taxa de ativação (cortesia)
 
 
 class ClienteCreate(BaseModel):
@@ -241,7 +246,18 @@ async def criar_cliente(
 
         logger.info(f"[Onboarding] Subdomain gerado: {subdomain}")
 
-        # 2. Verificar email do médico
+        # 2. Verificar documento (CPF/CNPJ) duplicado
+        doc_existente = db.execute(
+            text("SELECT id, nome FROM clientes WHERE cnpj = :cnpj"),
+            {"cnpj": dados.documento}
+        ).fetchone()
+        if doc_existente:
+            raise HTTPException(
+                status_code=400,
+                detail=f"CPF/CNPJ {dados.documento} já está cadastrado (Cliente: {doc_existente[1]}, ID: {doc_existente[0]})"
+            )
+
+        # 2b. Verificar email do médico
         if not verificar_email_disponivel(db, dados.medico_principal.email, "medicos"):
             raise HTTPException(
                 status_code=400,
@@ -260,19 +276,26 @@ async def criar_cliente(
                 detail=f"Plano {dados.plano_id} não encontrado ou inativo"
             )
 
-        # 4. Criar cliente
+        # 4. Criar cliente com status pendente_aceite
         agora = datetime.now()
+        token_ativacao = secrets.token_urlsafe(64)
+        token_expira_em = agora + timedelta(days=7)
+
         result_cliente = db.execute(
             text("""
                 INSERT INTO clientes (
                     nome, cnpj, email, telefone, endereco,
                     subdomain, plano, ativo, valor_mensalidade,
                     logo_icon, cor_primaria, cor_secundaria,
+                    status, token_ativacao, token_expira_em,
+                    cadastrado_por_id, cadastrado_por_tipo,
                     criado_em, atualizado_em
                 ) VALUES (
                     :nome, :cnpj, :email, :telefone, :endereco,
-                    :subdomain, :plano, true, :valor_mensalidade,
+                    :subdomain, :plano, false, :valor_mensalidade,
                     'fa-heartbeat', '#3b82f6', '#1e40af',
+                    'pendente_aceite', :token_ativacao, :token_expira_em,
+                    :cadastrado_por_id, 'admin',
                     :criado_em, :atualizado_em
                 )
                 RETURNING id
@@ -286,12 +309,15 @@ async def criar_cliente(
                 "subdomain": subdomain,
                 "plano": plano[1],  # codigo do plano
                 "valor_mensalidade": str(plano[3]),  # valor_mensal
+                "token_ativacao": token_ativacao,
+                "token_expira_em": token_expira_em,
+                "cadastrado_por_id": admin.get("id"),
                 "criado_em": agora,
                 "atualizado_em": agora
             }
         )
         cliente_id = result_cliente.fetchone()[0]
-        logger.info(f"[Onboarding] Cliente criado: ID={cliente_id}")
+        logger.info(f"[Onboarding] Cliente criado: ID={cliente_id} (pendente_aceite)")
 
         # 5. Criar configurações padrão
         db.execute(
@@ -363,15 +389,19 @@ async def criar_cliente(
         # Valores da assinatura
         assinatura_dados = dados.assinatura or AssinaturaOnboarding()
 
-        # Adicional linha WhatsApp dedicada (+R$40)
+        # Adicional linha WhatsApp dedicada (+R$40) — valor fixo, sem desconto de periodicidade
         valor_linha_dedicada = 40.0 if assinatura_dados.linha_dedicada else 0.0
 
-        # Valor original (antes de descontos)
-        valor_original = valor_base_plano + valor_extras_profissionais + valor_linha_dedicada
+        # Subtotal descontável (sem linha dedicada)
+        subtotal_descontavel = valor_base_plano + valor_extras_profissionais
 
-        # Aplicar desconto do período
+        # Valor original (para registro, antes de descontos)
+        valor_original = subtotal_descontavel + valor_linha_dedicada
+
+        # Aplicar desconto do período apenas sobre plano + extras
         percentual_periodo = assinatura_dados.percentual_periodo or 0
-        valor_apos_desconto_periodo = valor_original * (1 - percentual_periodo / 100)
+        valor_apos_desconto_periodo = subtotal_descontavel * (1 - percentual_periodo / 100)
+        valor_apos_desconto_periodo += valor_linha_dedicada  # linha dedicada sem desconto
 
         # Aplicar desconto promocional
         valor_final = valor_apos_desconto_periodo
@@ -383,10 +413,13 @@ async def criar_cliente(
         # Calcular data fim do desconto promocional
         data_fim_desconto = None
         if assinatura_dados.desconto_duracao_meses and assinatura_dados.desconto_duracao_meses > 0:
-            from datetime import timedelta
             # Aproximação: 30 dias por mês
             dias = assinatura_dados.desconto_duracao_meses * 30
             data_fim_desconto = date.today() + timedelta(days=dias)
+
+        # Se cortesia, aplicar 100% de desconto na taxa de ativação
+        desconto_ativacao_pct = 100 if assinatura_dados.ativacao_cortesia else 0
+        motivo_desconto_ativacao = "Cortesia" if assinatura_dados.ativacao_cortesia else None
 
         db.execute(
             text("""
@@ -399,16 +432,20 @@ async def criar_cliente(
                     desconto_percentual, desconto_valor_fixo,
                     desconto_duracao_meses, desconto_motivo,
                     data_fim_desconto, linha_dedicada,
+                    ativacao_cortesia, desconto_ativacao_percentual,
+                    motivo_desconto_ativacao,
                     criado_em
                 ) VALUES (
                     :cliente_id, :plano_id, :valor_mensal,
                     :profissionais, :taxa_ativacao,
-                    :data_inicio, 'pendente', 10,
+                    :data_inicio, 'pendente', :dia_vencimento,
                     :periodo_cobranca, :percentual_periodo,
                     :valor_original, :valor_com_desconto,
                     :desconto_percentual, :desconto_valor_fixo,
                     :desconto_duracao_meses, :desconto_motivo,
                     :data_fim_desconto, :linha_dedicada,
+                    :ativacao_cortesia, :desconto_ativacao_percentual,
+                    :motivo_desconto_ativacao,
                     :criado_em
                 )
             """),
@@ -419,6 +456,7 @@ async def criar_cliente(
                 "profissionais": total_profissionais,
                 "taxa_ativacao": plano[5],  # taxa_ativacao
                 "data_inicio": date.today(),
+                "dia_vencimento": assinatura_dados.dia_vencimento,
                 "periodo_cobranca": assinatura_dados.periodo_cobranca,
                 "percentual_periodo": percentual_periodo,
                 "valor_original": valor_original,
@@ -429,6 +467,9 @@ async def criar_cliente(
                 "desconto_motivo": assinatura_dados.desconto_motivo,
                 "data_fim_desconto": data_fim_desconto,
                 "linha_dedicada": assinatura_dados.linha_dedicada,
+                "ativacao_cortesia": assinatura_dados.ativacao_cortesia,
+                "desconto_ativacao_percentual": desconto_ativacao_pct,
+                "motivo_desconto_ativacao": motivo_desconto_ativacao,
                 "criado_em": agora
             }
         )
@@ -665,6 +706,15 @@ async def criar_cliente(
         except Exception as e:
             logger.warning(f"[Telegram] Erro ao enviar notificação: {e}")
 
+        # Enviar email de ativação (não bloqueante)
+        link_ativacao = f"https://horariointeligente.com.br/static/ativar-conta.html?token={token_ativacao}"
+        try:
+            email_service = get_email_service()
+            email_service.send_ativacao_conta(dados.email, dados.nome_fantasia, token_ativacao)
+            logger.info(f"[Onboarding] Email de ativação enviado para {dados.email}")
+        except Exception as e:
+            logger.warning(f"[Onboarding] Erro ao enviar email de ativação: {e}")
+
         # Montar resposta
         response = {
             "success": True,
@@ -673,7 +723,14 @@ async def criar_cliente(
                 "nome": dados.nome_fantasia,
                 "subdomain": subdomain,
                 "plano": plano[1],
-                "plano_nome": plano[2]
+                "plano_nome": plano[2],
+                "status": "pendente_aceite"
+            },
+            "ativacao": {
+                "status": "pendente_aceite",
+                "link_ativacao": link_ativacao,
+                "expira_em": token_expira_em.isoformat(),
+                "email_enviado": True
             },
             "assinatura": {
                 "valor_base_plano": valor_base_plano,
@@ -703,8 +760,8 @@ async def criar_cliente(
                 "senha_temporaria": senha_temporaria
             },
             "proximos_passos": [
-                "Enviar credenciais ao cliente por email/WhatsApp",
-                "Configurar número WhatsApp na WABA (Meta Business)",
+                "Cliente receberá email para aceitar termos e ativar conta",
+                "Após ativação, configurar número WhatsApp na WABA (Meta Business)",
                 "Agendar chamada de onboarding para configuração inicial",
                 "Gerar primeira cobrança no ASAAS"
             ]
@@ -1100,10 +1157,11 @@ async def alterar_status_cliente(
             status_texto = "ativo" if dados.ativo else "inativo"
             return {"success": True, "message": f"Cliente já está {status_texto}"}
 
-        # Atualizar status
+        # Atualizar status e campo ativo
+        novo_status = 'ativo' if dados.ativo else 'suspenso'
         db.execute(
-            text("UPDATE clientes SET ativo = :ativo, atualizado_em = :atualizado_em WHERE id = :id"),
-            {"id": cliente_id, "ativo": dados.ativo, "atualizado_em": datetime.now()}
+            text("UPDATE clientes SET ativo = :ativo, status = :status, atualizado_em = :atualizado_em WHERE id = :id"),
+            {"id": cliente_id, "ativo": dados.ativo, "status": novo_status, "atualizado_em": datetime.now()}
         )
 
         # Se desativando, também desativar assinatura

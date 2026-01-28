@@ -5,7 +5,7 @@ Representa o vínculo entre um cliente e um plano
 from sqlalchemy import Column, Integer, String, Text, Numeric, Boolean, DateTime, Date, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.database import Base
+from .base import Base
 from decimal import Decimal
 
 
@@ -39,6 +39,27 @@ class Assinatura(Base):
     # Status
     status = Column(String(20), default='ativa')  # ativa, suspensa, cancelada
     motivo_cancelamento = Column(Text)
+
+    # Cobrança / Período
+    periodo_cobranca = Column(String(20), default='mensal')  # mensal, trimestral, semestral, anual
+    percentual_periodo = Column(Numeric(5, 2), default=0)
+
+    # Valores com desconto
+    valor_original = Column(Numeric(10, 2))
+    valor_com_desconto = Column(Numeric(10, 2))
+
+    # Desconto promocional
+    desconto_percentual = Column(Numeric(5, 2))
+    desconto_valor_fixo = Column(Numeric(10, 2))
+    desconto_duracao_meses = Column(Integer)
+    desconto_motivo = Column(String(255))
+    data_fim_desconto = Column(Date)
+
+    # Linha WhatsApp dedicada
+    linha_dedicada = Column(Boolean, default=False)
+
+    # Cortesia na taxa de ativação
+    ativacao_cortesia = Column(Boolean, default=False)
 
     # ASAAS Integration
     asaas_subscription_id = Column(String(50), nullable=True, index=True)  # ID da assinatura no ASAAS

@@ -171,8 +171,8 @@
                     </div>
                 </div>
 
-                <!-- Período de Cobrança e Linha WhatsApp -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <!-- Período de Cobrança, Dia de Vencimento e Linha WhatsApp -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">
                             <i class="fas fa-calendar-alt mr-2 text-blue-400"></i>
@@ -184,6 +184,19 @@
                             <option value="trimestral">Trimestral (-10%)</option>
                             <option value="semestral">Semestral (-15%)</option>
                             <option value="anual">Anual (-20%)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-calendar-day mr-2 text-green-400"></i>
+                            Dia de Vencimento *
+                        </label>
+                        <select name="dia_vencimento" id="diaVencimento" onchange="atualizarResumo()"
+                                class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                            <option value="1">Dia 1</option>
+                            <option value="5">Dia 5</option>
+                            <option value="10" selected>Dia 10</option>
                         </select>
                     </div>
 
@@ -291,6 +304,35 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Cortesia Taxa de Ativação -->
+                <div class="border-t border-gray-700 pt-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-white font-medium flex items-center">
+                            <i class="fas fa-gift mr-2 text-green-400"></i>
+                            Taxa de Ativacao
+                        </h3>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="checkbox" id="checkCortesia" onchange="toggleCortesia()"
+                                   class="w-5 h-5 rounded border-gray-600 text-green-600 focus:ring-green-500 bg-gray-800">
+                            <span class="ml-2 text-gray-400 text-sm">Conceder cortesia (isentar taxa)</span>
+                        </label>
+                    </div>
+
+                    <div id="camposCortesia" class="discount-fields">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Motivo da Cortesia</label>
+                            <input type="text" id="motivoCortesia"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="Ex: Parceiro estrategico, Migracao de sistema, Promocao lancamento">
+                        </div>
+                    </div>
+
+                    <div id="previewTaxaAtivacao" class="mt-3 text-sm text-gray-400">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        <span id="textoTaxaAtivacao">Taxa de ativacao: R$ 150,00</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Resumo da Assinatura -->
@@ -303,6 +345,14 @@
                     <div class="flex justify-between text-gray-300">
                         <span>Plano:</span>
                         <span class="text-white font-medium" id="resumoPlanoNome">Individual</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300">
+                        <span>Periodicidade:</span>
+                        <span class="text-white font-medium" id="resumoPeriodo">Mensal</span>
+                    </div>
+                    <div class="flex justify-between text-gray-300">
+                        <span>Vencimento:</span>
+                        <span class="text-white font-medium" id="resumoVencimento">Todo dia 10</span>
                     </div>
                     <div class="flex justify-between text-gray-300" id="linhaValorPlano">
                         <span>Valor do Plano:</span>
@@ -581,11 +631,36 @@
         <div class="bg-gray-900 rounded-xl border border-green-500 w-full max-w-lg my-8">
             <div class="p-6">
                 <div class="text-center mb-6">
-                    <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i class="fas fa-check text-white text-3xl"></i>
+                    <div class="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-clock text-white text-3xl"></i>
                     </div>
-                    <h3 class="text-2xl font-bold text-white mb-2">Cliente Criado!</h3>
-                    <p class="text-gray-400">O cliente foi cadastrado com sucesso.</p>
+                    <h3 class="text-2xl font-bold text-white mb-2">Cliente Cadastrado!</h3>
+                    <p class="text-gray-400">Aguardando ativacao pelo cliente</p>
+                </div>
+
+                <!-- Status de Ativação -->
+                <div class="bg-yellow-900/30 rounded-lg p-4 mb-4 border border-yellow-500/30">
+                    <h4 class="text-sm font-semibold text-yellow-400 mb-2">
+                        <i class="fas fa-envelope mr-2"></i>Ativacao Pendente
+                    </h4>
+                    <p class="text-sm text-gray-300 mb-2">
+                        O cliente recebera um email com link para aceitar os termos de uso e ativar a conta.
+                    </p>
+                    <div class="text-sm text-gray-400">
+                        <i class="fas fa-info-circle mr-1"></i>O link expira em 7 dias.
+                    </div>
+                </div>
+
+                <!-- Link de Ativação -->
+                <div class="bg-gray-800 rounded-lg p-4 mb-4">
+                    <h4 class="text-sm font-semibold text-purple-400 mb-3">
+                        <i class="fas fa-link mr-2"></i>Link de Ativacao
+                    </h4>
+                    <p class="text-xs text-gray-400 break-all font-mono" id="linkAtivacao">-</p>
+                    <button onclick="copiarLinkAtivacao()"
+                            class="mt-2 text-sm bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-600 transition">
+                        <i class="fas fa-copy mr-1"></i>Copiar Link
+                    </button>
                 </div>
 
                 <!-- Resumo da Assinatura -->
@@ -600,7 +675,7 @@
                 <!-- Comissão do Parceiro (se aplicável) -->
                 <div id="modalComissao" class="bg-green-900/30 rounded-lg p-4 mb-4 border border-green-500/30 hidden">
                     <h4 class="text-sm font-semibold text-green-400 mb-2">
-                        <i class="fas fa-handshake mr-2"></i>Comissão do Parceiro
+                        <i class="fas fa-handshake mr-2"></i>Comissao do Parceiro
                     </h4>
                     <div class="text-sm space-y-1" id="modalComissaoInfo">
                     </div>
@@ -613,7 +688,7 @@
                     </h4>
                     <div class="space-y-2">
                         <div>
-                            <span class="text-gray-500 text-sm">URL:</span>
+                            <span class="text-gray-500 text-sm">URL (apos ativacao):</span>
                             <p class="text-purple-400 font-mono text-sm break-all" id="credencialUrl"></p>
                         </div>
                         <div>
@@ -621,13 +696,25 @@
                             <p class="text-white font-mono text-sm" id="credencialEmail"></p>
                         </div>
                         <div>
-                            <span class="text-gray-500 text-sm">Senha temporária:</span>
+                            <span class="text-gray-500 text-sm">Senha temporaria:</span>
                             <p class="text-yellow-400 font-mono text-lg font-bold" id="credencialSenha"></p>
                         </div>
                     </div>
                 </div>
 
                 <div id="credenciaisAdicionais" class="space-y-4 mb-4"></div>
+
+                <!-- Próximos passos -->
+                <div class="bg-blue-900/30 rounded-lg p-4 mb-4 border border-blue-500/30">
+                    <h4 class="text-sm font-semibold text-blue-400 mb-2">
+                        <i class="fas fa-list-ol mr-2"></i>Proximos Passos
+                    </h4>
+                    <ol class="text-sm text-gray-300 space-y-1 list-decimal list-inside">
+                        <li>Cliente recebera email para aceitar termos e ativar conta</li>
+                        <li>Apos ativacao, configurar WhatsApp no WABA</li>
+                        <li>Agendar chamada de onboarding</li>
+                    </ol>
+                </div>
 
                 <div class="grid grid-cols-2 gap-3 mb-4">
                     <button onclick="copiarCredenciais()"
@@ -676,6 +763,7 @@
         let profissionaisExtras = 0;
         let incluirSecretaria = false;
         let incluirDesconto = false;
+        let cortesiaAtivacao = false;
         let incluirParceiro = false;
         let parceirosDisponiveis = [];
         let parceiroSelecionado = null;
@@ -739,6 +827,21 @@
             }
 
             atualizarResumo();
+        }
+
+        // Toggle cortesia taxa de ativacao
+        function toggleCortesia() {
+            cortesiaAtivacao = document.getElementById('checkCortesia').checked;
+            const campos = document.getElementById('camposCortesia');
+            campos.classList.toggle('visible', cortesiaAtivacao);
+
+            if (cortesiaAtivacao) {
+                document.getElementById('textoTaxaAtivacao').innerHTML =
+                    'Taxa de ativacao: <span class="text-green-400 font-semibold">R$ 150,00 — ISENTA (Cortesia)</span>';
+            } else {
+                document.getElementById('textoTaxaAtivacao').textContent = 'Taxa de ativacao: R$ 150,00';
+                document.getElementById('motivoCortesia').value = '';
+            }
         }
 
         // Toggle parceiro
@@ -920,28 +1023,36 @@
             let valorPlano = plano.valor;
             let valorExtras = planoAtual === 2 ? profissionaisExtras * plano.valorExtra : 0;
             let valorLinha = linhaWhatsapp === 'dedicada' ? 40 : 0;
-            let subtotal = valorPlano + valorExtras + valorLinha;
+            let subtotalDescontavel = valorPlano + valorExtras;
+            let subtotal = subtotalDescontavel + valorLinha;
 
-            // Calcular desconto do período
+            // Calcular desconto do período (aplica apenas sobre plano + extras, não sobre linha dedicada)
             const percentualPeriodo = descontosPeriodo[periodo];
-            const valorDescontoPeriodo = subtotal * (percentualPeriodo / 100);
+            const valorDescontoPeriodo = subtotalDescontavel * (percentualPeriodo / 100);
 
             // Calcular desconto promocional
             let valorDescontoPromo = 0;
             if (incluirDesconto && valorDescontoInput > 0) {
                 if (tipoDesconto === 'percentual') {
-                    valorDescontoPromo = (subtotal - valorDescontoPeriodo) * (valorDescontoInput / 100);
+                    valorDescontoPromo = (subtotalDescontavel - valorDescontoPeriodo) * (valorDescontoInput / 100);
                 } else {
                     valorDescontoPromo = valorDescontoInput;
                 }
             }
 
-            // Valor final
+            // Valor final (linha dedicada já inclusa no subtotal, desconto só aplica sobre descontável)
             const total = subtotal - valorDescontoPeriodo - valorDescontoPromo;
             const valorAposDesconto = subtotal - valorDescontoPeriodo;
 
             // Atualizar UI
             document.getElementById('resumoPlanoNome').textContent = plano.nome;
+
+            const nomePeriodos = { 'mensal': 'Mensal', 'trimestral': 'Trimestral', 'semestral': 'Semestral', 'anual': 'Anual' };
+            document.getElementById('resumoPeriodo').textContent = nomePeriodos[periodo] || periodo;
+
+            const diaVenc = document.getElementById('diaVencimento').value;
+            document.getElementById('resumoVencimento').textContent = `Todo dia ${diaVenc}`;
+
             document.getElementById('resumoValorPlano').textContent = `R$ ${valorPlano.toFixed(2).replace('.', ',')}/mês`;
 
             // Linha dedicada
@@ -1064,7 +1175,9 @@
             const assinatura = {
                 periodo_cobranca: periodo,
                 percentual_periodo: descontosPeriodo[periodo],
-                linha_dedicada: linhaWhatsapp === 'dedicada'
+                linha_dedicada: linhaWhatsapp === 'dedicada',
+                dia_vencimento: parseInt(document.getElementById('diaVencimento').value),
+                ativacao_cortesia: cortesiaAtivacao
             };
 
             // Desconto promocional
@@ -1159,6 +1272,11 @@
 
                 clienteCriado = result;
 
+                // Preencher link de ativação
+                if (result.ativacao && result.ativacao.link_ativacao) {
+                    document.getElementById('linkAtivacao').textContent = result.ativacao.link_ativacao;
+                }
+
                 // Preencher modal
                 document.getElementById('credencialUrl').textContent = result.credenciais.url_acesso;
                 document.getElementById('credencialEmail').textContent = result.credenciais.email;
@@ -1233,6 +1351,13 @@
                 setLoading(false);
             }
         });
+
+        function copiarLinkAtivacao() {
+            if (!clienteCriado || !clienteCriado.ativacao) return;
+            navigator.clipboard.writeText(clienteCriado.ativacao.link_ativacao).then(() => {
+                alert('Link de ativacao copiado!');
+            });
+        }
 
         function copiarCredenciais() {
             if (!clienteCriado) return;
