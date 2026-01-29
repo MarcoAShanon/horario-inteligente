@@ -247,34 +247,49 @@ async def get_dashboard_stats(
 ):
     """Estatísticas globais do sistema"""
     try:
-        # Total de clientes
+        # Total de clientes (excluir demo)
         total_clientes = db.execute(
-            text("SELECT COUNT(*) FROM clientes WHERE ativo = true")
+            text("SELECT COUNT(*) FROM clientes WHERE ativo = true AND is_demo = false")
         ).scalar()
 
-        # Total de médicos
+        # Total de médicos (excluir demo)
         total_medicos = db.execute(
-            text("SELECT COUNT(*) FROM medicos WHERE ativo = true")
-        ).scalar()
-
-        # Total de pacientes
-        total_pacientes = db.execute(
-            text("SELECT COUNT(*) FROM pacientes")
-        ).scalar()
-
-        # Total de agendamentos (último mês)
-        agendamentos_mes = db.execute(
             text("""
-                SELECT COUNT(*) FROM agendamentos
-                WHERE data_hora >= NOW() - INTERVAL '30 days'
+                SELECT COUNT(*) FROM medicos m
+                JOIN clientes c ON m.cliente_id = c.id
+                WHERE m.ativo = true AND c.is_demo = false
             """)
         ).scalar()
 
-        # Clientes criados recentemente (últimos 7 dias)
+        # Total de pacientes (excluir demo)
+        total_pacientes = db.execute(
+            text("""
+                SELECT COUNT(*) FROM pacientes p
+                JOIN clientes c ON p.cliente_id = c.id
+                WHERE c.is_demo = false
+            """)
+        ).scalar()
+
+        # Total de agendamentos (último mês) - excluir cancelado, remarcado, faltou e demo
+        agendamentos_mes = db.execute(
+            text("""
+                SELECT COUNT(*) FROM agendamentos a
+                WHERE a.data_hora >= NOW() - INTERVAL '30 days'
+                AND a.status NOT IN ('cancelado', 'remarcado', 'faltou')
+                AND a.medico_id NOT IN (
+                    SELECT m.id FROM medicos m
+                    JOIN clientes c ON m.cliente_id = c.id
+                    WHERE c.is_demo = true
+                )
+            """)
+        ).scalar()
+
+        # Clientes criados recentemente (últimos 7 dias, excluir demo)
         novos_clientes = db.execute(
             text("""
                 SELECT COUNT(*) FROM clientes
                 WHERE criado_em >= NOW() - INTERVAL '7 days'
+                AND is_demo = false
             """)
         ).scalar()
 
@@ -312,6 +327,7 @@ async def listar_clientes(
                     plano, ativo, whatsapp_numero,
                     criado_em, atualizado_em
                 FROM clientes
+                WHERE is_demo = false
                 ORDER BY criado_em DESC
                 LIMIT :limit OFFSET :skip
             """),
@@ -360,7 +376,9 @@ async def obter_cliente(
                     c.criado_em, c.atualizado_em,
                     COUNT(DISTINCT m.id) as total_medicos,
                     COUNT(DISTINCT p.id) as total_pacientes,
-                    COUNT(DISTINCT a.id) as total_agendamentos
+                    COUNT(DISTINCT CASE WHEN a.status NOT IN ('cancelado', 'remarcado', 'faltou') THEN a.id END) as total_agendamentos,
+                    c.credenciais_enviadas_em,
+                    c.status
                 FROM clientes c
                 LEFT JOIN medicos m ON m.cliente_id = c.id
                 LEFT JOIN pacientes p ON p.cliente_id = c.id
@@ -392,6 +410,8 @@ async def obter_cliente(
             "total_medicos": result[11],
             "total_pacientes": result[12],
             "total_agendamentos": result[13],
+            "credenciais_enviadas_em": result[14].isoformat() if result[14] else None,
+            "status": result[15],
             "url": f"https://{result[2]}.horariointeligente.com.br"
         }
 

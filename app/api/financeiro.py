@@ -195,35 +195,46 @@ async def get_metricas_gerais(
     - Base do plano + profissionais adicionais + serviços extras
     """
     try:
-        # Total de clientes ativos
+        # Total de clientes ativos (excluir demo)
         result_clientes_ativos = db.execute(
-            text("SELECT COUNT(*) FROM clientes WHERE ativo = true")
+            text("SELECT COUNT(*) FROM clientes WHERE ativo = true AND is_demo = false")
         ).scalar()
 
-        # Total de clientes inativos
+        # Total de clientes inativos (excluir demo)
         result_clientes_inativos = db.execute(
-            text("SELECT COUNT(*) FROM clientes WHERE ativo = false")
+            text("SELECT COUNT(*) FROM clientes WHERE ativo = false AND is_demo = false")
         ).scalar()
 
-        # Total de médicos ativos (todos os clientes)
+        # Total de médicos ativos (excluir demo)
         result_medicos = db.execute(
-            text("SELECT COUNT(*) FROM medicos WHERE ativo = true")
-        ).scalar()
-
-        # Total de agendamentos este mês
-        result_agendamentos_mes = db.execute(
             text("""
-                SELECT COUNT(*) FROM agendamentos
-                WHERE EXTRACT(MONTH FROM data_hora) = EXTRACT(MONTH FROM CURRENT_DATE)
-                AND EXTRACT(YEAR FROM data_hora) = EXTRACT(YEAR FROM CURRENT_DATE)
+                SELECT COUNT(*) FROM medicos m
+                JOIN clientes c ON m.cliente_id = c.id
+                WHERE m.ativo = true AND c.is_demo = false
             """)
         ).scalar()
 
-        # Novos clientes últimos 7 dias
+        # Total de agendamentos este mês - excluir cancelado, remarcado, faltou e demo
+        result_agendamentos_mes = db.execute(
+            text("""
+                SELECT COUNT(*) FROM agendamentos a
+                WHERE EXTRACT(MONTH FROM a.data_hora) = EXTRACT(MONTH FROM CURRENT_DATE)
+                AND EXTRACT(YEAR FROM a.data_hora) = EXTRACT(YEAR FROM CURRENT_DATE)
+                AND a.status NOT IN ('cancelado', 'remarcado', 'faltou')
+                AND a.medico_id NOT IN (
+                    SELECT m.id FROM medicos m
+                    JOIN clientes c ON m.cliente_id = c.id
+                    WHERE c.is_demo = true
+                )
+            """)
+        ).scalar()
+
+        # Novos clientes últimos 7 dias (excluir demo)
         result_novos_clientes = db.execute(
             text("""
                 SELECT COUNT(*) FROM clientes
                 WHERE criado_em >= CURRENT_DATE - INTERVAL '7 days'
+                AND is_demo = false
             """)
         ).scalar()
 
@@ -231,7 +242,7 @@ async def get_metricas_gerais(
         medicos_ativos = result_medicos or 0
 
         # ============ MRR BASEADO EM ASSINATURAS ============
-        # Buscar assinaturas ativas com dados do plano
+        # Buscar assinaturas ativas com dados do plano (excluir demo)
         result_assinaturas = db.execute(
             text("""
                 SELECT
@@ -246,6 +257,7 @@ async def get_metricas_gerais(
                 JOIN planos p ON p.id = a.plano_id
                 WHERE a.status = 'ativa'
                 AND a.data_fim IS NULL
+                AND a.cliente_id NOT IN (SELECT id FROM clientes WHERE is_demo = true)
             """)
         ).fetchall()
 
@@ -329,6 +341,7 @@ async def get_clientes_detalhado(
                     COUNT(DISTINCT CASE WHEN m.ativo = true THEN m.id END) as medicos_ativos
                 FROM clientes c
                 LEFT JOIN medicos m ON m.cliente_id = c.id
+                WHERE c.is_demo = false
                 GROUP BY c.id, c.nome, c.subdomain, c.plano, c.ativo, c.criado_em
                 ORDER BY c.criado_em DESC
             """)
@@ -386,15 +399,19 @@ async def get_custos_operacionais(
     - Custos variáveis por cliente: R$ 19,49
     """
     try:
-        # Total de clientes ativos (base para cálculo de custos)
+        # Total de clientes ativos (base para cálculo de custos, excluir demo)
         result_clientes = db.execute(
-            text("SELECT COUNT(*) FROM clientes WHERE ativo = true")
+            text("SELECT COUNT(*) FROM clientes WHERE ativo = true AND is_demo = false")
         ).scalar()
         total_clientes = result_clientes or 0
 
-        # Total de médicos ativos (para referência)
+        # Total de médicos ativos (excluir demo)
         result_medicos = db.execute(
-            text("SELECT COUNT(*) FROM medicos WHERE ativo = true")
+            text("""
+                SELECT COUNT(*) FROM medicos m
+                JOIN clientes c ON m.cliente_id = c.id
+                WHERE m.ativo = true AND c.is_demo = false
+            """)
         ).scalar()
         total_medicos = result_medicos or 0
 
@@ -457,7 +474,7 @@ async def get_custos_operacionais(
         custo_total = custo_fixo_total + custo_variaveis_total + despesas_variaveis_cadastradas
 
         # ============ RECEITA BASEADA EM ASSINATURAS ============
-        # Buscar assinaturas ativas e calcular MRR real
+        # Buscar assinaturas ativas e calcular MRR real (excluir demo)
         result_assinaturas = db.execute(
             text("""
                 SELECT
@@ -471,6 +488,7 @@ async def get_custos_operacionais(
                 JOIN planos p ON p.id = a.plano_id
                 WHERE a.status = 'ativa'
                 AND a.data_fim IS NULL
+                AND a.cliente_id NOT IN (SELECT id FROM clientes WHERE is_demo = true)
             """)
         ).fetchall()
 
@@ -577,6 +595,7 @@ async def get_relatorio_faturamento(
             ano = hoje.year
 
         # Buscar dados de faturamento por cliente
+        # NOTA: Excluir status cancelado, remarcado e faltou do total
         result = db.execute(
             text("""
                 SELECT
@@ -584,14 +603,14 @@ async def get_relatorio_faturamento(
                     c.nome,
                     c.subdomain,
                     COUNT(DISTINCT m.id) as medicos_ativos,
-                    COUNT(a.id) as total_agendamentos,
-                    COUNT(CASE WHEN a.status = 'realizado' THEN 1 END) as agendamentos_realizados
+                    COUNT(CASE WHEN a.status NOT IN ('cancelado', 'remarcado', 'faltou') THEN a.id END) as total_agendamentos,
+                    COUNT(CASE WHEN a.status IN ('realizado', 'realizada', 'concluido', 'concluida') THEN 1 END) as agendamentos_realizados
                 FROM clientes c
                 LEFT JOIN medicos m ON m.cliente_id = c.id AND m.ativo = true
                 LEFT JOIN agendamentos a ON a.medico_id = m.id
                     AND EXTRACT(MONTH FROM a.data_hora) = :mes
                     AND EXTRACT(YEAR FROM a.data_hora) = :ano
-                WHERE c.ativo = true
+                WHERE c.ativo = true AND c.is_demo = false
                 GROUP BY c.id, c.nome, c.subdomain
                 ORDER BY c.nome
             """),
@@ -1494,7 +1513,7 @@ async def verificar_alerta_fator_r(
     try:
         SALARIO_MINIMO = 1518.00
 
-        # Calcular MRR atual das assinaturas
+        # Calcular MRR atual das assinaturas (excluir demo)
         result_assinaturas = db.execute(
             text("""
                 SELECT
@@ -1508,6 +1527,7 @@ async def verificar_alerta_fator_r(
                 JOIN planos p ON p.id = a.plano_id
                 WHERE a.status = 'ativa'
                 AND a.data_fim IS NULL
+                AND a.cliente_id NOT IN (SELECT id FROM clientes WHERE is_demo = true)
             """)
         ).fetchall()
 
