@@ -267,13 +267,51 @@ Para a data {data_formatada}, os ÚNICOS horários disponíveis são:
 """
                 else:
                     data_formatada = data_encontrada.strftime("%d/%m/%Y")
-                    return f"""
+                    dias_semana_nomes = {
+                        0: 'segunda-feira', 1: 'terça-feira', 2: 'quarta-feira',
+                        3: 'quinta-feira', 4: 'sexta-feira', 5: 'sábado', 6: 'domingo'
+                    }
+                    dia_semana_pedido = dias_semana_nomes.get(data_encontrada.weekday(), '')
+
+                    # Verificar se o médico atende neste dia da semana
+                    medico_nao_atende_dia = False
+                    medico_info = None
+                    for m in contexto_clinica.get('medicos', []):
+                        if str(m.get('id')) == str(medico_id):
+                            medico_info = m
+                            break
+                    if medico_info:
+                        disponibilidade = medico_info.get('disponibilidade', {})
+                        dias_atendimento = disponibilidade.get('dias_atendimento', [])
+                        if dias_atendimento:
+                            # Normalizar para comparação (lowercase, sem acento)
+                            dias_norm = [d.lower().replace('ç','c').replace('á','a').replace('é','e').replace('í','i') for d in dias_atendimento]
+                            dia_pedido_norm = dia_semana_pedido.lower().replace('ç','c').replace('á','a').replace('é','e').replace('í','i')
+                            if dia_pedido_norm not in dias_norm:
+                                medico_nao_atende_dia = True
+
+                    if medico_nao_atende_dia:
+                        dias_str = ', '.join(dias_atendimento) if dias_atendimento else 'dias não configurados'
+                        nome_medico = medico_info.get('nome', 'o médico') if medico_info else 'o médico'
+                        return f"""
+🚨🚨🚨 ATENÇÃO - DIA SEM ATENDIMENTO 🚨🚨🚨
+A data {data_formatada} cai em {dia_semana_pedido}.
+O(A) {nome_medico} NÃO atende neste dia da semana!
+
+⛔ NÃO diga que a agenda está lotada — o médico simplesmente NÃO trabalha nesse dia!
+⛔ Diga ao paciente: "O dia {data_formatada} é {dia_semana_pedido} e o(a) {nome_medico} não atende nesse dia."
+⛔ Informe os dias de atendimento: {dias_str}
+⛔ Sugira as datas mais próximas nos dias em que o médico atende
+🚨🚨🚨 FIM DA REGRA CRÍTICA 🚨🚨🚨
+"""
+                    else:
+                        return f"""
 🚨🚨🚨 ATENÇÃO MÁXIMA - DIA LOTADO 🚨🚨🚨
-Para a data {data_formatada}: TODOS os horários estão OCUPADOS!
+Para a data {data_formatada} ({dia_semana_pedido}): TODOS os horários estão OCUPADOS!
 
 ⛔ NÃO há nenhum horário disponível neste dia!
 ⛔ Informe ao paciente que a agenda está LOTADA para esta data
-⛔ Sugira que escolha outro dia da semana
+⛔ Sugira que escolha outro dia
 🚨🚨🚨 FIM DA REGRA CRÍTICA 🚨🚨🚨
 """
 
@@ -543,9 +581,11 @@ REGRAS DO FLUXO:
 - SEMPRE inclua no final: "📎 Se tiver exames recentes, traga no dia da consulta!"
 
 🔔 REGRA SOBRE LEMBRETES:
-- Se a consulta é para MAIS de 24h: "Você receberá um lembrete 24h antes e outro 2h antes da consulta"
-- Se a consulta é para HOJE ou menos de 24h: "Como sua consulta é em breve, você receberá um lembrete 2h antes"
-- ADAPTE a mensagem de lembrete baseado na data da consulta!
+- SOMENTE mencione lembretes ao CRIAR UM NOVO agendamento, NUNCA ao confirmar presença!
+- Se o paciente está CONFIRMANDO PRESENÇA (respondendo "confirmar", "confirmo", "vou sim", etc.): NÃO mencione lembretes de 24h pois ele JÁ recebeu esse lembrete. Se faltar mais de 2h para a consulta, diga apenas "Você receberá um lembrete 2h antes". Se faltar menos de 2h, NÃO mencione lembretes.
+- Se está CRIANDO NOVO agendamento e a consulta é para MAIS de 24h: "Você receberá um lembrete 24h antes e outro 2h antes da consulta"
+- Se está CRIANDO NOVO agendamento e a consulta é para HOJE ou menos de 24h: "Como sua consulta é em breve, você receberá um lembrete 2h antes"
+- ADAPTE a mensagem de lembrete baseado no contexto da conversa!
 
 💰 INFORMAÇÕES SOBRE CONVÊNIOS E VALORES:
 - CONSULTE OS CONVÊNIOS DE CADA MÉDICO listados acima em "Convênios:" após o nome do médico
