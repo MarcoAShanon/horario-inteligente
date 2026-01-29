@@ -3,12 +3,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.configuracoes import ConfiguracoesMedico
-from app.models.medicos import Medico
+from app.models.configuracoes import ConfiguracoesMedico, BloqueioAgenda
+from app.models.medico import Medico
 from app.models.calendario import HorarioAtendimento
+from app.api.auth import get_current_user
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import time
+from datetime import time, datetime
 import json
 
 router = APIRouter()
@@ -525,3 +526,143 @@ async def toggle_horario_semanal(horario_id: int, db: Session = Depends(get_db))
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar horário: {str(e)}")
+
+# ============================================
+# ENDPOINTS DE BLOQUEIOS DE AGENDA
+# ============================================
+
+class BloqueioRequest(BaseModel):
+    medico_id: int
+    tipo_bloqueio: str  # ferias, emergencia, particular, manutencao
+    motivo: Optional[str] = None
+    data_inicio: str  # ISO format datetime
+    data_fim: str     # ISO format datetime
+
+class BloqueioResponse(BaseModel):
+    id: int
+    medico_id: int
+    tipo_bloqueio: str
+    motivo: Optional[str]
+    data_inicio: str
+    data_fim: str
+    ativo: bool
+
+@router.get("/bloqueios")
+async def listar_bloqueios(
+    medico_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista bloqueios de agenda de um médico"""
+    bloqueios = db.query(BloqueioAgenda).filter(
+        BloqueioAgenda.medico_id == medico_id,
+        BloqueioAgenda.ativo == True
+    ).order_by(BloqueioAgenda.data_inicio.desc()).all()
+
+    return {
+        "sucesso": True,
+        "bloqueios": [
+            {
+                "id": b.id,
+                "medico_id": b.medico_id,
+                "tipo_bloqueio": b.tipo_bloqueio,
+                "motivo": b.motivo,
+                "data_inicio": b.data_inicio.isoformat() if b.data_inicio else None,
+                "data_fim": b.data_fim.isoformat() if b.data_fim else None,
+                "ativo": b.ativo
+            }
+            for b in bloqueios
+        ]
+    }
+
+@router.post("/bloqueios")
+async def criar_bloqueio(
+    dados: BloqueioRequest,
+    cancelar_agendamentos: bool = False,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Cria um novo bloqueio de agenda"""
+    try:
+        # Converter datas
+        data_inicio = datetime.fromisoformat(dados.data_inicio.replace('Z', '+00:00'))
+        data_fim = datetime.fromisoformat(dados.data_fim.replace('Z', '+00:00'))
+
+        # Verificar conflitos com agendamentos existentes
+        from app.models.agendamento import Agendamento
+        conflitos = db.query(Agendamento).filter(
+            Agendamento.medico_id == dados.medico_id,
+            Agendamento.data_hora >= data_inicio,
+            Agendamento.data_hora <= data_fim,
+            Agendamento.status.in_(['agendado', 'confirmado'])
+        ).all()
+
+        if conflitos and not cancelar_agendamentos:
+            return {
+                "sucesso": False,
+                "mensagem": "Existem agendamentos no período",
+                "conflitos": [
+                    {
+                        "id": a.id,
+                        "paciente_nome": a.paciente.nome if a.paciente else "Desconhecido",
+                        "data_hora": a.data_hora.isoformat()
+                    }
+                    for a in conflitos
+                ]
+            }
+
+        # Se cancelar_agendamentos=True, cancelar os conflitos
+        if cancelar_agendamentos and conflitos:
+            for agendamento in conflitos:
+                agendamento.status = 'cancelado'
+                agendamento.observacoes = f"Cancelado automaticamente - {dados.tipo_bloqueio}: {dados.motivo or 'Sem motivo'}"
+
+        # Criar bloqueio
+        bloqueio = BloqueioAgenda(
+            medico_id=dados.medico_id,
+            tipo_bloqueio=dados.tipo_bloqueio,
+            motivo=dados.motivo,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            ativo=True
+        )
+        db.add(bloqueio)
+        db.commit()
+        db.refresh(bloqueio)
+
+        return {
+            "sucesso": True,
+            "mensagem": "Bloqueio criado com sucesso",
+            "bloqueio": {
+                "id": bloqueio.id,
+                "medico_id": bloqueio.medico_id,
+                "tipo_bloqueio": bloqueio.tipo_bloqueio,
+                "data_inicio": bloqueio.data_inicio.isoformat(),
+                "data_fim": bloqueio.data_fim.isoformat()
+            },
+            "agendamentos_cancelados": len(conflitos) if cancelar_agendamentos else 0
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao criar bloqueio: {str(e)}")
+
+@router.delete("/bloqueios/{bloqueio_id}")
+async def deletar_bloqueio(
+    bloqueio_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Remove um bloqueio de agenda"""
+    bloqueio = db.query(BloqueioAgenda).filter(BloqueioAgenda.id == bloqueio_id).first()
+
+    if not bloqueio:
+        raise HTTPException(status_code=404, detail="Bloqueio não encontrado")
+
+    try:
+        bloqueio.ativo = False
+        db.commit()
+        return {"sucesso": True, "mensagem": "Bloqueio removido com sucesso"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Erro ao remover bloqueio: {str(e)}")

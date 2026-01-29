@@ -1065,14 +1065,14 @@
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center justify-between">
                                 <span class="font-medium text-gray-800 truncate">
-                                    ${conv.paciente_nome || conv.paciente_telefone}
+                                    ${escapeHtml(conv.paciente_nome || conv.paciente_telefone)}
                                 </span>
                                 <div class="flex items-center gap-1">
                                     ${urgenciaBadge}
                                     ${conv.nao_lidas > 0 ? `<span class="unread-badge">${conv.nao_lidas}</span>` : ''}
                                 </div>
                             </div>
-                            <p class="text-sm text-gray-500 truncate">${conv.ultima_mensagem || 'Sem mensagens'}</p>
+                            <p class="text-sm text-gray-500 truncate">${escapeHtml(conv.ultima_mensagem || 'Sem mensagens')}</p>
                             <div class="flex items-center justify-between mt-1">
                                 <span class="status-badge ${getStatusClass(conv.status)}">${getStatusLabel(conv.status)}</span>
                                 <span class="text-xs text-gray-400">${formatarHora(conv.ultima_mensagem_at)}</span>

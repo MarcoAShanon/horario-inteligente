@@ -905,6 +905,13 @@
     </div>
 
     <script>
+        // Utilidade: Escape HTML (Prevenção XSS)
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // ==================== VARIÁVEIS GLOBAIS ====================
         let currentUser = null;
         let medicoId = null;
@@ -1096,7 +1103,7 @@
             }`;
             el.innerHTML = `
                 <i class="fas ${tipo === 'success' ? 'fa-check-circle' : tipo === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-                <span>${texto}</span>
+                <span>${escapeHtml(texto)}</span>
             `;
             el.classList.remove('hidden');
 
@@ -1459,7 +1466,7 @@
                                 <i class="fas ${tipo.icon} ${tipo.color}"></i>
                             </div>
                             <div>
-                                <p class="font-medium text-gray-800">${b.motivo || b.tipo}</p>
+                                <p class="font-medium text-gray-800">${escapeHtml(b.motivo || b.tipo)}</p>
                                 <p class="text-sm text-gray-500">${inicio} até ${fim}</p>
                             </div>
                         </div>
@@ -1518,7 +1525,7 @@
             const container = document.getElementById('listaConflitos');
             container.innerHTML = conflitos.map(c => `
                 <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <p class="font-medium text-gray-800">${c.paciente_nome}</p>
+                    <p class="font-medium text-gray-800">${escapeHtml(c.paciente_nome)}</p>
                     <p class="text-sm text-gray-600">${new Date(c.data_hora).toLocaleString('pt-BR')}</p>
                 </div>
             `).join('');
@@ -1629,7 +1636,7 @@
             container.innerHTML = convenios.map((c, index) => `
                 <div class="convenio-card bg-gray-50 rounded-lg p-4 border">
                     <div class="flex justify-between items-start mb-2">
-                        <h4 class="font-medium text-gray-800">${c.nome}</h4>
+                        <h4 class="font-medium text-gray-800">${escapeHtml(c.nome)}</h4>
                         <div class="flex gap-2">
                             <button onclick="editarConvenio(${index})" class="text-blue-500 hover:text-blue-700" title="Editar">
                                 <i class="fas fa-edit"></i>
@@ -1640,7 +1647,7 @@
                         </div>
                     </div>
                     <p class="text-green-600 font-bold text-lg">R$ ${(c.valor || 0).toFixed(2)}</p>
-                    ${c.codigo ? `<p class="text-xs text-gray-500 mt-1">Cód: ${c.codigo}</p>` : ''}
+                    ${c.codigo ? `<p class="text-xs text-gray-500 mt-1">Cód: ${escapeHtml(c.codigo)}</p>` : ''}
                 </div>
             `).join('');
         }
@@ -1675,7 +1682,7 @@
             convenioEditandoIndex = null;
         }
 
-        document.getElementById('formConvenio').addEventListener('submit', (e) => {
+        document.getElementById('formConvenio').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const convenioData = {
@@ -1687,22 +1694,52 @@
             if (convenioEditandoIndex !== null) {
                 // Modo edição: atualiza o convênio existente
                 convenios[convenioEditandoIndex] = convenioData;
-                mostrarMensagem('Convênio atualizado! Clique em "Salvar Valores" para confirmar.', 'info');
             } else {
                 // Modo adição: adiciona novo convênio
                 convenios.push(convenioData);
-                mostrarMensagem('Convênio adicionado! Clique em "Salvar Valores" para confirmar.', 'info');
             }
 
             renderizarConvenios();
             fecharModalConvenio();
+
+            // Salvar automaticamente no banco
+            await salvarConveniosAutomatico();
         });
 
         function removerConvenio(index) {
             if (confirm('Deseja remover este convênio?')) {
                 convenios.splice(index, 1);
                 renderizarConvenios();
-                mostrarMensagem('Convênio removido! Clique em "Salvar Valores" para confirmar.', 'info');
+                // Salvar automaticamente no banco
+                salvarConveniosAutomatico();
+            }
+        }
+
+        // Função para salvar convênios automaticamente
+        async function salvarConveniosAutomatico() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const dados = {
+                    convenios_aceitos: convenios
+                };
+
+                const response = await fetch('/api/perfil', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                if (response.ok) {
+                    mostrarMensagem('Convênio salvo com sucesso!', 'success');
+                } else {
+                    mostrarMensagem('Erro ao salvar convênio', 'error');
+                }
+            } catch (error) {
+                console.error('Erro ao salvar convênio:', error);
+                mostrarMensagem('Erro ao salvar convênio', 'error');
             }
         }
 
@@ -1859,7 +1896,7 @@
                             <i class="fas ${getIconStatus(f.status)} ${getTextColorStatus(f.status)}"></i>
                         </div>
                         <div>
-                            <p class="font-medium text-gray-800">${f.descricao || 'Fatura'}</p>
+                            <p class="font-medium text-gray-800">${escapeHtml(f.descricao || 'Fatura')}</p>
                             <p class="text-sm text-gray-500">Venc: ${formatarDataFatura(f.vencimento)}</p>
                         </div>
                     </div>

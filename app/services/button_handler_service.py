@@ -31,6 +31,7 @@ class ButtonHandlerService:
         # Confirmações
         "Confirmar presença": "confirmar",
         "Confirmar": "confirmar",
+        "Estou a caminho": "confirmar",  # Botão do lembrete de 2h
 
         # Remarcações
         "Preciso remarcar": "remarcar",

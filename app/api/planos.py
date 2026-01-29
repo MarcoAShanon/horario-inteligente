@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
+from app.api.admin import get_current_admin
 from pydantic import BaseModel
 from typing import Optional, List
 from decimal import Decimal
@@ -70,7 +71,7 @@ def calcular_taxa_ativacao_final(taxa_ativacao: float, desconto_percentual: floa
 # ============ ENDPOINTS DE PLANOS ============
 
 @router.get("/", response_model=List[PlanoResponse])
-def listar_planos(db: Session = Depends(get_db)):
+def listar_planos(admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     """Lista todos os planos disponíveis"""
     result = db.execute(text("""
         SELECT id, codigo, nome, descricao, valor_mensal,
@@ -96,7 +97,7 @@ def listar_planos(db: Session = Depends(get_db)):
 
 
 @router.get("/{codigo}", response_model=PlanoResponse)
-def obter_plano(codigo: str, db: Session = Depends(get_db)):
+def obter_plano(codigo: str, admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     """Obtém detalhes de um plano específico"""
     result = db.execute(text("""
         SELECT id, codigo, nome, descricao, valor_mensal,
@@ -124,7 +125,7 @@ def obter_plano(codigo: str, db: Session = Depends(get_db)):
 # ============ ENDPOINTS DE ASSINATURAS ============
 
 @router.post("/assinaturas")
-def criar_assinatura(dados: CriarAssinaturaRequest, db: Session = Depends(get_db)):
+def criar_assinatura(dados: CriarAssinaturaRequest, admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     """Cria uma nova assinatura para um cliente"""
 
     # Buscar plano
@@ -225,6 +226,7 @@ def criar_assinatura(dados: CriarAssinaturaRequest, db: Session = Depends(get_db
 @router.get("/assinaturas/todas")
 def listar_assinaturas(
     status_filter: Optional[str] = None,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Lista todas as assinaturas com filtro opcional de status"""
@@ -274,7 +276,7 @@ def listar_assinaturas(
 
 
 @router.get("/assinaturas/{cliente_id}")
-def obter_assinatura_cliente(cliente_id: int, db: Session = Depends(get_db)):
+def obter_assinatura_cliente(cliente_id: int, admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     """Obtém a assinatura ativa de um cliente"""
     result = db.execute(text("""
         SELECT a.id, a.cliente_id, a.plano_id, p.codigo, p.nome,
@@ -317,7 +319,7 @@ def obter_assinatura_cliente(cliente_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/assinaturas/{assinatura_id}/pagar-ativacao")
-def registrar_pagamento_ativacao(assinatura_id: int, db: Session = Depends(get_db)):
+def registrar_pagamento_ativacao(assinatura_id: int, admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     """Registra pagamento da taxa de ativação"""
     result = db.execute(
         text("SELECT id FROM assinaturas WHERE id = :id"),
@@ -342,6 +344,7 @@ def registrar_pagamento_ativacao(assinatura_id: int, db: Session = Depends(get_d
 def cancelar_assinatura(
     assinatura_id: int,
     motivo: str = "Cancelamento solicitado",
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Cancela uma assinatura"""
@@ -373,6 +376,7 @@ def simular_assinatura(
     profissionais: int = 1,
     numero_virtual: bool = False,
     desconto_ativacao: float = 0,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Simula valores de uma assinatura antes de criar"""
@@ -439,7 +443,7 @@ def simular_assinatura(
 # ============ MÉTRICAS ============
 
 @router.get("/metricas/mrr")
-def calcular_mrr(db: Session = Depends(get_db)):
+def calcular_mrr(admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     """Calcula MRR baseado em assinaturas ativas"""
 
     result = db.execute(text("""

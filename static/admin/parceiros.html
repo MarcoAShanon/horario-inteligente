@@ -59,7 +59,7 @@
     <div class="max-w-7xl mx-auto px-4 py-8">
         <!-- Ações -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
                 <button onclick="abrirModalNovo()"
                    class="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition flex items-center gap-2">
                     <i class="fas fa-plus"></i>
@@ -68,8 +68,13 @@
                 <a href="/static/admin/comissoes.html"
                    class="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition flex items-center gap-2">
                     <i class="fas fa-coins"></i>
-                    Ver Comissões
+                    Ver Comissoes
                 </a>
+                <button onclick="copiarLinkRegistro()"
+                   class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-2">
+                    <i class="fas fa-link"></i>
+                    Copiar Link de Registro
+                </button>
             </div>
 
             <!-- Filtros -->
@@ -77,6 +82,8 @@
                 <select id="filtroStatus" onchange="carregarParceiros()"
                         class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="todos">Todos</option>
+                    <option value="pendente_aprovacao">Pend. Aprovacao</option>
+                    <option value="pendente_aceite">Pend. Aceite</option>
                     <option value="ativos" selected>Ativos</option>
                     <option value="inativos">Inativos</option>
                 </select>
@@ -380,13 +387,126 @@
         </div>
     </div>
 
+    <!-- Modal Aprovar Parceiro -->
+    <div id="modalAprovar" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-lg my-8">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>Aprovar Parceiro
+                    </h3>
+                    <button onclick="fecharModalAprovar()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <p class="text-gray-400 mb-4">Parceiro: <strong class="text-white" id="aprovarNomeParceiro"></strong></p>
+                <input type="hidden" id="aprovarParceiroId" value="">
+
+                <!-- Alert -->
+                <div id="alertAprovar" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg mb-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-triangle mr-2 flex-shrink-0"></i>
+                        <span id="alertAprovarText"></span>
+                    </div>
+                </div>
+
+                <form id="formAprovar" onsubmit="executarAprovacao(event)" class="space-y-4">
+                    <h4 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Configuracao de Comissao</h4>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Tipo de Comissao</label>
+                            <select id="aprovarTipoComissao"
+                                    class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <option value="percentual">Percentual</option>
+                                <option value="fixo">Valor Fixo</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Percentual (%)</label>
+                            <input type="number" id="aprovarPercentual" step="0.01" min="0" max="100" value="10"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Valor Fixo (R$)</label>
+                        <input type="number" id="aprovarValorFixo" step="0.01" min="0"
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="0.00">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Recorrencia (meses)</label>
+                            <input type="number" id="aprovarRecorrencia" min="1" max="120"
+                                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                   placeholder="Vazio = permanente">
+                        </div>
+                        <div class="flex items-end pb-1">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" id="aprovarRenovavel" checked
+                                       class="w-5 h-5 rounded border-gray-600 text-green-600 focus:ring-green-500 bg-gray-800">
+                                <span class="ml-2 text-gray-300 text-sm">Renovavel</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="bg-green-900/20 border border-green-500/30 rounded-lg p-4 text-sm text-green-300">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Uma senha provisoria sera gerada automaticamente e enviada por email ao parceiro junto com o link de ativacao.
+                    </div>
+
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" id="btnAprovar"
+                                class="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-700 hover:to-emerald-700 transition">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            <span id="btnAprovarText">Ativar Parceria</span>
+                        </button>
+                        <button type="button" onclick="fecharModalAprovar()"
+                                class="px-6 bg-gray-700 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Resultado da aprovacao -->
+                <div id="resultadoAprovacao" class="hidden mt-4 bg-green-900/30 border border-green-500/30 rounded-lg p-4">
+                    <p class="text-green-400 font-semibold mb-2"><i class="fas fa-check-circle mr-2"></i>Parceiro aprovado!</p>
+                    <div class="space-y-2 text-sm">
+                        <p class="text-gray-300">Senha provisoria: <strong class="text-yellow-300 font-mono" id="resultSenha"></strong>
+                            <button onclick="copiarTexto(document.getElementById('resultSenha').textContent)" class="ml-2 text-blue-400 hover:text-blue-300"><i class="fas fa-copy"></i></button>
+                        </p>
+                        <p class="text-gray-300">Link de ativacao:
+                            <button onclick="copiarTexto(document.getElementById('resultLink').textContent)" class="ml-2 text-blue-400 hover:text-blue-300"><i class="fas fa-copy"></i> Copiar</button>
+                        </p>
+                        <p class="text-xs text-gray-500 break-all" id="resultLink"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Função de escape para prevenir XSS
+        // Funcao de escape para prevenir XSS
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Escape para uso dentro de atributos JS inline (onclick)
+        // Escapa aspas simples, duplas e backslash para prevenir quebra de contexto
+        function escapeJsString(text) {
+            if (!text) return '';
+            return String(text)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/"/g, '\\"')
+                .replace(/</g, '\\x3c')
+                .replace(/>/g, '\\x3e');
         }
 
         // Verificar autenticação
@@ -431,8 +551,10 @@
             try {
                 const filtro = document.getElementById('filtroStatus').value;
                 let url = '/api/interno/parceiros';
-                if (filtro === 'ativos') url += '?ativo=true';
+                if (filtro === 'ativos') url += '?ativo=true&status=ativo';
                 else if (filtro === 'inativos') url += '?ativo=false';
+                else if (filtro === 'pendente_aprovacao') url += '?status=pendente_aprovacao';
+                else if (filtro === 'pendente_aceite') url += '?status=pendente_aceite';
 
                 const response = await fetch(url, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -484,25 +606,27 @@
                             </span>
                         </td>
                         <td class="px-4 py-4 text-center">
-                            ${p.ativo
-                                ? '<span class="bg-green-900/50 text-green-300 px-3 py-1 rounded-full text-sm">Ativo</span>'
-                                : '<span class="bg-red-900/50 text-red-300 px-3 py-1 rounded-full text-sm">Inativo</span>'
-                            }
+                            ${getStatusBadge(p.status, p.ativo)}
                         </td>
                         <td class="px-4 py-4 text-center">
                             <button onclick="event.stopPropagation(); verDetalhes(${p.id})" class="text-blue-400 hover:text-blue-300 mx-1" title="Ver detalhes">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button onclick="event.stopPropagation(); editarParceiroById(${p.id})" class="text-yellow-400 hover:text-yellow-300 mx-1" title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            ${p.ativo
+                            ${p.status === 'pendente_aprovacao'
+                                ? `<button onclick="event.stopPropagation(); abrirModalAprovar(${parseInt(p.id)}, '${escapeJsString(p.nome)}')" class="text-green-400 hover:text-green-300 mx-1" title="Aprovar">
+                                    <i class="fas fa-check-circle"></i>
+                                   </button>`
+                                : `<button onclick="event.stopPropagation(); editarParceiroById(${p.id})" class="text-yellow-400 hover:text-yellow-300 mx-1" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                   </button>`
+                            }
+                            ${p.ativo && p.status !== 'pendente_aprovacao'
                                 ? `<button onclick="event.stopPropagation(); desativarParceiro(${p.id})" class="text-red-400 hover:text-red-300 mx-1" title="Desativar">
                                     <i class="fas fa-ban"></i>
                                    </button>`
-                                : `<button onclick="event.stopPropagation(); reativarParceiro(${p.id})" class="text-green-400 hover:text-green-300 mx-1" title="Reativar">
+                                : (!p.ativo ? `<button onclick="event.stopPropagation(); reativarParceiro(${p.id})" class="text-green-400 hover:text-green-300 mx-1" title="Reativar">
                                     <i class="fas fa-check"></i>
-                                   </button>`
+                                   </button>` : '')
                             }
                         </td>
                     </tr>
@@ -914,6 +1038,114 @@
             } catch (error) {
                 console.error('Erro:', error);
                 alert('Erro ao reativar parceiro');
+            }
+        }
+
+        // ==================== STATUS BADGE ====================
+        function getStatusBadge(status, ativo) {
+            switch(status) {
+                case 'pendente_aprovacao':
+                    return '<span class="bg-orange-900/50 text-orange-300 px-3 py-1 rounded-full text-sm">Pend. Aprovacao</span>';
+                case 'pendente_aceite':
+                    return '<span class="bg-yellow-900/50 text-yellow-300 px-3 py-1 rounded-full text-sm">Pend. Aceite</span>';
+                case 'ativo':
+                    return '<span class="bg-green-900/50 text-green-300 px-3 py-1 rounded-full text-sm">Ativo</span>';
+                case 'suspenso':
+                    return '<span class="bg-red-900/50 text-red-300 px-3 py-1 rounded-full text-sm">Suspenso</span>';
+                case 'inativo':
+                    return '<span class="bg-red-900/50 text-red-300 px-3 py-1 rounded-full text-sm">Inativo</span>';
+                default:
+                    if (!ativo) return '<span class="bg-red-900/50 text-red-300 px-3 py-1 rounded-full text-sm">Inativo</span>';
+                    return '<span class="bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-sm">' + escapeHtml(status || 'N/A') + '</span>';
+            }
+        }
+
+        // ==================== COPIAR LINK DE REGISTRO ====================
+        function copiarLinkRegistro() {
+            const link = window.location.origin + '/static/parceiro/registro.html';
+            copiarTexto(link);
+            alert('Link de registro copiado!');
+        }
+
+        function copiarTexto(texto) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(texto);
+            } else {
+                const el = document.createElement('textarea');
+                el.value = texto;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+            }
+        }
+
+        // ==================== MODAL APROVAR ====================
+        function abrirModalAprovar(id, nome) {
+            document.getElementById('aprovarParceiroId').value = id;
+            document.getElementById('aprovarNomeParceiro').textContent = nome;
+            document.getElementById('alertAprovar').classList.add('hidden');
+            document.getElementById('resultadoAprovacao').classList.add('hidden');
+            document.getElementById('formAprovar').classList.remove('hidden');
+            document.getElementById('formAprovar').reset();
+            document.getElementById('aprovarPercentual').value = '10';
+            document.getElementById('aprovarRenovavel').checked = true;
+            document.getElementById('modalAprovar').classList.remove('hidden');
+        }
+
+        function fecharModalAprovar() {
+            document.getElementById('modalAprovar').classList.add('hidden');
+        }
+
+        async function executarAprovacao(event) {
+            event.preventDefault();
+
+            const parceiroId = document.getElementById('aprovarParceiroId').value;
+            const btn = document.getElementById('btnAprovar');
+            const btnText = document.getElementById('btnAprovarText');
+
+            btn.disabled = true;
+            btnText.textContent = 'Aprovando...';
+
+            const recorrenciaVal = document.getElementById('aprovarRecorrencia').value;
+
+            const dados = {
+                percentual_comissao: parseFloat(document.getElementById('aprovarPercentual').value) || 0,
+                tipo_comissao: document.getElementById('aprovarTipoComissao').value,
+                valor_fixo_comissao: parseFloat(document.getElementById('aprovarValorFixo').value) || null,
+                recorrencia_comissao_meses: recorrenciaVal ? parseInt(recorrenciaVal) : null,
+                recorrencia_renovavel: document.getElementById('aprovarRenovavel').checked
+            };
+
+            try {
+                const response = await fetch(`/api/interno/parceiros/${parceiroId}/aprovar`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.sucesso) {
+                    document.getElementById('formAprovar').classList.add('hidden');
+                    document.getElementById('resultSenha').textContent = data.senha_provisoria;
+                    document.getElementById('resultLink').textContent = data.link_ativacao;
+                    document.getElementById('resultadoAprovacao').classList.remove('hidden');
+                    carregarParceiros();
+                } else {
+                    document.getElementById('alertAprovar').classList.remove('hidden');
+                    document.getElementById('alertAprovarText').textContent = data.detail || 'Erro ao aprovar parceiro';
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById('alertAprovar').classList.remove('hidden');
+                document.getElementById('alertAprovarText').textContent = 'Erro de conexao. Tente novamente.';
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Ativar Parceria';
             }
         }
 

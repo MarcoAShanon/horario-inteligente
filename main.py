@@ -22,6 +22,9 @@ from app.api.parceiros_comerciais import router as parceiros_comerciais_router
 from app.api.custos_operacionais import router as custos_operacionais_router
 from app.api.admin_comissoes import router as admin_comissoes_router
 
+# Ativação de parceiro (pública)
+from app.api.parceiro_ativacao import router as parceiro_ativacao_router
+
 # Criar aplicação FastAPI
 app = FastAPI(
     title="Sistema Pro-Saúde",
@@ -52,6 +55,7 @@ app.include_router(usuarios_internos_router)
 app.include_router(parceiros_comerciais_router)
 app.include_router(custos_operacionais_router)
 app.include_router(admin_comissoes_router)
+app.include_router(parceiro_ativacao_router)
 
 @app.get("/", response_class=HTMLResponse)
 async def root():

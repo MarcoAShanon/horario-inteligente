@@ -263,10 +263,10 @@ async def get_metricas_periodo(
     filtro_medico = "AND a.medico_id = :medico_id" if medico_id else ""
 
     # Total de agendamentos no período
-    # Nota: 'realizada' implica que foi 'confirmada' antes, então conta em ambos
+    # Nota: total exclui cancelado, remarcado e faltou (são contados separadamente)
     query_total = text(f"""
         SELECT
-            COUNT(*) as total,
+            SUM(CASE WHEN a.status NOT IN ('cancelado', 'cancelada', 'remarcado', 'faltou') THEN 1 ELSE 0 END) as total,
             SUM(CASE WHEN a.status IN ('confirmado', 'confirmada', 'realizada', 'concluido', 'concluida') THEN 1 ELSE 0 END) as confirmados,
             SUM(CASE WHEN a.status IN ('concluido', 'concluida', 'realizada') THEN 1 ELSE 0 END) as concluidos,
             SUM(CASE WHEN a.status IN ('cancelado', 'cancelada') THEN 1 ELSE 0 END) as cancelados,
@@ -733,7 +733,7 @@ async def get_resumo_financeiro(
     # Query base
     medico_filter = "AND a.medico_id = :medico_id" if medico_id else ""
 
-    # PREVISTO: todos os agendamentos do mês (exceto cancelados)
+    # PREVISTO: todos os agendamentos do mês (exceto cancelados, remarcados e faltas)
     result_previsto = db.execute(text(f"""
         SELECT
             COUNT(*) as total_consultas,
@@ -742,7 +742,7 @@ async def get_resumo_financeiro(
         JOIN pacientes p ON a.paciente_id = p.id
         WHERE DATE(a.data_hora) >= :primeiro_dia
         AND DATE(a.data_hora) <= :ultimo_dia
-        AND a.status NOT IN ('cancelado', 'cancelada')
+        AND a.status NOT IN ('cancelado', 'cancelada', 'remarcado', 'faltou')
         AND p.cliente_id = :cliente_id
         {medico_filter}
     """), {

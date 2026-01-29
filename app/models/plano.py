@@ -5,7 +5,7 @@ Representa os planos disponíveis (Individual, Clínica)
 from sqlalchemy import Column, Integer, String, Text, Numeric, Boolean, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.database import Base
+from .base import Base
 
 
 class Plano(Base):

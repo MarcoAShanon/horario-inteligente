@@ -28,10 +28,23 @@ from app.services.websocket_manager import websocket_manager
 # Imports para criação de agendamentos
 from datetime import datetime
 import re
+import pytz
+
+# Timezone Brasil
+TZ_BRAZIL = pytz.timezone('America/Sao_Paulo')
+
+def converter_para_brasil(dt):
+    """Converte datetime UTC para horário de Brasília."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = pytz.utc.localize(dt)
+    return dt.astimezone(TZ_BRAZIL).isoformat()
 from app.models.agendamento import Agendamento
 from app.models.paciente import Paciente
 from app.models.medico import Medico
 from app.utils.timezone_helper import make_aware_brazil
+from app.services.agendamento_service import AgendamentoService
 
 # Imports para áudio (OpenAI Whisper + TTS)
 from app.services.openai_audio_service import get_audio_service
@@ -138,12 +151,28 @@ async def process_message(message: WhatsAppMessage):
         cliente_id = get_cliente_id_from_phone_number_id(message.phone_number_id, db)
 
         # 2. Criar ou recuperar conversa no PostgreSQL
-        conversa = ConversaService.criar_ou_recuperar_conversa(
+        conversa, is_nova_conversa = ConversaService.criar_ou_recuperar_conversa(
             db=db,
             cliente_id=cliente_id,
             telefone=message.sender
         )
-        logger.info(f"[Webhook Official] Conversa {conversa.id} - Status: {conversa.status.value}")
+        logger.info(f"[Webhook Official] Conversa {conversa.id} - Status: {conversa.status.value} - Nova: {is_nova_conversa}")
+
+        # 2.1 Se for nova conversa, notificar via WebSocket para atualizar lista lateral
+        if is_nova_conversa:
+            try:
+                await websocket_manager.send_nova_conversa(cliente_id, {
+                    "id": conversa.id,
+                    "paciente_telefone": conversa.paciente_telefone,
+                    "paciente_nome": conversa.paciente_nome,
+                    "status": conversa.status.value,
+                    "ultima_mensagem": message.text[:50] if message.text else "",
+                    "ultima_mensagem_at": conversa.criado_em.isoformat() if conversa.criado_em else None,
+                    "nao_lidas": 1
+                })
+                logger.info(f"[Webhook Official] 📢 Nova conversa notificada via WebSocket: {conversa.id}")
+            except Exception as ws_error:
+                logger.warning(f"[Webhook Official] Erro ao notificar nova conversa: {ws_error}")
 
         # 3. Determinar tipo da mensagem e processar áudio se necessário
         tipo_mensagem = TipoMensagem.TEXTO
@@ -222,7 +251,7 @@ async def process_message(message: WhatsAppMessage):
                 "remetente": "paciente",
                 "tipo": tipo_mensagem.value,
                 "conteudo": message.text,
-                "timestamp": mensagem_paciente.timestamp.isoformat()
+                "timestamp": converter_para_brasil(mensagem_paciente.timestamp)
             }
         )
 
@@ -266,7 +295,7 @@ async def process_message(message: WhatsAppMessage):
                         "remetente": "ia",
                         "tipo": "texto",
                         "conteudo": texto_resposta,
-                        "timestamp": mensagem_ia.timestamp.isoformat()
+                        "timestamp": converter_para_brasil(mensagem_ia.timestamp)
                     }
                 )
 
@@ -335,7 +364,7 @@ async def process_message(message: WhatsAppMessage):
                             "remetente": "ia",
                             "tipo": "texto",
                             "conteudo": texto_resposta,
-                            "timestamp": mensagem_ia.timestamp.isoformat()
+                            "timestamp": converter_para_brasil(mensagem_ia.timestamp)
                         }
                     )
 
@@ -419,7 +448,7 @@ async def process_message(message: WhatsAppMessage):
                 "remetente": "ia",
                 "tipo": "texto",
                 "conteudo": texto_resposta,
-                "timestamp": mensagem_ia.timestamp.isoformat()
+                "timestamp": converter_para_brasil(mensagem_ia.timestamp)
             }
         )
 
@@ -456,7 +485,45 @@ async def process_message(message: WhatsAppMessage):
                 telefone=message.sender,
                 dados_coletados=dados_coletados
             )
-            if agendamento_criado:
+
+            # Verificar se retornou erro de horário indisponível
+            if isinstance(agendamento_criado, dict) and agendamento_criado.get("erro") == "horario_indisponivel":
+                data_hora_conflito = agendamento_criado.get("data_hora")
+                medico_nome = agendamento_criado.get("medico_nome", "o médico")
+                medico_id = dados_coletados.get("medico_id")
+                data_formatada = data_hora_conflito.strftime("%d/%m/%Y às %H:%M") if data_hora_conflito else "este horário"
+
+                # Buscar horários disponíveis para o mesmo dia
+                horarios_disponiveis_msg = ""
+                if data_hora_conflito and medico_id:
+                    try:
+                        agendamento_service = AgendamentoService(db)
+                        horarios_livres = agendamento_service.obter_horarios_disponiveis(
+                            medico_id=medico_id,
+                            data_consulta=data_hora_conflito.date(),
+                            duracao_minutos=30
+                        )
+                        if horarios_livres:
+                            # Limitar a 5 horários para não poluir
+                            horarios_exibir = horarios_livres[:5]
+                            horarios_disponiveis_msg = f"\n\n📋 Horários disponíveis para {data_hora_conflito.strftime('%d/%m/%Y')}:\n"
+                            horarios_disponiveis_msg += ", ".join(horarios_exibir)
+                            if len(horarios_livres) > 5:
+                                horarios_disponiveis_msg += f" (e mais {len(horarios_livres) - 5})"
+                        else:
+                            horarios_disponiveis_msg = "\n\n⚠️ Infelizmente não há mais horários disponíveis neste dia."
+                    except Exception as e:
+                        logger.warning(f"[Webhook Official] Erro ao buscar horários disponíveis: {e}")
+
+                # Substituir resposta da IA por mensagem de horário indisponível
+                texto_resposta = f"😔 Desculpe, mas o horário de {data_formatada} não está mais disponível para {medico_nome}."
+                texto_resposta += horarios_disponiveis_msg
+                texto_resposta += "\n\nQual horário você prefere?"
+
+                logger.warning(f"[Webhook Official] ⚠️ Horário indisponível: {data_formatada}")
+                agendamento_criado = None  # Limpar para não confundir
+
+            elif agendamento_criado and hasattr(agendamento_criado, 'id'):
                 logger.info(f"[Webhook Official] ✅ Agendamento criado: ID {agendamento_criado.id}")
             else:
                 logger.warning(f"[Webhook Official] ⚠️ Falha ao criar agendamento com dados: {dados_coletados}")
@@ -587,7 +654,8 @@ async def criar_agendamento_from_ia(
         medico_id = dados_coletados.get("medico_id")
         convenio = dados_coletados.get("convenio", "particular")
         data_str = dados_coletados.get("data_preferida")
-        especialidade = dados_coletados.get("especialidade", "")
+        # Prioriza motivo_consulta, senão usa especialidade como fallback
+        motivo_consulta = dados_coletados.get("motivo_consulta") or dados_coletados.get("especialidade", "")
 
         # Validar dados mínimos
         if not nome or not medico_id or not data_str:
@@ -644,6 +712,22 @@ async def criar_agendamento_from_ia(
             logger.warning(f"[Agendamento] Médico {medico_id} não encontrado para cliente {cliente_id}")
             return None
 
+        # ========== VERIFICAR DISPONIBILIDADE DO HORÁRIO ==========
+        agendamento_service = AgendamentoService(db)
+        disponivel = agendamento_service.verificar_disponibilidade_medico(
+            medico_id=medico_id,
+            data_hora=data_hora,
+            duracao_minutos=30
+        )
+
+        if not disponivel:
+            logger.warning(f"[Agendamento] ❌ Horário INDISPONÍVEL: {data_hora} para médico {medico_id}")
+            # Retornar dict com erro para que a IA possa informar o paciente
+            return {"erro": "horario_indisponivel", "data_hora": data_hora, "medico_nome": medico.nome}
+
+        logger.info(f"[Agendamento] ✅ Horário disponível: {data_hora} para médico {medico_id}")
+        # ==========================================================
+
         # Buscar ou criar paciente
         telefone_limpo = re.sub(r'[^\d]', '', telefone)
         paciente = db.query(Paciente).filter(
@@ -667,19 +751,80 @@ async def criar_agendamento_from_ia(
             if paciente.nome != nome:
                 paciente.nome = nome
 
-        # Determinar valor (particular = R$ 300)
-        valor = 300.00 if convenio.lower() == "particular" else None
+        # ========== CANCELAR AGENDAMENTOS ANTERIORES (REAGENDAMENTO) ==========
+        # Buscar agendamentos futuros do paciente com este médico que ainda não foram realizados
+        from datetime import datetime as dt
+        import pytz
+        tz_brazil = pytz.timezone('America/Sao_Paulo')
+        agora = dt.now(tz_brazil)
+
+        agendamentos_anteriores = db.query(Agendamento).filter(
+            Agendamento.paciente_id == paciente.id,
+            Agendamento.medico_id == medico_id,
+            Agendamento.status.in_(['agendado', 'confirmado']),
+            Agendamento.data_hora > agora  # Apenas futuros
+        ).all()
+
+        if agendamentos_anteriores:
+            for ag_anterior in agendamentos_anteriores:
+                # IMPORTANTE: Usar "remarcado" (NÃO "cancelado") para manter métricas corretas
+                # "remarcado" = paciente mudou data, receita MANTIDA (não é perda)
+                # "cancelado" = paciente desistiu, PERDA de receita
+                ag_anterior.status = 'remarcado'
+                ag_anterior.observacoes = (ag_anterior.observacoes or '') + f' | Remarcado para nova data via WhatsApp em {agora.strftime("%d/%m/%Y %H:%M")}'
+                logger.info(f"[Agendamento] 🔄 Remarcação: Marcando como 'remarcado' o agendamento anterior ID={ag_anterior.id} ({ag_anterior.data_hora.strftime('%d/%m/%Y %H:%M')})")
+
+            # Notificar via WebSocket sobre remarcações
+            try:
+                for ag_anterior in agendamentos_anteriores:
+                    await websocket_manager.send_agendamento_atualizado(cliente_id, {
+                        "id": ag_anterior.id,
+                        "status": "remarcado",
+                        "motivo": "Paciente remarcou para nova data"
+                    })
+            except Exception as ws_error:
+                logger.warning(f"[WebSocket] Erro ao notificar remarcação: {ws_error}")
+        # ======================================================================
+
+        # Determinar valor e forma de pagamento
+        valor = None
+        forma_pagamento = 'particular'
+
+        if convenio.lower() == "particular":
+            # Buscar valor configurado do médico
+            valor = medico.valor_consulta_particular if medico.valor_consulta_particular else 150.00
+        else:
+            # Buscar índice do convênio no array convenios_aceitos do médico
+            convenios = medico.convenios_aceitos or []
+            convenio_lower = convenio.lower().strip()
+            for i, conv in enumerate(convenios):
+                conv_nome = conv.get('nome', '').lower().strip()
+                if conv_nome == convenio_lower or convenio_lower in conv_nome or conv_nome in convenio_lower:
+                    forma_pagamento = f'convenio_{i}'
+                    valor = conv.get('valor')
+                    logger.info(f"[Agendamento] Convênio encontrado: {conv.get('nome')} (index={i}, valor={valor})")
+                    break
+            else:
+                # Convênio não encontrado no cadastro, salvar como genérico
+                forma_pagamento = 'convenio_0'
+                logger.warning(f"[Agendamento] Convênio '{convenio}' não encontrado no cadastro do médico")
 
         # Criar agendamento (cliente_id é inferido pelo medico/paciente)
+        # Indicar se é reagendamento na observação
+        is_reagendamento = bool(agendamentos_anteriores)
+        observacao_base = "Reagendado" if is_reagendamento else "Agendado"
+        observacao = f"{observacao_base} via WhatsApp IA. Convênio: {convenio}"
+
         agendamento = Agendamento(
             medico_id=medico_id,
             paciente_id=paciente.id,
             data_hora=data_hora,
             status="agendado",
             tipo_atendimento=convenio.lower() if convenio.lower() != "particular" else "particular",
+            forma_pagamento=forma_pagamento,
             valor_consulta=str(valor) if valor else None,
-            motivo_consulta=especialidade,
-            observacoes=f"Agendado via WhatsApp IA. Convênio: {convenio}"
+            motivo_consulta=motivo_consulta,
+            observacoes=observacao
         )
         db.add(agendamento)
         db.commit()

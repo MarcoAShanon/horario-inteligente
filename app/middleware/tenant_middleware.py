@@ -28,14 +28,21 @@ class TenantMiddleware(BaseHTTPMiddleware):
             # Rotas que não precisam de tenant (gestão interna)
             path = request.url.path
             logger.info(f"🔍 TenantMiddleware v2: path={path}")
-            # Rotas de billing autenticadas usam cliente_id do JWT, não do subdomain
-            if path.startswith('/api/billing/minha') or path.startswith('/api/billing/minhas'):
+            # Rotas autenticadas que usam cliente_id do JWT, não do subdomain
+            jwt_auth_paths = [
+                '/api/billing/minha', '/api/billing/minhas',
+                '/api/configuracao/', '/api/dashboard/',
+                '/api/agendamentos', '/api/pacientes',
+                '/api/auth/', '/api/bloqueios', '/api/medicos/',
+                '/api/convenios', '/api/perfil'
+            ]
+            if any(path.startswith(p) for p in jwt_auth_paths):
                 request.state.cliente_id = None
                 request.state.subdomain = 'jwt_auth'
                 request.state.is_admin = False
                 response = await call_next(request)
                 return response
-            if path.startswith('/api/financeiro/') or path.startswith('/api/gestao-interna/') or path.startswith('/api/admin/') or path.startswith('/api/interno/'):
+            if path.startswith('/api/financeiro/') or path.startswith('/api/gestao-interna/') or path.startswith('/api/admin/') or path.startswith('/api/interno/') or path.startswith('/api/ativacao/') or path.startswith('/api/parceiro/'):
                 request.state.cliente_id = None
                 request.state.subdomain = 'admin'
                 request.state.is_admin = True
@@ -132,8 +139,11 @@ class TenantMiddleware(BaseHTTPMiddleware):
             if not result:
                 logger.warning(f"⚠️ Tenant não encontrado: {subdomain}")
                 # Fallback para cliente padrão em desenvolvimento
+                import os
+                default_cliente = int(os.getenv('DEFAULT_CLIENTE_ID', '3'))
                 if subdomain in ['localhost', 'prosaude']:
-                    cliente_id = 1
+                    cliente_id = default_cliente
+                    logger.info(f"🔧 Usando cliente padrão (DEFAULT_CLIENTE_ID): {cliente_id}")
                 else:
                     raise HTTPException(
                         status_code=404,

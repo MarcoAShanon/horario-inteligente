@@ -14,10 +14,14 @@ class Agendamento(BaseModel):
     data_hora = Column(DateTime(timezone=True), nullable=False)
     duracao_minutos = Column(Integer, default=30, nullable=False)  # Duração customizável
     status = Column(String(50), default="agendado", nullable=False)
-    # Status: agendado, confirmado, cancelado, realizado, faltou
+    # Status: agendado, confirmado, cancelado, realizado, faltou, remarcado
+    # IMPORTANTE para relatórios:
+    #   - "remarcado" = paciente mudou data/horário (receita MANTIDA, sem perda)
+    #   - "cancelado" = paciente desistiu (PERDA de receita)
     
     # Tipo de atendimento
     tipo_atendimento = Column(String(50), nullable=False)  # convenio ou particular
+    forma_pagamento = Column(String(50), nullable=True)  # 'particular' ou 'convenio_X' (índice do array)
     valor_consulta = Column(String(10), nullable=True)  # Valor se particular
     
     # Integração Google Calendar

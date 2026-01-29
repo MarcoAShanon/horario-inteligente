@@ -5,7 +5,7 @@ Representa os pagamentos (cobranças) do ASAAS
 from sqlalchemy import Column, Integer, String, Text, Numeric, Date, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.database import Base
+from .base import Base
 
 
 class Pagamento(Base):

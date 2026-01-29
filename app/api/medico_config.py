@@ -219,6 +219,88 @@ async def atualizar_configuracoes(
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar configurações: {str(e)}")
 
+# ================== ROTAS DE FORMAS DE PAGAMENTO ==================
+
+@router.get("/medicos/{medico_id}/formas-pagamento")
+async def obter_formas_pagamento(
+    medico_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtém as formas de pagamento aceitas pelo médico.
+    Retorna Particular (se configurado) + Convênios aceitos.
+    Usado para popular o dropdown de forma de pagamento no agendamento.
+    """
+    try:
+        # Buscar dados do médico
+        result = db.execute(text("""
+            SELECT valor_consulta_particular, convenios_aceitos
+            FROM medicos
+            WHERE id = :medico_id AND ativo = true
+        """), {"medico_id": medico_id})
+
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Médico não encontrado")
+
+        formas_pagamento = []
+
+        # Adicionar Particular se tiver valor configurado
+        valor_particular = row[0]
+        if valor_particular and float(valor_particular) > 0:
+            formas_pagamento.append({
+                "id": "particular",
+                "nome": "Particular",
+                "valor": float(valor_particular),
+                "tipo": "particular"
+            })
+        else:
+            # Sempre incluir Particular, mesmo sem valor
+            formas_pagamento.append({
+                "id": "particular",
+                "nome": "Particular",
+                "valor": None,
+                "tipo": "particular"
+            })
+
+        # Adicionar convênios aceitos pelo médico
+        convenios_aceitos = row[1]
+        if convenios_aceitos:
+            # convenios_aceitos é um JSONB com lista de convênios
+            import json
+            if isinstance(convenios_aceitos, str):
+                convenios_aceitos = json.loads(convenios_aceitos)
+
+            for i, conv in enumerate(convenios_aceitos):
+                if isinstance(conv, dict):
+                    formas_pagamento.append({
+                        "id": f"convenio_{i}",
+                        "nome": conv.get("nome", "Convênio"),
+                        "valor": conv.get("valor"),
+                        "codigo": conv.get("codigo", ""),
+                        "tipo": "convenio"
+                    })
+                elif isinstance(conv, str):
+                    # Compatibilidade com formato antigo (lista de strings)
+                    formas_pagamento.append({
+                        "id": f"convenio_{i}",
+                        "nome": conv,
+                        "valor": None,
+                        "tipo": "convenio"
+                    })
+
+        return {
+            "sucesso": True,
+            "medico_id": medico_id,
+            "formas_pagamento": formas_pagamento
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar formas de pagamento: {str(e)}")
+
 # ================== ROTAS DE HORÁRIOS DE ATENDIMENTO ==================
 
 @router.get("/medicos/{medico_id}/horarios")

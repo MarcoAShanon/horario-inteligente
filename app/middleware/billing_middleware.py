@@ -43,6 +43,13 @@ class BillingMiddleware(BaseHTTPMiddleware):
         '/api/gestao-interna/',
         '/static/admin/',
 
+        # Ativação de conta e portal do parceiro
+        '/api/ativacao/',
+        '/static/ativar-conta.html',
+        '/api/parceiro/',
+        '/static/parceiro/',
+        '/static/termo-parceria-comercial.html',
+
         # Assets estáticos
         '/static/css/',
         '/static/js/',

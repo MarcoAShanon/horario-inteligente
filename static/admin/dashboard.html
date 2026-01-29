@@ -239,6 +239,12 @@
     </div>
 
     <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         let adminToken = null;
         let adminData = null;
 
@@ -256,7 +262,7 @@
                 adminData = JSON.parse(adminDataStr);
                 document.getElementById('adminName').innerHTML = `
                     <i class="fas fa-user-circle mr-2"></i>
-                    ${adminData.nome}
+                    ${escapeHtml(adminData.nome)}
                 `;
             }
 
@@ -328,16 +334,16 @@
                 tbody.innerHTML = clientes.map(cliente => `
                     <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition">
                         <td class="py-3 px-4 text-gray-300">${cliente.id}</td>
-                        <td class="py-3 px-4 text-white font-medium">${cliente.nome}</td>
+                        <td class="py-3 px-4 text-white font-medium">${escapeHtml(cliente.nome)}</td>
                         <td class="py-3 px-4">
-                            <a href="${cliente.url}" target="_blank" class="text-purple-400 hover:text-purple-300 flex items-center gap-1">
-                                ${cliente.subdomain}
+                            <a href="${escapeHtml(cliente.url)}" target="_blank" class="text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                                ${escapeHtml(cliente.subdomain)}
                                 <i class="fas fa-external-link-alt text-xs"></i>
                             </a>
                         </td>
                         <td class="py-3 px-4">
                             <span class="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-sm">
-                                ${cliente.plano || 'Básico'}
+                                ${escapeHtml(cliente.plano || 'Básico')}
                             </span>
                         </td>
                         <td class="py-3 px-4">

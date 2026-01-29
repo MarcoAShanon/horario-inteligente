@@ -750,6 +750,13 @@
     </script>
 
     <script>
+        // Utilidade: Escape HTML (Prevenção XSS)
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         const API_BASE = '/api/financeiro';
         let currentTab = 'visao-geral';
 
@@ -858,8 +865,8 @@
                     tbody.innerHTML = data.data.map(d => `
                         <tr class="hover:bg-gray-50">
                             <td class="px-4 py-3">
-                                <div class="font-medium text-gray-900">${d.descricao}</div>
-                                <div class="text-xs text-gray-500">${d.tipo || ''} ${d.recorrente ? `<span class="text-blue-600">(${d.periodicidade === 'anual' ? 'Anual' : 'Mensal'})</span>` : ''}</div>
+                                <div class="font-medium text-gray-900">${escapeHtml(d.descricao)}</div>
+                                <div class="text-xs text-gray-500">${escapeHtml(d.tipo || '')} ${d.recorrente ? `<span class="text-blue-600">(${d.periodicidade === 'anual' ? 'Anual' : 'Mensal'})</span>` : ''}</div>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full ${
@@ -1159,20 +1166,20 @@
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4">
                                 <div>
-                                    <div class="font-medium text-gray-900">${cliente.nome}</div>
+                                    <div class="font-medium text-gray-900">${escapeHtml(cliente.nome)}</div>
                                     <div class="text-xs text-gray-500">ID: ${cliente.id}</div>
                                 </div>
                             </td>
                             <td class="px-6 py-4">
                                 <a href="${cliente.url}" target="_blank" class="text-blue-600 hover:underline text-sm">
-                                    ${cliente.subdomain}
+                                    ${escapeHtml(cliente.subdomain)}
                                 </a>
                             </td>
                             <td class="px-6 py-4">
                                 <span class="px-2 py-1 text-xs font-semibold rounded-full ${
                                     cliente.plano === 'profissional' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
                                 }">
-                                    ${cliente.plano}
+                                    ${escapeHtml(cliente.plano)}
                                 </span>
                             </td>
                             <td class="px-6 py-4">
@@ -1297,8 +1304,8 @@
                     tbody.innerHTML = data.data.map(item => `
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4">
-                                <div class="font-medium text-gray-900">${item.cliente_nome}</div>
-                                <div class="text-xs text-gray-500">${item.subdomain}</div>
+                                <div class="font-medium text-gray-900">${escapeHtml(item.cliente_nome)}</div>
+                                <div class="text-xs text-gray-500">${escapeHtml(item.subdomain)}</div>
                             </td>
                             <td class="px-6 py-4 text-gray-900">${item.medicos_ativos}</td>
                             <td class="px-6 py-4 font-semibold text-green-600">R$ ${item.faturamento_mensal.toFixed(2)}</td>

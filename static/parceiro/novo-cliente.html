@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo Cliente - Portal do Parceiro</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .loader {
+            border: 3px solid #374151;
+            border-top: 3px solid #10b981;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/parceiro/dashboard.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-plus text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white">Novo Cliente</h1>
+                    <p class="text-sm text-gray-400">Cadastrar clinica ou profissional</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container -->
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <!-- Alertas -->
+        <div id="alertError" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg mb-6">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span id="alertErrorText"></span>
+            </div>
+        </div>
+
+        <form id="formNovoCliente" class="space-y-8">
+            <!-- Dados da Clinica -->
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                <h2 class="text-lg font-semibold text-white mb-2 flex items-center">
+                    <span class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-sm mr-3">1</span>
+                    Dados da Clinica
+                </h2>
+                <p class="text-gray-400 text-sm mb-6 ml-11">Informacoes de cadastro e contato</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Nome do Consultorio *</label>
+                        <input type="text" name="nome_fantasia" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="Ex: Consultorio Dr. Joao Silva">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">CPF ou CNPJ *</label>
+                        <input type="text" name="documento" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                               oninput="formatarDocumento(this)">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Email da Clinica *</label>
+                        <input type="email" name="email" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="contato@clinica.com">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Telefone/WhatsApp *</label>
+                        <input type="tel" name="telefone" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="(21) 99999-9999"
+                               oninput="formatarTelefone(this)">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            Endereco <span class="text-gray-500 text-xs">(opcional)</span>
+                        </label>
+                        <input type="text" name="endereco"
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="Rua, numero - Bairro - Cidade/UF">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Plano *</label>
+                        <select name="plano_id"
+                                class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="1">Individual - R$ 150/mes</option>
+                            <option value="2">Consultorio - R$ 200/mes</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profissional Principal -->
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                <h2 class="text-lg font-semibold text-white mb-2 flex items-center">
+                    <span class="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-sm mr-3">2</span>
+                    Profissional Principal
+                </h2>
+                <p class="text-gray-400 text-sm mb-6 ml-11">Este profissional tera acesso administrativo</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Nome Completo *</label>
+                        <input type="text" name="medico_nome" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="Ex: Dr. Joao Silva">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Especialidade *</label>
+                        <input type="text" name="medico_especialidade" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="Ex: Cardiologia">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Registro (CRM/CRO/etc) *</label>
+                        <input type="text" name="medico_registro" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="Ex: CRM 12345-RJ">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Email para Login *</label>
+                        <input type="email" name="medico_email" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="drjoao@email.com">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            Telefone <span class="text-gray-500 text-xs">(opcional)</span>
+                        </label>
+                        <input type="tel" name="medico_telefone"
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="(21) 99999-9999"
+                               oninput="formatarTelefone(this)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botoes -->
+            <div class="flex flex-col sm:flex-row gap-4">
+                <button type="submit" id="btnSubmit"
+                        class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-check"></i>
+                    <span id="btnSubmitText">Cadastrar Cliente</span>
+                </button>
+
+                <a href="/static/parceiro/dashboard.html"
+                   class="flex-1 sm:flex-none bg-gray-700 text-white py-4 px-8 rounded-lg font-semibold hover:bg-gray-600 transition text-center">
+                    <i class="fas fa-times mr-2"></i>
+                    Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Modal Sucesso -->
+    <div id="modalSucesso" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-green-500 w-full max-w-md">
+            <div class="p-6">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check text-white text-3xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white mb-2">Cliente Cadastrado!</h3>
+                    <p class="text-gray-400">Aguardando ativacao pelo cliente</p>
+                </div>
+
+                <div class="bg-yellow-900/30 rounded-lg p-4 mb-4 border border-yellow-500/30">
+                    <h4 class="text-sm font-semibold text-yellow-400 mb-2">
+                        <i class="fas fa-clock mr-2"></i>Ativacao Pendente
+                    </h4>
+                    <p class="text-sm text-gray-300">
+                        O cliente recebera um email com um link para aceitar os termos de uso e ativar a conta.
+                    </p>
+                </div>
+
+                <div class="bg-gray-800 rounded-lg p-4 mb-4">
+                    <h4 class="text-sm font-semibold text-green-400 mb-2">
+                        <i class="fas fa-link mr-2"></i>Link de Ativacao
+                    </h4>
+                    <p class="text-xs text-gray-400 break-all" id="linkAtivacao">-</p>
+                    <button onclick="copiarLink()" class="mt-2 text-sm bg-gray-700 text-white px-3 py-1 rounded hover:bg-gray-600 transition">
+                        <i class="fas fa-copy mr-1"></i>Copiar Link
+                    </button>
+                </div>
+
+                <div class="flex gap-3">
+                    <a href="/static/parceiro/dashboard.html"
+                       class="flex-1 bg-green-600 text-white py-3 rounded-lg text-center hover:bg-green-700 transition font-semibold">
+                        <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                    </a>
+                    <button onclick="novoCadastro()"
+                            class="flex-1 bg-gray-700 text-white py-3 rounded-lg hover:bg-gray-600 transition font-semibold">
+                        <i class="fas fa-plus mr-2"></i>Outro Cliente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar autenticacao
+        const token = localStorage.getItem('parceiroToken');
+        if (!token) {
+            window.location.href = '/static/parceiro/login.html';
+        }
+
+        let linkAtivacaoCriado = '';
+
+        function formatarDocumento(input) {
+            let valor = input.value.replace(/\D/g, '');
+            if (valor.length <= 11) {
+                valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+                valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+                valor = valor.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            } else {
+                valor = valor.replace(/^(\d{2})(\d)/, '$1.$2');
+                valor = valor.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+                valor = valor.replace(/\.(\d{3})(\d)/, '.$1/$2');
+                valor = valor.replace(/(\d{4})(\d)/, '$1-$2');
+            }
+            input.value = valor;
+        }
+
+        function formatarTelefone(input) {
+            let valor = input.value.replace(/\D/g, '');
+            if (valor.length <= 10) {
+                valor = valor.replace(/(\d{2})(\d)/, '($1) $2');
+                valor = valor.replace(/(\d{4})(\d)/, '$1-$2');
+            } else {
+                valor = valor.replace(/(\d{2})(\d)/, '($1) $2');
+                valor = valor.replace(/(\d{5})(\d)/, '$1-$2');
+            }
+            input.value = valor;
+        }
+
+        function showError(message) {
+            const alert = document.getElementById('alertError');
+            document.getElementById('alertErrorText').textContent = message;
+            alert.classList.remove('hidden');
+            alert.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function setLoading(loading) {
+            const btn = document.getElementById('btnSubmit');
+            const text = document.getElementById('btnSubmitText');
+            if (loading) {
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
+                text.innerHTML = '<span class="loader mr-2"></span>Cadastrando...';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                text.textContent = 'Cadastrar Cliente';
+            }
+        }
+
+        function copiarLink() {
+            navigator.clipboard.writeText(linkAtivacaoCriado).then(() => {
+                alert('Link copiado!');
+            });
+        }
+
+        function novoCadastro() {
+            document.getElementById('modalSucesso').classList.add('hidden');
+            document.getElementById('formNovoCliente').reset();
+        }
+
+        document.getElementById('formNovoCliente').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            document.getElementById('alertError').classList.add('hidden');
+            setLoading(true);
+
+            const formData = new FormData(this);
+
+            const dados = {
+                nome_fantasia: formData.get('nome_fantasia'),
+                documento: formData.get('documento').replace(/\D/g, ''),
+                email: formData.get('email'),
+                telefone: formData.get('telefone').replace(/\D/g, ''),
+                endereco: formData.get('endereco') || null,
+                plano_id: parseInt(formData.get('plano_id')),
+                medico_nome: formData.get('medico_nome'),
+                medico_especialidade: formData.get('medico_especialidade'),
+                medico_registro: formData.get('medico_registro'),
+                medico_email: formData.get('medico_email'),
+                medico_telefone: formData.get('medico_telefone')?.replace(/\D/g, '') || null
+            };
+
+            try {
+                const response = await fetch('/api/parceiro/clientes', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dados)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Erro ao criar cliente');
+                }
+
+                // Preencher modal
+                linkAtivacaoCriado = result.link_ativacao || '';
+                document.getElementById('linkAtivacao').textContent = linkAtivacaoCriado;
+
+                document.getElementById('modalSucesso').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                showError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -354,6 +354,13 @@
     </div>
 
     <script>
+        // Utilidade: Escape HTML (Prevenção XSS)
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         let perfilAtual = null;
         let procedimentosAtuais = [];
 
@@ -476,7 +483,7 @@
             lista.innerHTML = procedimentosAtuais.map((proc, index) => `
                 <div class="flex items-center justify-between bg-gray-50 px-3 py-3 rounded-lg">
                     <div>
-                        <p class="font-semibold text-sm">${proc.nome}</p>
+                        <p class="font-semibold text-sm">${escapeHtml(proc.nome)}</p>
                         <p class="text-xs text-gray-600">
                             <i class="fas fa-clock mr-1"></i>${proc.duracao_minutos} min
                             <span class="mx-2">|</span>

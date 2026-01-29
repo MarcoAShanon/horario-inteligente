@@ -1,19 +1,22 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Text, JSON
+from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Text, JSON, Numeric
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
 class Medico(BaseModel):
     """Modelo para médicos da clínica"""
     __tablename__ = "medicos"
-    
+
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
-    
+
     # Dados pessoais
     nome = Column(String(200), nullable=False)
     crm = Column(String(20), nullable=False)
     especialidade = Column(String(100), nullable=False)
     telefone = Column(String(20), nullable=True)
     email = Column(String(100), nullable=True)
+
+    # Valor da consulta particular
+    valor_consulta_particular = Column(Numeric(10, 2), nullable=True)
     
     # Horários de atendimento (JSON)
     horarios_atendimento = Column(JSON, nullable=True)

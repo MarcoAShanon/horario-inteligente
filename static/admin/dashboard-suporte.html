@@ -245,6 +245,12 @@
     </div>
 
     <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         let userToken = null;
         let userData = null;
         let clientesData = [];
@@ -269,7 +275,7 @@
 
             document.getElementById('userName').innerHTML = `
                 <i class="fas fa-user-circle mr-2"></i>
-                ${userData.nome}
+                ${escapeHtml(userData.nome)}
             `;
 
             await carregarDados();
@@ -332,16 +338,16 @@
 
             tbody.innerHTML = clientes.map(cliente => `
                 <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition">
-                    <td class="py-3 px-4 text-white font-medium">${cliente.nome}</td>
+                    <td class="py-3 px-4 text-white font-medium">${escapeHtml(cliente.nome)}</td>
                     <td class="py-3 px-4">
-                        <a href="https://${cliente.subdomain}.horariointeligente.com.br" target="_blank"
+                        <a href="https://${escapeHtml(cliente.subdomain)}.horariointeligente.com.br" target="_blank"
                            class="text-blue-400 hover:text-blue-300 flex items-center gap-1">
-                            ${cliente.subdomain}
+                            ${escapeHtml(cliente.subdomain)}
                             <i class="fas fa-external-link-alt text-xs"></i>
                         </a>
                     </td>
                     <td class="py-3 px-4 text-gray-300">
-                        ${cliente.whatsapp_numero || '<span class="text-gray-500">Não configurado</span>'}
+                        ${cliente.whatsapp_numero ? escapeHtml(cliente.whatsapp_numero) : '<span class="text-gray-500">Não configurado</span>'}
                     </td>
                     <td class="py-3 px-4">
                         ${cliente.ativo
@@ -353,7 +359,7 @@
                         <button onclick="verDetalhesCliente(${cliente.id})" class="text-blue-400 hover:text-blue-300 transition mr-2" title="Ver detalhes">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <a href="https://${cliente.subdomain}.horariointeligente.com.br" target="_blank" class="text-green-400 hover:text-green-300 transition" title="Acessar sistema">
+                        <a href="https://${escapeHtml(cliente.subdomain)}.horariointeligente.com.br" target="_blank" class="text-green-400 hover:text-green-300 transition" title="Acessar sistema">
                             <i class="fas fa-external-link-alt"></i>
                         </a>
                     </td>
@@ -417,23 +423,23 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-gray-800 p-4 rounded-lg">
                             <p class="text-gray-400 text-sm">Subdomínio</p>
-                            <p class="text-white font-medium">${cliente.subdomain}.horariointeligente.com.br</p>
+                            <p class="text-white font-medium">${escapeHtml(cliente.subdomain)}.horariointeligente.com.br</p>
                         </div>
                         <div class="bg-gray-800 p-4 rounded-lg">
                             <p class="text-gray-400 text-sm">Plano</p>
-                            <p class="text-white font-medium capitalize">${cliente.plano || 'Básico'}</p>
+                            <p class="text-white font-medium capitalize">${escapeHtml(cliente.plano || 'Básico')}</p>
                         </div>
                         <div class="bg-gray-800 p-4 rounded-lg">
                             <p class="text-gray-400 text-sm">Email</p>
-                            <p class="text-white font-medium">${cliente.email || '-'}</p>
+                            <p class="text-white font-medium">${escapeHtml(cliente.email || '-')}</p>
                         </div>
                         <div class="bg-gray-800 p-4 rounded-lg">
                             <p class="text-gray-400 text-sm">Telefone</p>
-                            <p class="text-white font-medium">${cliente.telefone || '-'}</p>
+                            <p class="text-white font-medium">${escapeHtml(cliente.telefone || '-')}</p>
                         </div>
                         <div class="bg-gray-800 p-4 rounded-lg">
                             <p class="text-gray-400 text-sm">WhatsApp</p>
-                            <p class="text-white font-medium">${cliente.whatsapp_numero || 'Não configurado'}</p>
+                            <p class="text-white font-medium">${escapeHtml(cliente.whatsapp_numero || 'Não configurado')}</p>
                         </div>
                         <div class="bg-gray-800 p-4 rounded-lg">
                             <p class="text-gray-400 text-sm">Status</p>
@@ -462,7 +468,7 @@
                     </div>
 
                     <div class="flex gap-3 mt-4">
-                        <a href="https://${cliente.subdomain}.horariointeligente.com.br" target="_blank"
+                        <a href="https://${escapeHtml(cliente.subdomain)}.horariointeligente.com.br" target="_blank"
                            class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-center">
                             <i class="fas fa-external-link-alt mr-2"></i>
                             Acessar Sistema
@@ -554,7 +560,7 @@
                 <tr class="border-b border-gray-800">
                     <td class="py-3 px-4 text-gray-300">${new Date().toLocaleString('pt-BR')}</td>
                     <td class="py-3 px-4"><span class="px-2 py-1 bg-green-900/50 text-green-300 rounded text-sm">login</span></td>
-                    <td class="py-3 px-4 text-white">${userData.nome}</td>
+                    <td class="py-3 px-4 text-white">${escapeHtml(userData.nome)}</td>
                     <td class="py-3 px-4 text-gray-300">usuario_interno</td>
                     <td class="py-3 px-4 text-gray-400">-</td>
                 </tr>

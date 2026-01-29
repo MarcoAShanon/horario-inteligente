@@ -744,6 +744,13 @@
     </button>
 
     <script>
+        // Utilidade: Escape HTML (Prevenção XSS)
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // Verificar autenticação
         document.addEventListener('DOMContentLoaded', function() {
             const token = localStorage.getItem('token');
@@ -867,8 +874,8 @@
                                 <p class="text-lg font-bold text-gray-800">${hora}</p>
                             </div>
                             <div class="flex-1">
-                                <p class="font-medium text-gray-800">${paciente}</p>
-                                <p class="text-sm text-gray-500">${tipo}${telefone ? ' • ' + telefone : ''}</p>
+                                <p class="font-medium text-gray-800">${escapeHtml(paciente)}</p>
+                                <p class="text-sm text-gray-500">${escapeHtml(tipo)}${telefone ? ' • ' + escapeHtml(telefone) : ''}</p>
                             </div>
                             <div>
                                 ${statusBadge}
@@ -1668,8 +1675,10 @@
         // ==================== FIM GRAVAÇÃO DE ÁUDIO ====================
 
         function formatarTexto(texto) {
+            // Escapar HTML primeiro para prevenir XSS
+            const escaped = escapeHtml(texto);
             // Converter quebras de linha em <br>
-            return texto
+            return escaped
                 .replace(/\n/g, '<br>')
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Negrito
                 .replace(/\*(.*?)\*/g, '<em>$1</em>');  // Itálico

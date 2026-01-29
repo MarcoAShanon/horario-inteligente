@@ -12,6 +12,7 @@ import bcrypt
 import logging
 
 from app.database import get_db
+from app.api.admin import get_current_admin
 from app.services.auditoria_service import get_auditoria_service
 
 router = APIRouter(prefix="/api/interno/usuarios", tags=["Usuarios Internos"])
@@ -95,6 +96,7 @@ def verificar_senha(senha: str, senha_hash: str) -> bool:
 async def listar_usuarios(
     perfil: Optional[str] = None,
     ativo: Optional[bool] = None,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Lista todos os usuários internos"""
@@ -135,6 +137,7 @@ async def listar_usuarios(
 @router.get("/{usuario_id}")
 async def obter_usuario(
     usuario_id: int,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Obtém um usuário interno pelo ID"""
@@ -164,6 +167,7 @@ async def obter_usuario(
 async def criar_usuario(
     dados: UsuarioInternoCreate,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Cria um novo usuário interno"""
@@ -226,6 +230,7 @@ async def atualizar_usuario(
     usuario_id: int,
     dados: UsuarioInternoUpdate,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Atualiza um usuário interno"""
@@ -309,6 +314,7 @@ async def atualizar_usuario(
 async def desativar_usuario(
     usuario_id: int,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Desativa um usuário interno (soft delete)"""
@@ -350,6 +356,7 @@ async def alterar_senha(
     usuario_id: int,
     dados: UsuarioInternoSenha,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Altera a senha de um usuário interno"""

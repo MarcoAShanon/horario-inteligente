@@ -157,6 +157,13 @@
     </div>
 
     <script>
+        // Utility: Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // ==================== VARIÁVEIS GLOBAIS ====================
         let currentUser = null;
 
@@ -220,7 +227,7 @@
             }`;
             el.innerHTML = `
                 <i class="fas ${tipo === 'success' ? 'fa-check-circle' : tipo === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-                <span>${texto}</span>
+                <span>${escapeHtml(texto)}</span>
             `;
             el.classList.remove('hidden');
 

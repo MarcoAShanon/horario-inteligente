@@ -10,6 +10,7 @@ from datetime import date, datetime
 import logging
 
 from app.database import get_db
+from app.api.admin import get_current_admin
 from app.services.auditoria_service import get_auditoria_service
 
 router = APIRouter(prefix="/api/interno/custos", tags=["Custos Operacionais"])
@@ -85,6 +86,7 @@ async def listar_custos(
     data_fim: Optional[str] = None,
     limite: int = 100,
     offset: int = 0,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Lista custos operacionais com filtros"""
@@ -147,7 +149,7 @@ async def listar_custos(
 
 
 @router.get("/categorias")
-async def listar_categorias():
+async def listar_categorias(admin = Depends(get_current_admin)):
     """Lista categorias disponíveis"""
     return {"categorias": CATEGORIAS}
 
@@ -156,6 +158,7 @@ async def listar_categorias():
 async def resumo_custos(
     mes: Optional[int] = None,
     ano: Optional[int] = None,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Resumo de custos por categoria"""
@@ -221,6 +224,7 @@ async def resumo_custos(
 @router.get("/{custo_id}")
 async def obter_custo(
     custo_id: int,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Obtém detalhes de um custo"""
@@ -272,6 +276,7 @@ async def obter_custo(
 async def criar_custo(
     dados: CustoCreate,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Cria um novo lançamento de custo"""
@@ -351,6 +356,7 @@ async def atualizar_custo(
     custo_id: int,
     dados: CustoUpdate,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Atualiza um custo"""
@@ -425,6 +431,7 @@ async def registrar_pagamento(
     custo_id: int,
     dados: RegistrarPagamento,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Registra pagamento de um custo"""
@@ -474,6 +481,7 @@ async def registrar_pagamento(
 async def cancelar_custo(
     custo_id: int,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Cancela um custo (soft delete)"""

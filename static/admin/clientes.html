@@ -74,6 +74,7 @@
                         class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="todos">Todos</option>
                     <option value="ativos" selected>Ativos</option>
+                    <option value="pendente_aceite">Pendente Aceite</option>
                     <option value="inativos">Inativos</option>
                 </select>
                 <button onclick="carregarClientes()" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
@@ -100,10 +101,10 @@
             </div>
             <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
                 <div class="flex items-center justify-between">
-                    <i class="fas fa-user-md text-purple-500 text-xl"></i>
-                    <span class="text-xl font-bold text-white" id="statMedicos">0</span>
+                    <i class="fas fa-clock text-yellow-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statPendentes">0</span>
                 </div>
-                <p class="text-gray-400 text-sm mt-1">Profissionais</p>
+                <p class="text-gray-400 text-sm mt-1">Pendentes</p>
             </div>
             <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
                 <div class="flex items-center justify-between">
@@ -170,6 +171,12 @@
     </div>
 
     <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // Verificar autenticação
         const token = localStorage.getItem('adminToken');
         const adminData = JSON.parse(localStorage.getItem('adminData') || '{}');
@@ -181,7 +188,7 @@
         // Atualizar nome do admin
         document.getElementById('adminName').innerHTML = `
             <i class="fas fa-user-circle mr-2"></i>
-            ${adminData.nome || 'Admin'}
+            ${escapeHtml(adminData.nome || 'Admin')}
         `;
 
         function logout() {
@@ -219,14 +226,17 @@
                 // Filtrar
                 let clientesFiltrados = clientes;
                 if (filtro === 'ativos') {
-                    clientesFiltrados = clientes.filter(c => c.ativo);
+                    clientesFiltrados = clientes.filter(c => c.ativo || c.status === 'ativo');
                 } else if (filtro === 'inativos') {
-                    clientesFiltrados = clientes.filter(c => !c.ativo);
+                    clientesFiltrados = clientes.filter(c => !c.ativo && c.status !== 'pendente_aceite');
+                } else if (filtro === 'pendente_aceite') {
+                    clientesFiltrados = clientes.filter(c => c.status === 'pendente_aceite');
                 }
 
                 // Atualizar estatísticas
                 document.getElementById('statTotal').textContent = clientes.length;
                 document.getElementById('statAtivos').textContent = clientes.filter(c => c.ativo).length;
+                document.getElementById('statPendentes').textContent = clientes.filter(c => c.status === 'pendente_aceite').length;
 
                 // Calcular novos (últimos 7 dias)
                 const umaSemanaAtras = new Date();
@@ -250,15 +260,15 @@
                                     <i class="fas fa-building text-white"></i>
                                 </div>
                                 <div>
-                                    <p class="text-white font-medium">${cliente.nome}</p>
-                                    <p class="text-gray-400 text-sm">${cliente.email || '-'}</p>
+                                    <p class="text-white font-medium">${escapeHtml(cliente.nome)}</p>
+                                    <p class="text-gray-400 text-sm">${escapeHtml(cliente.email || '-')}</p>
                                 </div>
                             </div>
                         </td>
                         <td class="px-4 py-4 hidden md:table-cell">
-                            <a href="https://${cliente.subdomain}.horariointeligente.com.br" target="_blank"
+                            <a href="https://${escapeHtml(cliente.subdomain)}.horariointeligente.com.br" target="_blank"
                                class="text-purple-400 hover:text-purple-300 text-sm">
-                                ${cliente.subdomain}
+                                ${escapeHtml(cliente.subdomain)}
                                 <i class="fas fa-external-link-alt ml-1 text-xs"></i>
                             </a>
                         </td>
@@ -270,11 +280,7 @@
                             </span>
                         </td>
                         <td class="px-4 py-4 text-center">
-                            <span class="px-2 py-1 rounded text-xs font-medium ${
-                                cliente.ativo ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'
-                            }">
-                                ${cliente.ativo ? 'Ativo' : 'Inativo'}
-                            </span>
+                            ${getStatusBadge(cliente)}
                         </td>
                         <td class="px-4 py-4 text-gray-400 text-sm hidden lg:table-cell">
                             ${formatarData(cliente.criado_em)}
@@ -307,6 +313,18 @@
                     </button>
                 `;
             }
+        }
+
+        function getStatusBadge(cliente) {
+            const status = cliente.status || (cliente.ativo ? 'ativo' : 'suspenso');
+            const badges = {
+                'pendente_aceite': '<span class="px-2 py-1 rounded text-xs font-medium bg-yellow-900/50 text-yellow-300">Pendente Aceite</span>',
+                'ativo': '<span class="px-2 py-1 rounded text-xs font-medium bg-green-900/50 text-green-300">Ativo</span>',
+                'aguardando_pagamento': '<span class="px-2 py-1 rounded text-xs font-medium bg-orange-900/50 text-orange-300">Aguardando Pgto</span>',
+                'suspenso': '<span class="px-2 py-1 rounded text-xs font-medium bg-red-900/50 text-red-300">Suspenso</span>',
+                'cancelado': '<span class="px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">Cancelado</span>'
+            };
+            return badges[status] || `<span class="px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">${escapeHtml(status)}</span>`;
         }
 
         function formatarData(dataStr) {
@@ -343,17 +361,17 @@
                     <div class="space-y-4">
                         <div class="bg-gray-800 rounded-lg p-4">
                             <h4 class="text-gray-400 text-sm mb-2">Informações</h4>
-                            <p class="text-white font-medium">${cliente.nome}</p>
-                            <p class="text-gray-400 text-sm">${cliente.email}</p>
-                            <p class="text-gray-400 text-sm">${cliente.telefone || '-'}</p>
+                            <p class="text-white font-medium">${escapeHtml(cliente.nome)}</p>
+                            <p class="text-gray-400 text-sm">${escapeHtml(cliente.email)}</p>
+                            <p class="text-gray-400 text-sm">${escapeHtml(cliente.telefone || '-')}</p>
                         </div>
 
                         <div class="bg-gray-800 rounded-lg p-4">
                             <h4 class="text-gray-400 text-sm mb-2">Acesso</h4>
                             <p class="text-purple-400">
                                 <i class="fas fa-globe mr-2"></i>
-                                <a href="https://${cliente.subdomain}.horariointeligente.com.br" target="_blank" class="hover:underline">
-                                    ${cliente.subdomain}.horariointeligente.com.br
+                                <a href="https://${escapeHtml(cliente.subdomain)}.horariointeligente.com.br" target="_blank" class="hover:underline">
+                                    ${escapeHtml(cliente.subdomain)}.horariointeligente.com.br
                                 </a>
                             </p>
                         </div>

@@ -347,6 +347,12 @@
     </div>
 
     <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         let userToken = null;
         let userData = null;
 
@@ -370,7 +376,7 @@
 
             document.getElementById('userName').innerHTML = `
                 <i class="fas fa-user-circle mr-2"></i>
-                ${userData.nome}
+                ${escapeHtml(userData.nome)}
             `;
 
             await carregarDados();
@@ -436,9 +442,9 @@
 
                 tbody.innerHTML = custos.map(custo => `
                     <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition">
-                        <td class="py-3 px-4 text-white">${custo.descricao}</td>
+                        <td class="py-3 px-4 text-white">${escapeHtml(custo.descricao)}</td>
                         <td class="py-3 px-4">
-                            <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded text-sm capitalize">${custo.categoria}</span>
+                            <span class="px-2 py-1 bg-gray-700 text-gray-300 rounded text-sm capitalize">${escapeHtml(custo.categoria)}</span>
                         </td>
                         <td class="py-3 px-4 text-green-400 font-medium">R$ ${parseFloat(custo.valor).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
                         <td class="py-3 px-4 text-gray-300">${custo.data_vencimento ? new Date(custo.data_vencimento).toLocaleDateString('pt-BR') : '-'}</td>
@@ -496,7 +502,7 @@
                     <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
                         <div class="flex items-center gap-3">
                             <div class="w-3 h-3 rounded-full bg-${cores[cat.categoria] || 'gray'}-500"></div>
-                            <span class="text-gray-300 capitalize">${cat.categoria}</span>
+                            <span class="text-gray-300 capitalize">${escapeHtml(cat.categoria)}</span>
                         </div>
                         <span class="text-white font-medium">R$ ${parseFloat(cat.total).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                     </div>
@@ -530,8 +536,8 @@
                 container.innerHTML = parceiros.map(p => `
                     <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
                         <div>
-                            <p class="text-white font-medium">${p.nome}</p>
-                            <p class="text-gray-400 text-sm">${p.tipo} - ${p.comissao_percentual}%</p>
+                            <p class="text-white font-medium">${escapeHtml(p.nome)}</p>
+                            <p class="text-gray-400 text-sm">${escapeHtml(p.tipo)} - ${p.comissao_percentual}%</p>
                         </div>
                         <span class="px-2 py-1 ${p.ativo ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'} rounded text-sm">
                             ${p.ativo ? 'Ativo' : 'Inativo'}
@@ -566,9 +572,9 @@
 
                 tbody.innerHTML = clientes.map(cliente => `
                     <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition">
-                        <td class="py-3 px-4 text-white font-medium">${cliente.nome}</td>
+                        <td class="py-3 px-4 text-white font-medium">${escapeHtml(cliente.nome)}</td>
                         <td class="py-3 px-4">
-                            <span class="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-sm capitalize">${cliente.plano || 'básico'}</span>
+                            <span class="px-2 py-1 bg-blue-900/50 text-blue-300 rounded text-sm capitalize">${escapeHtml(cliente.plano || 'básico')}</span>
                         </td>
                         <td class="py-3 px-4 text-gray-300">-</td>
                         <td class="py-3 px-4 text-gray-300">-</td>
@@ -686,8 +692,8 @@
                 if (data.items && data.items.length > 0) {
                     tbody.innerHTML = data.items.map(c => `
                         <tr class="border-b border-gray-800 hover:bg-gray-800/50">
-                            <td class="py-3 px-4 text-white">${c.cliente_nome}</td>
-                            <td class="py-3 px-4 text-gray-300 text-sm">${c.descricao || '-'}</td>
+                            <td class="py-3 px-4 text-white">${escapeHtml(c.cliente_nome)}</td>
+                            <td class="py-3 px-4 text-gray-300 text-sm">${escapeHtml(c.descricao || '-')}</td>
                             <td class="py-3 px-4 text-white font-medium">R$ ${c.valor.toFixed(2)}</td>
                             <td class="py-3 px-4 text-gray-300">${formatarData(c.vencimento)}</td>
                             <td class="py-3 px-4">${getBadgeStatus(c.status)}</td>
@@ -739,7 +745,7 @@
 
                 const select = document.getElementById('cobrancaCliente');
                 select.innerHTML = '<option value="">Selecione o cliente...</option>' +
-                    clientes.map(c => `<option value="${c.id}" data-asaas="${c.asaas_customer_id || ''}">${c.nome}</option>`).join('');
+                    clientes.map(c => `<option value="${c.id}" data-asaas="${c.asaas_customer_id || ''}">${escapeHtml(c.nome)}</option>`).join('');
             } catch (error) {
                 console.error('Erro ao carregar clientes:', error);
             }

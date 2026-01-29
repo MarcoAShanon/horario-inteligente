@@ -341,6 +341,21 @@ try:
     app.include_router(webhooks_asaas_router, tags=["Webhooks ASAAS"])
     logger.info("✅ Router Webhooks ASAAS registrado")
 
+    # Router de Ativação de Conta (aceite de termos - público)
+    from app.api.ativacao import router as ativacao_router
+    app.include_router(ativacao_router, tags=["Ativação de Conta"])
+    logger.info("✅ Router de ativação de conta registrado")
+
+    # Router do Portal do Parceiro (autenticação e gestão)
+    from app.api.parceiro_auth import router as parceiro_auth_router
+    app.include_router(parceiro_auth_router, tags=["Portal do Parceiro"])
+    logger.info("✅ Router do portal do parceiro registrado")
+
+    # Router de Registro Público de Parceiro (auto-registro)
+    from app.api.parceiro_registro import router as parceiro_registro_router
+    app.include_router(parceiro_registro_router, tags=["Registro Parceiro"])
+    logger.info("✅ Router de registro de parceiro registrado")
+
     logger.info("✅ Routers principais registrados com sucesso (incluindo Admin, Financeiro e Gestão Interna)")
     
 except Exception as e:

@@ -240,6 +240,12 @@
     </div>
 
     <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // Estado da aplicação
         let dados = [];
         let paginaAtualNum = 1;
@@ -334,7 +340,7 @@
 
                 container.innerHTML += `
                     <div class="flex items-center gap-3">
-                        <div class="w-24 text-sm text-gray-400 truncate" title="${label}">${label}</div>
+                        <div class="w-24 text-sm text-gray-400 truncate" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
                         <div class="flex-1 bg-gray-800 rounded-full h-4 overflow-hidden">
                             <div class="h-full rounded-full transition-all duration-500" style="width: ${percentage}%; background-color: ${color}"></div>
                         </div>
@@ -395,24 +401,24 @@
                     tbody.innerHTML += `
                         <tr class="hover:bg-gray-800/50 transition animate-fadeIn">
                             <td class="px-4 py-3">
-                                <div class="text-white font-medium">${item.nome}</div>
+                                <div class="text-white font-medium">${escapeHtml(item.nome)}</div>
                             </td>
                             <td class="px-4 py-3">
-                                <div class="text-sm text-gray-300">${item.email}</div>
-                                <div class="text-xs text-gray-500">${item.whatsapp}</div>
+                                <div class="text-sm text-gray-300">${escapeHtml(item.email)}</div>
+                                <div class="text-xs text-gray-500">${escapeHtml(item.whatsapp)}</div>
                             </td>
                             <td class="px-4 py-3 hidden md:table-cell">
-                                <span class="text-sm text-gray-300">${item.profissao}</span>
+                                <span class="text-sm text-gray-300">${escapeHtml(item.profissao)}</span>
                             </td>
                             <td class="px-4 py-3 hidden lg:table-cell">
-                                <span class="text-sm text-gray-400">${item.cidade_estado}</span>
+                                <span class="text-sm text-gray-400">${escapeHtml(item.cidade_estado)}</span>
                             </td>
                             <td class="px-4 py-3 hidden lg:table-cell">
-                                <span class="text-sm text-gray-400">${item.origem || '-'}</span>
+                                <span class="text-sm text-gray-400">${escapeHtml(item.origem || '-')}</span>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="px-2 py-1 rounded-full text-xs font-medium ${statusClass}">
-                                    ${item.status}
+                                    ${escapeHtml(item.status)}
                                 </span>
                             </td>
                             <td class="px-4 py-3 hidden md:table-cell">

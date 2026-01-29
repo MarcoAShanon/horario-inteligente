@@ -316,6 +316,13 @@
     </div>
 
     <script>
+        // Utilidade: Escape HTML (Prevenção XSS)
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         let currentUser = null;
         let medicoId = null;
 
@@ -473,14 +480,14 @@
             container.innerHTML = horarios.map(h => `
                 <div class="card bg-white border border-gray-200 rounded-lg p-4">
                     <div class="flex justify-between items-start mb-2">
-                        <h3 class="font-semibold text-gray-800">${h.dia_semana_nome}</h3>
+                        <h3 class="font-semibold text-gray-800">${escapeHtml(h.dia_semana_nome)}</h3>
                         <button onclick="deletarHorario(${h.id})" class="text-red-500 hover:text-red-700">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
                     <p class="text-gray-600">
                         <i class="fas fa-clock mr-2"></i>
-                        ${h.hora_inicio} - ${h.hora_fim}
+                        ${escapeHtml(h.hora_inicio)} - ${escapeHtml(h.hora_fim)}
                     </p>
                 </div>
             `).join('');
@@ -587,8 +594,8 @@
                     <div class="flex justify-between items-start">
                         <div class="flex-1">
                             <div class="flex items-center mb-2">
-                                <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">${b.tipo}</span>
-                                <span class="ml-2 font-semibold text-gray-800">${b.motivo}</span>
+                                <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">${escapeHtml(b.tipo)}</span>
+                                <span class="ml-2 font-semibold text-gray-800">${escapeHtml(b.motivo)}</span>
                             </div>
                             <p class="text-gray-600 text-sm">
                                 <i class="fas fa-calendar mr-2"></i>
@@ -705,7 +712,7 @@
                     <div class="flex items-start gap-2">
                         <i class="fas fa-calendar-times text-yellow-600 mt-1"></i>
                         <div class="flex-1">
-                            <p class="font-semibold text-gray-800">${ag.paciente_nome}</p>
+                            <p class="font-semibold text-gray-800">${escapeHtml(ag.paciente_nome)}</p>
                             <p class="text-sm text-gray-600">
                                 <i class="fas fa-clock mr-1"></i>
                                 ${new Date(ag.data_hora).toLocaleString('pt-BR', {
@@ -719,16 +726,16 @@
                             ${ag.motivo_consulta ? `
                                 <p class="text-xs text-gray-600 mt-1">
                                     <i class="fas fa-notes-medical mr-1"></i>
-                                    ${ag.motivo_consulta}
+                                    ${escapeHtml(ag.motivo_consulta)}
                                 </p>
                             ` : ''}
                             <p class="text-xs text-gray-600 mt-1">
                                 <i class="fas fa-phone mr-1"></i>
-                                ${ag.paciente_telefone}
+                                ${escapeHtml(ag.paciente_telefone)}
                             </p>
                         </div>
                         <span class="px-2 py-1 bg-yellow-200 text-yellow-800 text-xs rounded font-medium">
-                            ${ag.status}
+                            ${escapeHtml(ag.status)}
                         </span>
                     </div>
                 </div>

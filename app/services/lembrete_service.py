@@ -21,8 +21,12 @@ from app.models.lembrete import Lembrete, TipoLembrete, StatusLembrete
 from app.services.whatsapp_official_service import WhatsAppOfficialService
 from app.services.whatsapp_template_service import get_template_service
 from app.services.anthropic_service import AnthropicService
+from app.services.websocket_manager import websocket_manager
 from app.database import SessionLocal
 from app.utils.timezone_helper import now_brazil, format_brazil
+import pytz
+
+TZ_BRAZIL = pytz.timezone('America/Sao_Paulo')
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +215,54 @@ class LembreteService:
                     f"✅ Lembrete {lembrete.tipo} enviado para {paciente.nome} "
                     f"(agendamento {agendamento.id}) via {template_name}"
                 )
+
+                # Notificar painel via WebSocket
+                try:
+                    from app.models.conversa import Conversa
+                    from app.models.mensagem import Mensagem, DirecaoMensagem, RemetenteMensagem, TipoMensagem
+                    from app.services.conversa_service import ConversaService
+
+                    # Buscar ou criar conversa
+                    conversa = db.query(Conversa).filter(
+                        Conversa.paciente_telefone.like(f"%{paciente.telefone[-8:]}%"),
+                        Conversa.cliente_id == medico.cliente_id
+                    ).first()
+
+                    if conversa:
+                        # Montar texto do lembrete para exibição
+                        if lembrete.tipo == TipoLembrete.LEMBRETE_24H.value:
+                            texto_lembrete = f"🔔 Lembrete: Olá {primeiro_nome}! Sua consulta com {nome_medico} está confirmada para amanhã, {data_formatada} às {hora_formatada}."
+                        else:
+                            texto_lembrete = f"🔔 Lembrete: Olá {primeiro_nome}! Sua consulta com {nome_medico} é HOJE às {hora_formatada}. Estamos te aguardando!"
+
+                        # Salvar mensagem no banco
+                        mensagem_lembrete = ConversaService.adicionar_mensagem(
+                            db=db,
+                            conversa_id=conversa.id,
+                            direcao=DirecaoMensagem.SAIDA,
+                            remetente=RemetenteMensagem.SISTEMA,
+                            conteudo=texto_lembrete,
+                            tipo=TipoMensagem.TEXTO
+                        )
+
+                        # Notificar via WebSocket
+                        timestamp_brasil = datetime.now(TZ_BRAZIL).isoformat()
+                        await websocket_manager.send_nova_mensagem(
+                            cliente_id=medico.cliente_id,
+                            conversa_id=conversa.id,
+                            mensagem={
+                                "id": mensagem_lembrete.id,
+                                "direcao": "saida",
+                                "remetente": "sistema",
+                                "tipo": "texto",
+                                "conteudo": texto_lembrete,
+                                "timestamp": timestamp_brasil
+                            }
+                        )
+                        logger.info(f"📢 WebSocket: Lembrete notificado ao painel (conversa {conversa.id})")
+                except Exception as ws_error:
+                    logger.warning(f"⚠️ Erro ao notificar painel via WebSocket: {ws_error}")
+
                 return True, result.message_id
 
             else:

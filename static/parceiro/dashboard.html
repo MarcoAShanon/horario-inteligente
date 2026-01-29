@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Portal do Parceiro</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .loader {
+            border: 3px solid #374151;
+            border-top: 3px solid #10b981;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-handshake text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white">Portal do Parceiro</h1>
+                    <p class="text-sm text-gray-400" id="parceiroNome">Carregando...</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/static/parceiro/novo-cliente.html"
+                   class="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    <span class="hidden sm:inline">Novo Cliente</span>
+                </a>
+                <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-building text-blue-500 text-xl"></i>
+                    <span class="text-2xl font-bold text-white" id="statTotal">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Total Clientes</p>
+            </div>
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                    <span class="text-2xl font-bold text-white" id="statAtivos">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Ativos</p>
+            </div>
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-clock text-yellow-500 text-xl"></i>
+                    <span class="text-2xl font-bold text-white" id="statPendentes">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Pendentes</p>
+            </div>
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-5">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-dollar-sign text-green-400 text-xl"></i>
+                    <span class="text-2xl font-bold text-white" id="statComissao">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Comissao (mes)</p>
+            </div>
+        </div>
+
+        <!-- Info de Comissionamento -->
+        <div id="comissionamentoSection" class="hidden bg-gray-900 rounded-xl border border-gray-800 p-6 mb-8">
+            <h2 class="text-lg font-semibold text-white mb-4">
+                <i class="fas fa-file-contract mr-2 text-green-400"></i>Suas Condicoes Comerciais
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <p class="text-gray-400 text-sm mb-1">Comissao</p>
+                    <p class="text-white font-bold text-lg" id="infoComissao">-</p>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <p class="text-gray-400 text-sm mb-1">Tipo</p>
+                    <p class="text-white font-bold text-lg" id="infoTipoComissao">-</p>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <p class="text-gray-400 text-sm mb-1">Recorrencia</p>
+                    <p class="text-white font-bold text-lg" id="infoRecorrencia">-</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Clientes -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-white">
+                    <i class="fas fa-users mr-2 text-green-400"></i>Meus Clientes
+                </h2>
+                <button onclick="carregarDados()" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+
+            <!-- Loading -->
+            <div id="loadingState" class="flex items-center justify-center py-12">
+                <div class="loader"></div>
+                <span class="text-gray-400 ml-3">Carregando...</span>
+            </div>
+
+            <!-- Tabela -->
+            <div id="tabelaContainer" class="hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300">Cliente</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300 hidden md:table-cell">Plano</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Status</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300 hidden lg:table-cell">Cadastrado em</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaBody" class="divide-y divide-gray-800">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Vazio -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <i class="fas fa-building text-gray-600 text-5xl mb-4"></i>
+                <p class="text-gray-400 mb-2">Nenhum cliente cadastrado</p>
+                <a href="/static/parceiro/novo-cliente.html" class="text-green-400 hover:text-green-300">
+                    <i class="fas fa-plus mr-1"></i>Cadastrar primeiro cliente
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Utility: Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Verificar autenticacao
+        const token = localStorage.getItem('parceiroToken');
+        const parceiroData = JSON.parse(localStorage.getItem('parceiroData') || '{}');
+
+        if (!token) {
+            window.location.href = '/static/parceiro/login.html';
+        }
+
+        document.getElementById('parceiroNome').textContent = parceiroData.nome || 'Parceiro';
+
+        function logout() {
+            localStorage.removeItem('parceiroToken');
+            localStorage.removeItem('parceiroData');
+            window.location.href = '/static/parceiro/login.html';
+        }
+
+        function formatarData(dataStr) {
+            if (!dataStr) return '-';
+            const data = new Date(dataStr);
+            return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pendente_aceite': '<span class="px-2 py-1 rounded text-xs font-medium bg-yellow-900/50 text-yellow-300">Pendente</span>',
+                'ativo': '<span class="px-2 py-1 rounded text-xs font-medium bg-green-900/50 text-green-300">Ativo</span>',
+                'aguardando_pagamento': '<span class="px-2 py-1 rounded text-xs font-medium bg-orange-900/50 text-orange-300">Aguardando Pgto</span>',
+                'suspenso': '<span class="px-2 py-1 rounded text-xs font-medium bg-red-900/50 text-red-300">Suspenso</span>',
+                'cancelado': '<span class="px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">Cancelado</span>'
+            };
+            return badges[status] || `<span class="px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">${escapeHtml(status)}</span>`;
+        }
+
+        async function carregarDados() {
+            const loadingState = document.getElementById('loadingState');
+            const tabelaContainer = document.getElementById('tabelaContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            loadingState.classList.remove('hidden');
+            tabelaContainer.classList.add('hidden');
+            emptyState.classList.add('hidden');
+
+            try {
+                // Carregar dashboard, clientes e dados do parceiro em paralelo
+                const [dashRes, clientesRes, meRes] = await Promise.all([
+                    fetch('/api/parceiro/dashboard', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch('/api/parceiro/clientes', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }),
+                    fetch('/api/parceiro/me', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                ]);
+
+                if (dashRes.status === 401 || clientesRes.status === 401) {
+                    logout();
+                    return;
+                }
+
+                const dashboard = await dashRes.json();
+                const clientes = await clientesRes.json();
+
+                // Exibir info de comissionamento
+                if (meRes.ok) {
+                    const meData = await meRes.json();
+                    const comSection = document.getElementById('comissionamentoSection');
+                    comSection.classList.remove('hidden');
+
+                    const percentual = meData.percentual_comissao || 0;
+                    document.getElementById('infoComissao').textContent = percentual + '%';
+
+                    const tipoMap = { 'percentual': 'Percentual', 'fixo': 'Valor Fixo', 'percentual_margem': 'Percentual s/ Margem' };
+                    document.getElementById('infoTipoComissao').textContent = tipoMap[meData.tipo_comissao] || meData.tipo_comissao || '-';
+
+                    if (meData.parceria_lancamento) {
+                        document.getElementById('infoRecorrencia').textContent = 'Parceria de Lancamento';
+                    } else {
+                        document.getElementById('infoRecorrencia').textContent = 'Permanente';
+                    }
+                }
+
+                // Preencher stats
+                document.getElementById('statTotal').textContent = dashboard.total_clientes || 0;
+                document.getElementById('statAtivos').textContent = dashboard.ativos || 0;
+                document.getElementById('statPendentes').textContent = dashboard.pendentes || 0;
+                document.getElementById('statComissao').textContent = `R$ ${(dashboard.comissao_mes || 0).toFixed(2).replace('.', ',')}`;
+
+                loadingState.classList.add('hidden');
+
+                if (clientes.length === 0) {
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+
+                tabelaContainer.classList.remove('hidden');
+                document.getElementById('tabelaBody').innerHTML = clientes.map(c => `
+                    <tr class="hover:bg-gray-800/50 transition">
+                        <td class="px-4 py-4">
+                            <div>
+                                <p class="text-white font-medium">${escapeHtml(c.nome)}</p>
+                                <p class="text-gray-400 text-sm">${escapeHtml(c.email || '-')}</p>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 hidden md:table-cell">
+                            <span class="px-2 py-1 rounded text-xs font-medium bg-purple-900/50 text-purple-300">
+                                ${escapeHtml(c.plano || '-')}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            ${getStatusBadge(c.status)}
+                        </td>
+                        <td class="px-4 py-4 text-gray-400 text-sm hidden lg:table-cell">
+                            ${formatarData(c.criado_em)}
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            ${c.status === 'pendente_aceite' ? `
+                                <button onclick="reenviarAtivacao(${c.id})" class="text-yellow-400 hover:text-yellow-300 p-2" title="Reenviar ativacao">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.innerHTML = `
+                    <i class="fas fa-exclamation-triangle text-red-500 text-5xl mb-4"></i>
+                    <p class="text-red-400">Erro ao carregar dados</p>
+                    <button onclick="carregarDados()" class="text-green-400 hover:text-green-300 mt-2">
+                        <i class="fas fa-sync-alt mr-1"></i>Tentar novamente
+                    </button>
+                `;
+            }
+        }
+
+        async function reenviarAtivacao(clienteId) {
+            if (!confirm('Reenviar email de ativacao para este cliente?')) return;
+
+            try {
+                const response = await fetch(`/api/parceiro/reenviar-ativacao/${clienteId}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.sucesso) {
+                    alert('Email de ativacao reenviado com sucesso!');
+                } else {
+                    alert(data.detail || 'Erro ao reenviar email');
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro de conexao. Tente novamente.');
+            }
+        }
+
+        // Carregar ao iniciar
+        carregarDados();
+    </script>
+</body>
+</html>

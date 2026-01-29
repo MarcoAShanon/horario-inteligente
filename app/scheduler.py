@@ -3,12 +3,14 @@ import asyncio
 import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
 
 from app.services.reminder_service import reminder_service
 from app.services.whatsapp_monitor import whatsapp_monitor
 from app.services.status_update_service import status_update_service
 from app.services.lembrete_service import lembrete_service
+from app.services.billing_service import billing_service
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,17 @@ class ReminderScheduler:
                 misfire_grace_time=300  # 5 minutos de tolerância
             )
 
+            # Adicionar job de billing: verificar descontos expirados diariamente às 06:00
+            self.scheduler.add_job(
+                self._run_billing_sync,
+                trigger=CronTrigger(hour=6, minute=0),
+                id='billing_sync',
+                name='Sincronizar billing e verificar descontos expirados',
+                replace_existing=True,
+                max_instances=1,
+                misfire_grace_time=3600  # 1 hora de tolerância
+            )
+
             # Iniciar o scheduler
             self.scheduler.start()
             self.is_running = True
@@ -85,6 +98,7 @@ class ReminderScheduler:
             logger.info("📱 Monitoramento WhatsApp a cada 5 minutos")
             logger.info("🔄 Atualização de status a cada 15 minutos")
             logger.info("🔔 Lembretes inteligentes a cada 10 minutos")
+            logger.info("💰 Billing sync diário às 06:00")
 
             # Executar imediatamente no startup (opcional)
             asyncio.create_task(self._run_reminder_processing())
@@ -229,6 +243,62 @@ class ReminderScheduler:
 
         except Exception as e:
             logger.error(f"❌ Erro ao processar lembretes inteligentes: {str(e)}")
+
+    async def _run_billing_sync(self):
+        """
+        Job diário de billing:
+        1. Verifica descontos promocionais expirados e atualiza valores
+        2. Sincroniza status de assinaturas com ASAAS
+
+        Executado diariamente às 06:00.
+        """
+        try:
+            start_time = datetime.now()
+            logger.info(f"💰 Iniciando billing sync - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+            from app.database import SessionLocal
+            db = SessionLocal()
+
+            try:
+                # 1. Verificar descontos expirados
+                descontos_atualizados = await billing_service.check_expired_discounts(db)
+                logger.info(f"💰 Descontos expirados atualizados: {descontos_atualizados}")
+
+                # 2. Sincronizar assinaturas ativas com ASAAS
+                from sqlalchemy import text
+                assinaturas = db.execute(
+                    text("""
+                        SELECT id FROM assinaturas
+                        WHERE status = 'ativa'
+                        AND asaas_subscription_id IS NOT NULL
+                    """)
+                ).fetchall()
+
+                sync_count = 0
+                sync_errors = 0
+                for row in assinaturas:
+                    try:
+                        status = await billing_service.sync_subscription_status(db, row[0])
+                        if status:
+                            sync_count += 1
+                    except Exception as e:
+                        sync_errors += 1
+                        logger.warning(f"💰 Erro ao sincronizar assinatura {row[0]}: {e}")
+
+                end_time = datetime.now()
+                duration = (end_time - start_time).total_seconds()
+
+                logger.info(
+                    f"✅ Billing sync concluído em {duration:.2f}s - "
+                    f"Descontos: {descontos_atualizados}, "
+                    f"Sync: {sync_count}/{len(assinaturas)}, "
+                    f"Erros: {sync_errors}"
+                )
+            finally:
+                db.close()
+
+        except Exception as e:
+            logger.error(f"❌ Erro ao executar billing sync: {str(e)}")
 
     def get_status(self):
         """

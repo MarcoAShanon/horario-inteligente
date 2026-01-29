@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Parceiro - Horario Inteligente</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-lg">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-handshake text-white text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-white">Seja um Parceiro</h1>
+            <p class="text-gray-400">Horario Inteligente</p>
+        </div>
+
+        <!-- ========== STATE: FORM ========== -->
+        <div id="stateForm">
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-8">
+                <!-- Alert -->
+                <div id="alertError" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg mb-6">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-triangle mr-2 flex-shrink-0"></i>
+                        <span id="alertErrorText"></span>
+                    </div>
+                </div>
+
+                <form id="formRegistro" class="space-y-5">
+                    <!-- Nome -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-user mr-2 text-green-400"></i>Nome Completo / Razao Social *
+                        </label>
+                        <input type="text" id="inputNome" required minlength="3" maxlength="255"
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="Seu nome ou razao social">
+                    </div>
+
+                    <!-- Tipo Pessoa -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-id-card mr-2 text-green-400"></i>Tipo de Pessoa *
+                        </label>
+                        <select id="inputTipoPessoa" required
+                                class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="PF">Pessoa Fisica</option>
+                            <option value="PJ">Pessoa Juridica</option>
+                        </select>
+                    </div>
+
+                    <!-- CPF/CNPJ -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-file-alt mr-2 text-green-400"></i><span id="labelDoc">CPF</span> *
+                        </label>
+                        <input type="text" id="inputCpfCnpj" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="000.000.000-00" maxlength="18">
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-envelope mr-2 text-green-400"></i>Email *
+                        </label>
+                        <input type="email" id="inputEmail" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="seu@email.com">
+                    </div>
+
+                    <!-- Telefone -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-phone mr-2 text-green-400"></i>Telefone *
+                        </label>
+                        <input type="text" id="inputTelefone" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="(00) 00000-0000" maxlength="16">
+                    </div>
+
+                    <!-- Endereco -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-map-marker-alt mr-2 text-green-400"></i>Endereco (opcional)
+                        </label>
+                        <input type="text" id="inputEndereco" maxlength="500"
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="Rua, numero - Bairro - Cidade/UF">
+                    </div>
+
+                    <!-- Submit -->
+                    <button type="submit" id="btnSubmit"
+                            class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-paper-plane" id="btnIcon"></i>
+                        <span id="btnText">Enviar Cadastro</span>
+                    </button>
+                </form>
+
+                <div class="text-center mt-4">
+                    <a href="/static/parceiro/login.html" class="text-green-400 hover:text-green-300 text-sm">
+                        <i class="fas fa-sign-in-alt mr-1"></i>Ja tenho conta - Fazer login
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== STATE: SUCCESS ========== -->
+        <div id="stateSuccess" class="hidden">
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-8">
+                <div class="text-center py-6">
+                    <div class="w-16 h-16 bg-green-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check-circle text-green-400 text-3xl"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-white mb-2">Cadastro Enviado!</h2>
+                    <p class="text-gray-400 mb-2">Seu cadastro foi recebido com sucesso.</p>
+                    <p class="text-gray-500 text-sm mb-6">Aguarde a aprovacao do administrador. Voce recebera um email quando sua parceria for aprovada.</p>
+                    <a href="/static/parceiro/login.html"
+                       class="inline-flex items-center gap-2 text-green-400 hover:text-green-300 text-sm">
+                        <i class="fas fa-arrow-left"></i>
+                        Voltar para o login
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6">
+            <p class="text-gray-500 text-sm">
+                <i class="fas fa-shield-alt mr-1"></i>
+                Conexao segura
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Tipo pessoa toggle
+        const tipoPessoaSelect = document.getElementById('inputTipoPessoa');
+        const labelDoc = document.getElementById('labelDoc');
+        const inputDoc = document.getElementById('inputCpfCnpj');
+
+        tipoPessoaSelect.addEventListener('change', function() {
+            if (this.value === 'PJ') {
+                labelDoc.textContent = 'CNPJ';
+                inputDoc.placeholder = '00.000.000/0000-00';
+            } else {
+                labelDoc.textContent = 'CPF';
+                inputDoc.placeholder = '000.000.000-00';
+            }
+        });
+
+        // Mascara CPF/CNPJ
+        inputDoc.addEventListener('input', function(e) {
+            let v = e.target.value.replace(/\D/g, '');
+            const tipo = tipoPessoaSelect.value;
+            if (tipo === 'PF') {
+                v = v.substring(0, 11);
+                if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+                else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+                else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+            } else {
+                v = v.substring(0, 14);
+                if (v.length > 12) v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, '$1.$2.$3/$4-$5');
+                else if (v.length > 8) v = v.replace(/(\d{2})(\d{3})(\d{3})(\d{1,4})/, '$1.$2.$3/$4');
+                else if (v.length > 5) v = v.replace(/(\d{2})(\d{3})(\d{1,3})/, '$1.$2.$3');
+                else if (v.length > 2) v = v.replace(/(\d{2})(\d{1,3})/, '$1.$2');
+            }
+            e.target.value = v;
+        });
+
+        // Mascara telefone
+        document.getElementById('inputTelefone').addEventListener('input', function(e) {
+            let v = e.target.value.replace(/\D/g, '').substring(0, 11);
+            if (v.length > 6) v = v.replace(/(\d{2})(\d{4,5})(\d{1,4})/, '($1) $2-$3');
+            else if (v.length > 2) v = v.replace(/(\d{2})(\d{1,5})/, '($1) $2');
+            else if (v.length > 0) v = v.replace(/(\d{1,2})/, '($1');
+            e.target.value = v;
+        });
+
+        function showError(msg) {
+            document.getElementById('alertError').classList.remove('hidden');
+            document.getElementById('alertErrorText').textContent = msg;
+        }
+
+        function hideError() {
+            document.getElementById('alertError').classList.add('hidden');
+        }
+
+        // Form submit
+        document.getElementById('formRegistro').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            hideError();
+
+            const btn = document.getElementById('btnSubmit');
+            const btnText = document.getElementById('btnText');
+            const btnIcon = document.getElementById('btnIcon');
+
+            btn.disabled = true;
+            btnText.textContent = 'Enviando...';
+            btnIcon.className = 'fas fa-spinner fa-spin';
+
+            try {
+                const response = await fetch('/api/parceiro/registro', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nome: document.getElementById('inputNome').value.trim(),
+                        tipo_pessoa: document.getElementById('inputTipoPessoa').value,
+                        cpf_cnpj: document.getElementById('inputCpfCnpj').value.trim(),
+                        email: document.getElementById('inputEmail').value.trim(),
+                        telefone: document.getElementById('inputTelefone').value.trim(),
+                        endereco: document.getElementById('inputEndereco').value.trim() || null
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.sucesso) {
+                    document.getElementById('stateForm').classList.add('hidden');
+                    document.getElementById('stateSuccess').classList.remove('hidden');
+                } else if (response.status === 409) {
+                    showError(data.detail || 'Email ou CPF/CNPJ ja cadastrado.');
+                } else if (response.status === 422) {
+                    const errors = data.detail || [];
+                    if (Array.isArray(errors) && errors.length > 0) {
+                        showError(errors[0].msg || 'Dados invalidos. Verifique os campos.');
+                    } else {
+                        showError('Dados invalidos. Verifique os campos.');
+                    }
+                } else {
+                    showError(data.detail || 'Erro ao enviar cadastro. Tente novamente.');
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                showError('Erro de conexao. Tente novamente.');
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Enviar Cadastro';
+                btnIcon.className = 'fas fa-paper-plane';
+            }
+        });
+    </script>
+</body>
+</html>

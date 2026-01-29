@@ -76,15 +76,22 @@ async def get_current_user(
     # Buscar usuário no banco
     if user_type == "medico":
         result = db.execute(text("""
-            SELECT id, nome, email, especialidade, crm, telefone
+            SELECT id, nome, email, especialidade, crm, telefone, medico_vinculado_id
             FROM medicos
-            WHERE id = :user_id AND ativo = true
+            WHERE id = :user_id AND ativo = true AND is_secretaria = false
         """), {"user_id": user_id})
     elif user_type == "secretaria":
+        # Secretárias também estão na tabela medicos com is_secretaria=true
         result = db.execute(text("""
-            SELECT id, nome, email, telefone, 'Secretária' as especialidade, '' as crm
-            FROM usuarios
-            WHERE id = :user_id AND ativo = true AND tipo = 'secretaria'
+            SELECT id, nome, email, 'Secretária' as especialidade, '' as crm, telefone, medico_vinculado_id
+            FROM medicos
+            WHERE id = :user_id AND ativo = true AND is_secretaria = true
+        """), {"user_id": user_id})
+    elif user_type == "admin":
+        result = db.execute(text("""
+            SELECT id, nome, email, 'Admin' as especialidade, '' as crm, telefone, NULL as medico_vinculado_id
+            FROM usuarios_internos
+            WHERE id = :user_id AND ativo = true
         """), {"user_id": user_id})
     else:
         raise HTTPException(status_code=401, detail="Tipo de usuário inválido")
@@ -101,7 +108,9 @@ async def get_current_user(
         "especialidade": user.especialidade if hasattr(user, 'especialidade') else None,
         "crm": user.crm if hasattr(user, 'crm') else None,
         "telefone": user.telefone if hasattr(user, 'telefone') else None,
-        "cliente_id": payload.get("cliente_id")  # IMPORTANTE: Adicionar cliente_id do token
+        "cliente_id": payload.get("cliente_id"),  # IMPORTANTE: Adicionar cliente_id do token
+        "is_secretaria": payload.get("is_secretaria", False),
+        "medico_vinculado_id": user.medico_vinculado_id if hasattr(user, 'medico_vinculado_id') else None
     }
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -134,29 +143,36 @@ async def login(
 ):
     """Login de médico ou secretária (protegido contra brute force)"""
     try:
-        # Tentar login como médico
+        # Tentar login como médico ou secretária (ambos estão na tabela medicos)
         result = db.execute(text("""
             SELECT m.id, m.nome, m.email, m.especialidade, m.crm, m.telefone, m.senha,
-                   m.cliente_id, m.email_verificado
+                   m.cliente_id, m.email_verificado, m.is_secretaria, m.medico_vinculado_id
             FROM medicos m
             WHERE m.email = :email AND m.ativo = true
         """), {"email": username})
 
         user = result.fetchone()
+        is_secretaria = False
         user_type = "medico"
         cliente_id = None
         email_verificado = True  # Default para usuários existentes
 
-        # Se não for médico, tentar como secretária
+        # Verificar se é secretária
+        if user and getattr(user, 'is_secretaria', False):
+            is_secretaria = True
+            user_type = "secretaria"
+
+        # Se não encontrou na tabela medicos, tentar tabela usuarios_internos
         if not user:
             result = db.execute(text("""
-                SELECT u.id, u.nome, u.email, u.telefone, u.senha, 'secretaria' as tipo,
+                SELECT u.id, u.nome, u.email, u.telefone, u.senha_hash as senha,
                        u.cliente_id, u.email_verificado
-                FROM usuarios u
-                WHERE u.email = :email AND u.ativo = true AND u.tipo = 'secretaria'
+                FROM usuarios_internos u
+                WHERE u.email = :email AND u.ativo = true
             """), {"email": username})
             user = result.fetchone()
-            user_type = "secretaria"
+            user_type = "admin"
+            is_secretaria = False
 
         # Verificar se usuário existe e senha está correta
         if not user or not verify_password(password, user.senha if hasattr(user, 'senha') else None):
@@ -179,12 +195,19 @@ async def login(
         if not cliente_id:
             cliente_id = user.cliente_id if hasattr(user, 'cliente_id') else 1
 
+        # Obter medico_vinculado_id se for secretária
+        medico_vinculado_id_token = None
+        if is_secretaria and hasattr(user, 'medico_vinculado_id'):
+            medico_vinculado_id_token = user.medico_vinculado_id
+
         # Criar token com cliente_id (MULTI-TENANT)
         token_data = {
             "user_id": user.id,
             "user_type": user_type,
             "email": user.email,
-            "cliente_id": cliente_id  # NOVO - essencial para multi-tenant
+            "cliente_id": cliente_id,  # Essencial para multi-tenant
+            "is_secretaria": is_secretaria,
+            "medico_vinculado_id": medico_vinculado_id_token
         }
         access_token = create_access_token(token_data)
 
@@ -196,6 +219,8 @@ async def login(
                 "nome": user.nome,
                 "email": user.email,
                 "tipo": user_type,
+                "is_secretaria": is_secretaria,
+                "medico_vinculado_id": medico_vinculado_id_token,
                 "especialidade": user.especialidade if hasattr(user, 'especialidade') else "Administração",
                 "crm": user.crm if hasattr(user, 'crm') else None,
                 "telefone": user.telefone if hasattr(user, 'telefone') else None

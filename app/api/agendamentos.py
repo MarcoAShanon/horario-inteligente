@@ -30,6 +30,9 @@ class AgendamentoCreate(BaseModel):
     paciente_cpf: Optional[str] = None
     paciente_email: Optional[str] = None
     paciente_data_nascimento: Optional[str] = None
+    # Forma de pagamento e valor
+    forma_pagamento: Optional[str] = None  # 'particular', 'convenio_0', etc
+    valor_consulta: Optional[str] = None  # Valor da consulta
 
 @router.post("/agendamentos")
 async def criar_agendamento(
@@ -127,12 +130,13 @@ async def criar_agendamento(
 
         # VALIDAÇÃO DE CONFLITO: Verificar sobreposição com agendamentos existentes
         # Conflito ocorre quando: novo_inicio < existente_fim AND novo_fim > existente_inicio
+        # Status que LIBERAM o horário: cancelado, faltou, remarcado
         conflito = db.execute(text("""
             SELECT a.id, a.data_hora, a.duracao_minutos, p.nome as paciente
             FROM agendamentos a
             JOIN pacientes p ON a.paciente_id = p.id
             WHERE a.medico_id = :medico_id
-            AND a.status NOT IN ('cancelado', 'faltou')
+            AND a.status NOT IN ('cancelado', 'faltou', 'remarcado')
             AND (
                 -- Novo agendamento começa antes do existente terminar
                 :novo_inicio < (a.data_hora + (COALESCE(a.duracao_minutos, 30) || ' minutes')::interval)
@@ -155,21 +159,49 @@ async def criar_agendamento(
                 "erro": f"Conflito de horário: já existe agendamento de {conflito[3]} às {hora_conflito_br} ({conflito[2]} min)"
             }
 
+        # Determinar valor da consulta
+        valor_consulta = dados.valor_consulta
+        forma_pagamento = dados.forma_pagamento or 'particular'
+
+        # Se valor não foi enviado, buscar do cadastro do médico
+        if not valor_consulta:
+            import json
+            medico_dados = db.execute(text("""
+                SELECT valor_consulta_particular, convenios_aceitos
+                FROM medicos WHERE id = :med_id
+            """), {"med_id": dados.medico_id}).fetchone()
+
+            if medico_dados:
+                if forma_pagamento == 'particular':
+                    valor_consulta = str(medico_dados[0]) if medico_dados[0] else None
+                elif forma_pagamento.startswith('convenio_') and medico_dados[1]:
+                    convenios = medico_dados[1]
+                    if isinstance(convenios, str):
+                        convenios = json.loads(convenios)
+                    try:
+                        idx = int(forma_pagamento.replace('convenio_', ''))
+                        if idx < len(convenios):
+                            valor_consulta = str(convenios[idx].get('valor', ''))
+                    except (ValueError, IndexError):
+                        pass
+
         result = db.execute(text("""
             INSERT INTO agendamentos
             (paciente_id, medico_id, data_hora, duracao_minutos, status, tipo_atendimento,
-             motivo_consulta, lembrete_24h_enviado, lembrete_3h_enviado, lembrete_1h_enviado,
+             motivo_consulta, valor_consulta, forma_pagamento, lembrete_24h_enviado, lembrete_3h_enviado, lembrete_1h_enviado,
              criado_em, atualizado_em)
             VALUES
             (:pac_id, :med_id, :dt, :duracao, 'confirmado', 'consulta',
-             :motivo, FALSE, FALSE, FALSE, NOW(), NOW())
+             :motivo, :valor, :forma_pag, FALSE, FALSE, FALSE, NOW(), NOW())
             RETURNING id
         """), {
             "pac_id": paciente_id,
             "med_id": dados.medico_id,
             "dt": data_hora_tz,  # Agora timezone-aware!
             "duracao": duracao,
-            "motivo": motivo_final
+            "motivo": motivo_final,
+            "valor": valor_consulta,
+            "forma_pag": forma_pagamento
         })
         
         agendamento_id = result.scalar()
@@ -256,6 +288,9 @@ async def listar_calendario(
             final_medico_id = medico_id if medico_id else 0
 
         # Buscar agendamentos (filtrado por cliente_id para multi-tenant)
+        # IMPORTANTE: Ocultar do calendário: cancelado, remarcado, faltou
+        # Esses registros permanecem no banco para estatísticas, mas não devem
+        # aparecer no calendário para não confundir o usuário
         cliente_id = current_user.get("cliente_id")
         result = db.execute(text("""
             SELECT
@@ -276,6 +311,7 @@ async def listar_calendario(
             WHERE (:medico_id = 0 OR a.medico_id = :medico_id)
             AND m.cliente_id = :cliente_id
             AND a.data_hora >= CURRENT_DATE - INTERVAL '30 days'
+            AND a.status NOT IN ('cancelado', 'remarcado', 'faltou')
             ORDER BY a.data_hora
         """), {"medico_id": final_medico_id, "cliente_id": cliente_id})
         
@@ -325,17 +361,17 @@ async def listar_medicos(
         # Se medico_filter não for None, usuário é médico e só vê a si mesmo
         if medico_filter is not None:
             result = db.execute(text("""
-                SELECT id, nome, especialidade, crm
+                SELECT id, nome, especialidade, crm, convenios_aceitos
                 FROM medicos
-                WHERE id = :medico_id AND ativo = true
+                WHERE id = :medico_id AND ativo = true AND is_secretaria = false
             """), {"medico_id": medico_filter})
         else:
-            # Secretária vê todos os médicos DO SEU CLIENTE
+            # Secretária vê todos os médicos DO SEU CLIENTE (excluindo secretárias)
             cliente_id = current_user.get("cliente_id")
             result = db.execute(text("""
-                SELECT id, nome, especialidade, crm
+                SELECT id, nome, especialidade, crm, convenios_aceitos
                 FROM medicos
-                WHERE ativo = true AND cliente_id = :cliente_id
+                WHERE ativo = true AND cliente_id = :cliente_id AND is_secretaria = false
                 ORDER BY nome
             """), {"cliente_id": cliente_id})
 
@@ -345,7 +381,8 @@ async def listar_medicos(
                 "id": row.id,
                 "nome": row.nome,
                 "especialidade": row.especialidade,
-                "crm": row.crm
+                "crm": row.crm,
+                "convenios_aceitos": row.convenios_aceitos
             })
 
         return {"sucesso": True, "medicos": medicos}
@@ -492,13 +529,14 @@ async def atualizar_agendamento(
                         duracao_verificacao = duracao_atual[0] or 30
 
                 # VALIDAÇÃO DE CONFLITO: Verificar sobreposição (excluindo o próprio agendamento)
+                # Status que LIBERAM o horário: cancelado, faltou, remarcado
                 conflito = db.execute(text("""
                     SELECT a.id, a.data_hora, a.duracao_minutos, p.nome as paciente
                     FROM agendamentos a
                     JOIN pacientes p ON a.paciente_id = p.id
                     WHERE a.medico_id = :medico_id
                     AND a.id != :agendamento_id
-                    AND a.status NOT IN ('cancelado', 'faltou')
+                    AND a.status NOT IN ('cancelado', 'faltou', 'remarcado')
                     AND (
                         :novo_inicio < (a.data_hora + (COALESCE(a.duracao_minutos, 30) || ' minutes')::interval)
                         AND
@@ -749,7 +787,9 @@ async def obter_agendamento(
                 m.id as medico_id,
                 m.nome as medico_nome,
                 m.especialidade,
-                m.crm
+                m.crm,
+                a.forma_pagamento,
+                a.valor_consulta
             FROM agendamentos a
             JOIN pacientes p ON a.paciente_id = p.id
             JOIN medicos m ON a.medico_id = m.id
@@ -775,6 +815,8 @@ async def obter_agendamento(
                 "observacoes": agendamento.observacoes,
                 "criado_em": agendamento.criado_em.isoformat(),
                 "atualizado_em": agendamento.atualizado_em.isoformat(),
+                "forma_pagamento": agendamento.forma_pagamento,
+                "valor_consulta": agendamento.valor_consulta,
                 "paciente": {
                     "id": agendamento.paciente_id,
                     "nome": agendamento.paciente_nome,

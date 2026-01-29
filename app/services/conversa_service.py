@@ -21,8 +21,11 @@ class ConversaService:
         cliente_id: int,
         telefone: str,
         nome_paciente: Optional[str] = None
-    ) -> Conversa:
-        """Busca conversa ativa ou cria uma nova"""
+    ) -> tuple:
+        """
+        Busca conversa ativa ou cria uma nova.
+        Retorna: (conversa, is_nova) - tupla com a conversa e flag indicando se é nova
+        """
         # Buscar conversa ativa (não encerrada) para este telefone
         conversa = db.query(Conversa).filter(
             Conversa.cliente_id == cliente_id,
@@ -30,6 +33,7 @@ class ConversaService:
             Conversa.status != StatusConversa.ENCERRADA
         ).first()
 
+        is_nova = False
         if not conversa:
             conversa = Conversa(
                 cliente_id=cliente_id,
@@ -40,11 +44,12 @@ class ConversaService:
             db.add(conversa)
             db.commit()
             db.refresh(conversa)
+            is_nova = True
         elif nome_paciente and not conversa.paciente_nome:
             conversa.paciente_nome = nome_paciente
             db.commit()
 
-        return conversa
+        return conversa, is_nova
 
     @staticmethod
     def adicionar_mensagem(

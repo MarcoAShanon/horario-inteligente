@@ -224,6 +224,7 @@
                             <i class="fas fa-cog mr-2 text-gray-400"></i>Ações
                         </h2>
                         <div class="space-y-3">
+                            <div id="credenciaisButtonContainer"></div>
                             <button onclick="toggleStatusCliente()" id="btnToggleStatus"
                                     class="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition flex items-center justify-center gap-2">
                                 <i class="fas fa-ban"></i>
@@ -347,7 +348,43 @@
         </div>
     </div>
 
+    <!-- Modal Resultado Envio Credenciais -->
+    <div id="modalResultadoCredenciais" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-md">
+            <div class="p-6">
+                <div class="text-center mb-4">
+                    <div id="resultadoIcone" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-envelope text-white text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white">Resultado do Envio</h3>
+                </div>
+                <div class="flex gap-4 mb-4">
+                    <div class="flex-1 bg-green-900/30 border border-green-700 rounded-lg p-3 text-center">
+                        <p class="text-2xl font-bold text-green-400" id="resultTotalEnviados">0</p>
+                        <p class="text-xs text-green-300">Enviados</p>
+                    </div>
+                    <div class="flex-1 bg-red-900/30 border border-red-700 rounded-lg p-3 text-center">
+                        <p class="text-2xl font-bold text-red-400" id="resultTotalFalhas">0</p>
+                        <p class="text-xs text-red-300">Falhas</p>
+                    </div>
+                </div>
+                <div id="resultDetalhes" class="space-y-2 max-h-60 overflow-y-auto mb-4">
+                    <!-- Preenchido via JS -->
+                </div>
+                <button onclick="fecharModalResultadoCredenciais()" class="w-full bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-600 transition">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // Verificar autenticação
         const token = localStorage.getItem('adminToken');
         if (!token) {
@@ -447,6 +484,9 @@
                 btnStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Reativar Cliente</span>';
                 btnStatus.className = 'w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2';
             }
+
+            // Botão credenciais
+            renderizarCredenciaisButton();
         }
 
         async function carregarMedicos() {
@@ -473,8 +513,8 @@
                                 <i class="fas fa-user-md text-white"></i>
                             </div>
                             <div>
-                                <p class="text-white font-medium">${m.nome}</p>
-                                <p class="text-gray-400 text-sm">${m.especialidade} - ${m.crm}</p>
+                                <p class="text-white font-medium">${escapeHtml(m.nome)}</p>
+                                <p class="text-gray-400 text-sm">${escapeHtml(m.especialidade)} - ${escapeHtml(m.crm)}</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -513,11 +553,11 @@
                                 <i class="fas fa-user text-white"></i>
                             </div>
                             <div>
-                                <p class="text-white font-medium">${u.nome}</p>
-                                <p class="text-gray-400 text-sm">${u.email}</p>
+                                <p class="text-white font-medium">${escapeHtml(u.nome)}</p>
+                                <p class="text-gray-400 text-sm">${escapeHtml(u.email)}</p>
                             </div>
                         </div>
-                        <span class="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded">${u.tipo}</span>
+                        <span class="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded">${escapeHtml(u.tipo)}</span>
                     </div>
                 `).join('');
 
@@ -593,6 +633,110 @@
                 console.error('Erro:', error);
                 alert('Erro ao alterar status');
             }
+        }
+
+        // Credenciais
+        function renderizarCredenciaisButton() {
+            const container = document.getElementById('credenciaisButtonContainer');
+            if (!clienteData || !clienteData.ativo) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const enviadas = clienteData.credenciais_enviadas_em;
+            if (enviadas) {
+                const dataEnvio = new Date(enviadas).toLocaleString('pt-BR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+                container.innerHTML = `
+                    <button onclick="enviarCredenciais()"
+                            class="w-full bg-yellow-600 text-white py-2 rounded-lg hover:bg-yellow-700 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-redo"></i>
+                        <span>Reenviar Credenciais</span>
+                    </button>
+                    <p class="text-xs text-gray-500 text-center mt-1">Enviadas em ${dataEnvio}</p>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="enviarCredenciais()"
+                            class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Enviar Credenciais</span>
+                    </button>
+                `;
+            }
+        }
+
+        async function enviarCredenciais() {
+            if (!confirm('Isso vai gerar novas senhas temporárias e enviar por email a todos os profissionais ativos. Deseja continuar?')) return;
+
+            const container = document.getElementById('credenciaisButtonContainer');
+            const btnOriginal = container.innerHTML;
+            container.innerHTML = `
+                <button disabled class="w-full bg-gray-600 text-white py-2 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed">
+                    <div class="loader" style="width:18px;height:18px;border-width:2px;"></div>
+                    <span>Enviando...</span>
+                </button>
+            `;
+
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}/enviar-credenciais`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Host': 'admin.horariointeligente.com.br'
+                    }
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Erro ao enviar credenciais');
+
+                // Atualizar dados locais
+                clienteData.credenciais_enviadas_em = result.credenciais_enviadas_em;
+                renderizarCredenciaisButton();
+
+                // Mostrar modal resultado
+                mostrarResultadoCredenciais(result);
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert(error.message);
+                container.innerHTML = btnOriginal;
+            }
+        }
+
+        function mostrarResultadoCredenciais(result) {
+            document.getElementById('resultTotalEnviados').textContent = result.total_enviados;
+            document.getElementById('resultTotalFalhas').textContent = result.total_falhas;
+
+            const icone = document.getElementById('resultadoIcone');
+            if (result.total_falhas === 0) {
+                icone.className = 'w-12 h-12 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-3';
+                icone.innerHTML = '<i class="fas fa-check text-white text-xl"></i>';
+            } else {
+                icone.className = 'w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center mx-auto mb-3';
+                icone.innerHTML = '<i class="fas fa-exclamation-triangle text-white text-xl"></i>';
+            }
+
+            const detalhesContainer = document.getElementById('resultDetalhes');
+            detalhesContainer.innerHTML = result.detalhes.map(d => `
+                <div class="bg-gray-800 rounded-lg p-3 flex items-center justify-between">
+                    <div>
+                        <p class="text-white text-sm font-medium">${escapeHtml(d.nome)}</p>
+                        <p class="text-gray-400 text-xs">${escapeHtml(d.email)} - ${d.tipo === 'secretaria' ? 'Secretária' : 'Médico(a)'}</p>
+                    </div>
+                    ${d.email_enviado
+                        ? '<span class="text-green-400"><i class="fas fa-check-circle"></i></span>'
+                        : '<span class="text-red-400"><i class="fas fa-times-circle"></i></span>'}
+                </div>
+            `).join('');
+
+            document.getElementById('modalResultadoCredenciais').classList.remove('hidden');
+        }
+
+        function fecharModalResultadoCredenciais() {
+            document.getElementById('modalResultadoCredenciais').classList.add('hidden');
         }
 
         // Modais
@@ -702,7 +846,7 @@
         }
 
         // Fechar modais ao clicar fora
-        ['modalMedico', 'modalUsuario', 'modalCredenciais'].forEach(id => {
+        ['modalMedico', 'modalUsuario', 'modalCredenciais', 'modalResultadoCredenciais'].forEach(id => {
             document.getElementById(id).addEventListener('click', function(e) {
                 if (e.target === this) {
                     this.classList.add('hidden');

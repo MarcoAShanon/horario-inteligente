@@ -163,16 +163,35 @@ async def processar_pagamento_confirmado(db, payment_data: dict):
 
         # Reativar assinatura se estava suspensa por inadimplência
         if assinatura_id:
-            db.execute(
+            reativada = db.execute(
                 text("""
-                    UPDATE assinaturas 
-                    SET status = 'ativa', 
+                    UPDATE assinaturas
+                    SET status = 'ativa',
                         atualizado_em = NOW()
                     WHERE id = :id AND status = 'suspensa'
+                    RETURNING id
                 """),
                 {"id": assinatura_id}
-            )
-            logger.info(f"[RÉGUA] Assinatura {assinatura_id} reativada")
+            ).fetchone()
+            if reativada:
+                logger.info(f"[RÉGUA] Assinatura {assinatura_id} reativada")
+
+                # Registrar evento de reativação no histórico
+                db.execute(
+                    text("""
+                        INSERT INTO historico_inadimplencia (
+                            cliente_id, asaas_payment_id, evento, data_evento, observacoes
+                        ) VALUES (
+                            :cliente_id, :asaas_payment_id, 'REATIVACAO', NOW(),
+                            :observacoes
+                        )
+                    """),
+                    {
+                        "cliente_id": cliente_id,
+                        "asaas_payment_id": asaas_payment_id,
+                        "observacoes": f"Pagamento confirmado - cliente reativado automaticamente"
+                    }
+                )
         # ================================================
 
         logger.info(f"Pagamento {pagamento_id} confirmado com sucesso")
@@ -256,21 +275,22 @@ async def processar_pagamento_vencido(db, payment_data: dict):
             )
             logger.warning(f"[RÉGUA] Todas assinaturas do cliente {cliente_id} SUSPENSAS")
 
-        # Registrar evento de inadimplência (para histórico)
-        try:
-            db.execute(
-                text("""
-                    INSERT INTO historico_inadimplencia (
-                        cliente_id, asaas_payment_id, evento, data_evento
-                    ) VALUES (
-                        :cliente_id, :asaas_payment_id, 'SUSPENSAO', NOW()
-                    )
-                """),
-                {"cliente_id": cliente_id, "asaas_payment_id": asaas_payment_id}
-            )
-        except Exception as e:
-            # Tabela pode não existir ainda - apenas log
-            logger.debug(f"Tabela historico_inadimplencia não existe: {e}")
+        # Registrar evento de inadimplência no histórico
+        db.execute(
+            text("""
+                INSERT INTO historico_inadimplencia (
+                    cliente_id, asaas_payment_id, evento, data_evento, observacoes
+                ) VALUES (
+                    :cliente_id, :asaas_payment_id, 'SUSPENSAO', NOW(),
+                    :observacoes
+                )
+            """),
+            {
+                "cliente_id": cliente_id,
+                "asaas_payment_id": asaas_payment_id,
+                "observacoes": f"Pagamento vencido - cliente suspenso automaticamente"
+            }
+        )
     # ================================================
 
     logger.info(f"Pagamento {asaas_payment_id} marcado como vencido")

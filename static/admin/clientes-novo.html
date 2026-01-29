@@ -743,6 +743,12 @@
     </div>
 
     <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // Verificar autenticação
         const token = localStorage.getItem('adminToken');
         if (!token) {
@@ -1309,9 +1315,9 @@
                 if (result.assinatura) {
                     const as = result.assinatura;
                     document.getElementById('modalResumoAssinatura').innerHTML = `
-                        <p><span class="text-gray-500">Plano:</span> <span class="text-white">${as.plano || result.cliente.plano_nome}</span></p>
+                        <p><span class="text-gray-500">Plano:</span> <span class="text-white">${escapeHtml(as.plano || result.cliente.plano_nome)}</span></p>
                         <p><span class="text-gray-500">Valor:</span> <span class="text-green-400 font-bold">R$ ${as.valor_final.toFixed(2).replace('.', ',')}/mês</span></p>
-                        ${as.desconto_info ? `<p class="text-yellow-400 text-xs">${as.desconto_info}</p>` : ''}
+                        ${as.desconto_info ? `<p class="text-yellow-400 text-xs">${escapeHtml(as.desconto_info)}</p>` : ''}
                     `;
                 }
 
@@ -1320,7 +1326,7 @@
                 if (result.comissao) {
                     const cm = result.comissao;
                     document.getElementById('modalComissaoInfo').innerHTML = `
-                        <p><span class="text-gray-500">Parceiro:</span> <span class="text-white">${cm.parceiro_nome}</span></p>
+                        <p><span class="text-gray-500">Parceiro:</span> <span class="text-white">${escapeHtml(cm.parceiro_nome)}</span></p>
                         <p><span class="text-gray-500">Percentual:</span> <span class="text-white">${cm.percentual}%</span></p>
                         <p><span class="text-gray-500">Valor base:</span> <span class="text-white">R$ ${cm.valor_base.toFixed(2).replace('.', ',')}</span></p>
                         <p><span class="text-gray-500">Comissão:</span> <span class="text-green-400 font-bold">R$ ${cm.valor_comissao.toFixed(2).replace('.', ',')}</span></p>
@@ -1340,11 +1346,11 @@
                         containerAdicional.innerHTML += `
                             <div class="bg-gray-800 rounded-lg p-4">
                                 <h4 class="text-sm font-semibold text-blue-400 mb-3">
-                                    <i class="fas fa-user-md mr-2"></i>Profissional ${idx + 2}: ${med.nome}
+                                    <i class="fas fa-user-md mr-2"></i>Profissional ${idx + 2}: ${escapeHtml(med.nome)}
                                 </h4>
                                 <div class="space-y-1 text-sm">
-                                    <p><span class="text-gray-500">Email:</span> <span class="text-white">${med.email}</span></p>
-                                    <p><span class="text-gray-500">Senha:</span> <span class="text-yellow-400 font-bold">${med.senha_temporaria}</span></p>
+                                    <p><span class="text-gray-500">Email:</span> <span class="text-white">${escapeHtml(med.email)}</span></p>
+                                    <p><span class="text-gray-500">Senha:</span> <span class="text-yellow-400 font-bold">${escapeHtml(med.senha_temporaria)}</span></p>
                                 </div>
                             </div>
                         `;
@@ -1355,11 +1361,11 @@
                     containerAdicional.innerHTML += `
                         <div class="bg-gray-800 rounded-lg p-4">
                             <h4 class="text-sm font-semibold text-green-400 mb-3">
-                                <i class="fas fa-user mr-2"></i>Secretária: ${result.secretaria.nome}
+                                <i class="fas fa-user mr-2"></i>Secretária: ${escapeHtml(result.secretaria.nome)}
                             </h4>
                             <div class="space-y-1 text-sm">
-                                <p><span class="text-gray-500">Email:</span> <span class="text-white">${result.secretaria.email}</span></p>
-                                <p><span class="text-gray-500">Senha:</span> <span class="text-yellow-400 font-bold">${result.secretaria.senha_temporaria}</span></p>
+                                <p><span class="text-gray-500">Email:</span> <span class="text-white">${escapeHtml(result.secretaria.email)}</span></p>
+                                <p><span class="text-gray-500">Senha:</span> <span class="text-yellow-400 font-bold">${escapeHtml(result.secretaria.senha_temporaria)}</span></p>
                             </div>
                         </div>
                     `;

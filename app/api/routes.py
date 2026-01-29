@@ -65,10 +65,11 @@ def listar_medicos(
     cliente_id: int = Query(..., description="ID da clínica"),
     db: Session = Depends(get_db)
 ):
-    """Lista médicos de uma clínica."""
+    """Lista médicos de uma clínica (exclui secretárias)."""
     medicos = db.query(Medico).filter(
         Medico.cliente_id == cliente_id,
-        Medico.ativo == True
+        Medico.ativo == True,
+        Medico.is_secretaria == False  # Excluir secretárias da lista
     ).all()
     return medicos
 

@@ -3,7 +3,7 @@ Webhook com IA Anthropic integrada - VERSÃO FINAL + ÁUDIO
 Arquivo: app/api/webhooks.py
 Sistema Pro-Saúde com Claude 3.5 Sonnet + OpenAI Whisper/TTS
 """
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
 import logging
 import json
@@ -548,11 +548,11 @@ async def process_with_anthropic_ai(message_text: str, sender: str, push_name: s
                 logger.warning(f"🚨 URGÊNCIA DETECTADA: {urgencia_nivel} - {urgencia_motivo}")
 
                 # Obter ou criar conversa para registrar urgência
-                conversa = ConversaService.criar_ou_recuperar_conversa(
+                conversa, _ = ConversaService.criar_ou_recuperar_conversa(
                     db=db,
                     cliente_id=cliente_id,
-                    paciente_telefone=sender,
-                    paciente_nome=push_name
+                    telefone=sender,
+                    nome_paciente=push_name
                 )
 
                 if conversa:
@@ -1293,8 +1293,10 @@ async def webhook_global(request: Request):
     return await webhook_whatsapp("Clinica2024", request)
 
 @router.get("/whatsapp/test")
-async def test_webhook():
+async def test_webhook(request: Request):
     """Endpoint de teste - usa cliente padrão"""
+    if not verify_webhook_auth(request):
+        raise HTTPException(status_code=401, detail="Nao autorizado")
     cliente_id_teste = 1  # Cliente padrão para testes
 
     # Testar conexão com banco
@@ -1318,16 +1320,20 @@ async def test_webhook():
     }
 
 @router.get("/whatsapp/clear/{phone}")
-async def clear_conversation(phone: str):
+async def clear_conversation(phone: str, request: Request):
     """Limpa histórico de conversa de um número"""
+    if not verify_webhook_auth(request):
+        raise HTTPException(status_code=401, detail="Nao autorizado")
     success = conversation_manager.clear_context(phone)
     if success:
         return {"status": "cleared", "phone": phone, "storage": "redis" if conversation_manager.redis_client else "memory"}
     return {"status": "error", "phone": phone}
 
 @router.get("/whatsapp/conversations")
-async def list_conversations():
+async def list_conversations(request: Request):
     """Lista todas as conversas ativas"""
+    if not verify_webhook_auth(request):
+        raise HTTPException(status_code=401, detail="Nao autorizado")
     phones = conversation_manager.get_all_active_conversations()
     return {
         "status": "success",
@@ -1337,8 +1343,10 @@ async def list_conversations():
     }
 
 @router.get("/whatsapp/refresh-qr")
-async def refresh_qr_code():
+async def refresh_qr_code(request: Request):
     """Gera novo QR Code para reconexão do WhatsApp - Retorna HTML"""
+    if not verify_webhook_auth(request):
+        raise HTTPException(status_code=401, detail="Nao autorizado")
     from fastapi.responses import HTMLResponse
     try:
         import base64
@@ -1587,8 +1595,10 @@ async def refresh_qr_code():
         ''')
 
 @router.get("/whatsapp/status")
-async def whatsapp_status():
+async def whatsapp_status(request: Request):
     """Retorna status da conexão WhatsApp de todas as instâncias"""
+    if not verify_webhook_auth(request):
+        raise HTTPException(status_code=401, detail="Nao autorizado")
     try:
         from app.services.whatsapp_monitor import whatsapp_monitor
 

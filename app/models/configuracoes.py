@@ -3,7 +3,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.database import Base
+from .base import Base
 
 class ConfiguracoesMedico(Base):
     __tablename__ = "configuracoes_medico"
@@ -58,31 +58,29 @@ class BloqueioAgenda(Base):
     __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True, index=True)
     medico_id = Column(Integer, ForeignKey("medicos.id"), nullable=False)
-    
+
     # Data e horário do bloqueio
-    data_inicio = Column(DateTime, nullable=False, comment="Data/hora início do bloqueio")
-    data_fim = Column(DateTime, nullable=False, comment="Data/hora fim do bloqueio")
-    
-    # Detalhes do bloqueio
-    tipo_bloqueio = Column(String(50), nullable=False, comment="ferias, emergencia, particular, manutencao")
-    motivo = Column(String(200), nullable=True, comment="Descrição do motivo")
-    recorrente = Column(Boolean, default=False, comment="Se é um bloqueio recorrente")
-    
-    # Configurações
-    bloqueia_novos_agendamentos = Column(Boolean, default=True)
-    cancela_agendamentos_existentes = Column(Boolean, default=False)
-    notificar_pacientes = Column(Boolean, default=True)
-    
+    data_inicio = Column(DateTime, nullable=False)
+    data_fim = Column(DateTime, nullable=False)
+
+    # Detalhes do bloqueio (usando nomes que existem no banco)
+    tipo = Column(String(50), default="bloqueio")  # ferias, emergencia, particular, manutencao
+    motivo = Column(String(255), nullable=True)
+
     # Status
     ativo = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(Integer, comment="ID do usuário que criou o bloqueio")
-    
+    created_at = Column(DateTime, server_default=func.now())
+
     # Relacionamentos
-    medico = relationship("Medico")
-    
+    medico = relationship("Medico", back_populates="bloqueios")
+
+    # Alias para compatibilidade com código que usa tipo_bloqueio
+    @property
+    def tipo_bloqueio(self):
+        return self.tipo
+
     def __repr__(self):
-        return f"<BloqueioAgenda(medico_id={self.medico_id}, tipo={self.tipo_bloqueio})>"
+        return f"<BloqueioAgenda(medico_id={self.medico_id}, tipo={self.tipo})>"
 
 
 class HorarioEspecial(Base):
@@ -113,8 +111,8 @@ class HorarioEspecial(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relacionamentos
-    medico = relationship("Medico")
-    
+    medico = relationship("Medico", back_populates="horarios_especiais")
+
     def __repr__(self):
         return f"<HorarioEspecial(medico_id={self.medico_id}, data={self.data})>"
 

@@ -5,7 +5,8 @@ Endpoints públicos (sem autenticação) para ativação de contas de clientes
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
+from dateutil.relativedelta import relativedelta
 from pydantic import BaseModel, EmailStr
 import logging
 import secrets
@@ -330,6 +331,52 @@ async def processar_ativacao(
                     )
         except Exception as e:
             logger.warning(f"[Ativação] Erro ao enviar emails pós-ativação: {e}")
+
+        # Criar registro de comissionamento se cliente foi cadastrado por parceiro
+        if cadastrado_por_tipo == 'parceiro' and cadastrado_por_id:
+            try:
+                parceiro_info = db.execute(
+                    text("""
+                        SELECT id, recorrencia_comissao_meses, recorrencia_renovavel
+                        FROM parceiros_comerciais
+                        WHERE id = :id AND ativo = true
+                    """),
+                    {"id": cadastrado_por_id}
+                ).fetchone()
+
+                if parceiro_info:
+                    data_inicio = date.today()
+                    data_fim = None
+                    recorrencia_meses = parceiro_info[1]
+                    if recorrencia_meses is not None:
+                        try:
+                            data_fim = data_inicio + relativedelta(months=recorrencia_meses)
+                        except Exception:
+                            from datetime import timedelta as td
+                            data_fim = data_inicio + td(days=recorrencia_meses * 30)
+
+                    db.execute(
+                        text("""
+                            INSERT INTO comissionamento_parceiro_cliente (
+                                parceiro_id, cliente_id, data_inicio, data_fim,
+                                observacoes, ativo, criado_em
+                            ) VALUES (
+                                :parceiro_id, :cliente_id, :data_inicio, :data_fim,
+                                :observacoes, true, NOW()
+                            )
+                        """),
+                        {
+                            "parceiro_id": cadastrado_por_id,
+                            "cliente_id": cliente_id,
+                            "data_inicio": data_inicio,
+                            "data_fim": data_fim,
+                            "observacoes": f"Comissionamento criado na ativacao do cliente"
+                        }
+                    )
+                    db.commit()
+                    logger.info(f"[Ativação] Comissionamento criado: parceiro={cadastrado_por_id}, cliente={cliente_id}")
+            except Exception as e:
+                logger.warning(f"[Ativação] Erro ao criar comissionamento: {e}")
 
         response_data = {
             "sucesso": True,

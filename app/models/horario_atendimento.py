@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, Time, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
-from app.database import Base
+from .base import Base
 
 class HorarioAtendimento(Base):
     __tablename__ = "horarios_atendimento"

@@ -26,12 +26,11 @@ class EmailService:
         self.smtp_password = os.getenv("SMTP_PASSWORD", "")
 
         # Remetentes
-        self.noreply_email = "noreply@horariointeligente.com.br"  # Para emails automáticos
         self.contact_email = os.getenv("CONTACT_EMAIL", "contato@horariointeligente.com.br")  # Para formulário de contato
         self.from_name = "Horário Inteligente"
 
-        # Default para emails automáticos
-        self.from_email = self.noreply_email
+        # Default para emails automáticos — deve ser o mesmo do SMTP_USER para evitar bloqueio por MailChannels
+        self.from_email = self.smtp_user
 
         # Configurações Telegram
         self.telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -794,6 +793,735 @@ Total de pre-cadastros: {total_cadastros}
 📊 <b>Total de cadastros:</b> {total_cadastros}"""
 
         return self.send_telegram_notification(message)
+
+    def send_ativacao_conta(
+        self,
+        to_email: str,
+        to_name: str,
+        token: str,
+        base_url: str = "https://horariointeligente.com.br"
+    ) -> bool:
+        """
+        Envia email com link de ativação de conta (aceite de termos).
+        O link expira em 7 dias.
+        """
+        try:
+            activation_link = f"{base_url}/static/ativar-conta.html?token={token}"
+
+            html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .header h1 {{ margin: 0; font-size: 24px; }}
+        .content {{ background: white; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .button {{ display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }}
+        .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
+        .info-box {{ background: #e8f4fd; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .warning {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .step {{ display: flex; align-items: flex-start; margin: 10px 0; }}
+        .step-number {{ background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 10px; flex-shrink: 0; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Ative Sua Conta</h1>
+        </div>
+        <div class="content">
+            <p>Ola, <strong>{to_name}</strong>!</p>
+
+            <p>Sua conta no <strong>Horario Inteligente</strong> foi criada com sucesso! Para comecar a usar o sistema, voce precisa aceitar nossos termos de uso e politica de privacidade.</p>
+
+            <p style="text-align: center;">
+                <a href="{activation_link}" class="button">
+                    Ativar Minha Conta
+                </a>
+            </p>
+
+            <div class="info-box">
+                <strong>Proximos passos:</strong>
+                <div style="margin-top: 10px;">
+                    <div class="step">
+                        <span class="step-number">1</span>
+                        <span>Clique no botao acima para acessar a pagina de ativacao</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">2</span>
+                        <span>Revise e aceite os termos de uso e politica de privacidade</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">3</span>
+                        <span>Sua conta sera ativada e voce podera fazer login</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="warning">
+                <strong>Importante:</strong>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                    <li>Este link expira em <strong>7 dias</strong></li>
+                    <li>Se voce nao solicitou este cadastro, ignore este email</li>
+                </ul>
+            </div>
+
+            <p>Ou copie e cole o link abaixo no navegador:</p>
+            <p style="font-size: 12px; word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 5px;">
+                {activation_link}
+            </p>
+
+            <p>Atenciosamente,<br>
+            <strong>Equipe Horario Inteligente</strong></p>
+        </div>
+        <div class="footer">
+            <p>Este e um email automatico, por favor nao responda.</p>
+            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+            """
+
+            text_body = f"""
+Ola, {to_name}!
+
+Sua conta no Horario Inteligente foi criada com sucesso!
+
+Para ativar sua conta, acesse o link abaixo:
+{activation_link}
+
+Proximos passos:
+1. Clique no link acima
+2. Aceite os termos de uso e politica de privacidade
+3. Sua conta sera ativada
+
+IMPORTANTE:
+- Este link expira em 7 dias
+- Se voce nao solicitou este cadastro, ignore este email
+
+Atenciosamente,
+Equipe Horario Inteligente
+            """
+
+            message = MIMEMultipart("alternative")
+            message["Subject"] = "Ative sua conta - Horario Inteligente"
+            message["From"] = f"{self.from_name} <{self.from_email}>"
+            message["To"] = to_email
+
+            part1 = MIMEText(text_body, "plain", "utf-8")
+            part2 = MIMEText(html_body, "html", "utf-8")
+            message.attach(part1)
+            message.attach(part2)
+
+            if self.smtp_password:
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(message)
+
+                logger.info(f"Email de ativacao enviado para {to_email}")
+                return True
+            else:
+                logger.warning(f"SMTP nao configurado. Link de ativacao: {activation_link}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Erro ao enviar email de ativacao: {e}", exc_info=True)
+            return False
+
+    def send_boas_vindas_ativacao(
+        self,
+        to_email: str,
+        to_name: str,
+        subdomain: str
+    ) -> bool:
+        """
+        Envia email de boas-vindas apos ativacao da conta (aceite de termos).
+        """
+        try:
+            login_url = f"https://{subdomain}.horariointeligente.com.br/static/login.html"
+
+            html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }}
+        .header {{ background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .header h1 {{ margin: 0; font-size: 24px; }}
+        .content {{ background: white; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .button {{ display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }}
+        .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
+        .info-box {{ background: #ecfdf5; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Conta Ativada com Sucesso!</h1>
+        </div>
+        <div class="content">
+            <p>Ola, <strong>{to_name}</strong>!</p>
+
+            <p>Sua conta no <strong>Horario Inteligente</strong> foi ativada com sucesso! Agora voce pode acessar o sistema e comecar a gerenciar sua agenda de forma inteligente.</p>
+
+            <p style="text-align: center;">
+                <a href="{login_url}" class="button">
+                    Acessar o Sistema
+                </a>
+            </p>
+
+            <div class="info-box">
+                <strong>Seu acesso:</strong>
+                <p style="margin: 10px 0 0 0;">
+                    URL: <strong>{login_url}</strong><br>
+                    Use o email e senha que foram enviados previamente para fazer login.
+                </p>
+            </div>
+
+            <p>Se tiver alguma duvida, entre em contato conosco.</p>
+
+            <p>Atenciosamente,<br>
+            <strong>Equipe Horario Inteligente</strong></p>
+        </div>
+        <div class="footer">
+            <p>Este e um email automatico, por favor nao responda.</p>
+            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+            """
+
+            message = MIMEMultipart("alternative")
+            message["Subject"] = "Conta ativada - Horario Inteligente"
+            message["From"] = f"{self.from_name} <{self.from_email}>"
+            message["To"] = to_email
+
+            message.attach(MIMEText(html_body, "html", "utf-8"))
+
+            if self.smtp_password:
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(message)
+
+                logger.info(f"Email de boas-vindas pos-ativacao enviado para {to_email}")
+                return True
+            else:
+                logger.warning(f"SMTP nao configurado. Boas-vindas para {to_email}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Erro ao enviar email de boas-vindas: {e}", exc_info=True)
+            return False
+
+    def send_notificacao_parceiro_ativacao(
+        self,
+        parceiro_email: str,
+        parceiro_nome: str,
+        cliente_nome: str
+    ) -> bool:
+        """
+        Notifica parceiro que um cliente indicado por ele ativou a conta.
+        """
+        try:
+            html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px; }}
+        .content {{ padding: 30px; background: white; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Cliente Ativado!</h1>
+        </div>
+        <div class="content">
+            <p>Ola, <strong>{parceiro_nome}</strong>!</p>
+            <p>O cliente <strong>{cliente_nome}</strong>, indicado por voce, acaba de ativar a conta no Horario Inteligente.</p>
+            <p>Voce pode acompanhar seus clientes e comissoes no Portal do Parceiro.</p>
+            <p>Atenciosamente,<br><strong>Equipe Horario Inteligente</strong></p>
+        </div>
+    </div>
+</body>
+</html>
+            """
+
+            message = MIMEMultipart("alternative")
+            message["Subject"] = f"Cliente {cliente_nome} ativou a conta - Horario Inteligente"
+            message["From"] = f"{self.from_name} <{self.from_email}>"
+            message["To"] = parceiro_email
+
+            message.attach(MIMEText(html_body, "html", "utf-8"))
+
+            if self.smtp_password:
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(message)
+
+                logger.info(f"Notificacao de ativacao enviada ao parceiro {parceiro_nome}")
+                return True
+            else:
+                logger.warning(f"SMTP nao configurado. Notificacao parceiro: {parceiro_nome}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Erro ao notificar parceiro: {e}", exc_info=True)
+            return False
+
+    def send_credenciais_acesso(
+        self,
+        to_email: str,
+        to_name: str,
+        login_url: str,
+        email_login: str,
+        senha_temporaria: str,
+        nome_clinica: str
+    ) -> bool:
+        """
+        Envia email com credenciais de acesso ao profissional.
+
+        Args:
+            to_email: Email do destinatario
+            to_name: Nome do profissional
+            login_url: URL de login do sistema
+            email_login: Email para login
+            senha_temporaria: Senha temporaria gerada
+            nome_clinica: Nome da clinica/cliente
+
+        Returns:
+            True se enviou com sucesso, False caso contrario
+        """
+        try:
+            html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .header h1 {{ margin: 0; font-size: 24px; }}
+        .content {{ background: white; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .button {{ display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }}
+        .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
+        .credentials-box {{ background: #f0f4ff; border: 2px solid #667eea; border-radius: 8px; padding: 20px; margin: 20px 0; }}
+        .credentials-box p {{ margin: 8px 0; }}
+        .credentials-label {{ color: #666; font-size: 13px; margin-bottom: 2px; }}
+        .credentials-value {{ color: #1a1a2e; font-family: monospace; font-size: 16px; font-weight: bold; background: #e8ecf8; padding: 6px 10px; border-radius: 4px; display: inline-block; }}
+        .warning {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Suas Credenciais de Acesso</h1>
+        </div>
+        <div class="content">
+            <p>Ola, <strong>{to_name}</strong>!</p>
+
+            <p>Suas credenciais de acesso ao sistema <strong>Horario Inteligente</strong> para a clinica <strong>{nome_clinica}</strong> estao prontas.</p>
+
+            <div class="credentials-box">
+                <p class="credentials-label">URL de acesso:</p>
+                <p><span class="credentials-value">{login_url}</span></p>
+
+                <p class="credentials-label">Email:</p>
+                <p><span class="credentials-value">{email_login}</span></p>
+
+                <p class="credentials-label">Senha temporaria:</p>
+                <p><span class="credentials-value">{senha_temporaria}</span></p>
+            </div>
+
+            <p style="text-align: center;">
+                <a href="{login_url}" class="button">
+                    Acessar o Sistema
+                </a>
+            </p>
+
+            <div class="warning">
+                <strong>Importante:</strong>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                    <li>Recomendamos que voce <strong>troque sua senha</strong> no primeiro acesso</li>
+                    <li>Nao compartilhe suas credenciais com terceiros</li>
+                </ul>
+            </div>
+
+            <p>Se tiver alguma duvida, entre em contato com o administrador da clinica.</p>
+
+            <p>Atenciosamente,<br>
+            <strong>Equipe Horario Inteligente</strong></p>
+        </div>
+        <div class="footer">
+            <p>Este e um email automatico, por favor nao responda.</p>
+            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+            """
+
+            text_body = f"""
+Ola, {to_name}!
+
+Suas credenciais de acesso ao sistema Horario Inteligente para a clinica {nome_clinica} estao prontas.
+
+URL de acesso: {login_url}
+Email: {email_login}
+Senha temporaria: {senha_temporaria}
+
+IMPORTANTE:
+- Recomendamos que voce troque sua senha no primeiro acesso
+- Nao compartilhe suas credenciais com terceiros
+
+Atenciosamente,
+Equipe Horario Inteligente
+            """
+
+            message = MIMEMultipart("alternative")
+            message["Subject"] = "Suas credenciais de acesso - Horario Inteligente"
+            message["From"] = f"{self.from_name} <{self.from_email}>"
+            message["To"] = to_email
+
+            part1 = MIMEText(text_body, "plain", "utf-8")
+            part2 = MIMEText(html_body, "html", "utf-8")
+            message.attach(part1)
+            message.attach(part2)
+
+            if self.smtp_password:
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(message)
+
+                logger.info(f"Email de credenciais enviado para {to_email}")
+                return True
+            else:
+                logger.warning(f"SMTP nao configurado. Credenciais para {to_email}: {email_login} / {senha_temporaria}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Erro ao enviar email de credenciais para {to_email}: {e}", exc_info=True)
+            return False
+
+    def send_ativacao_parceiro(
+        self,
+        to_email: str,
+        to_name: str,
+        token: str,
+        percentual_comissao: float = 0,
+        recorrencia_meses: int = None,
+        base_url: str = "https://horariointeligente.com.br"
+    ) -> bool:
+        """
+        Envia email com link de ativacao de conta para parceiro comercial.
+        O link expira em 7 dias.
+        """
+        try:
+            activation_link = f"{base_url}/static/parceiro/ativar-conta.html?token={token}"
+
+            # Descrição da recorrência
+            if recorrencia_meses is None:
+                desc_recorrencia = "Permanente (enquanto o cliente estiver ativo)"
+            else:
+                desc_recorrencia = f"{recorrencia_meses} meses por cliente"
+
+            html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }}
+        .header {{ background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .header h1 {{ margin: 0; font-size: 24px; }}
+        .content {{ background: white; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .button {{ display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }}
+        .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
+        .info-box {{ background: #ecfdf5; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .warning {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .conditions {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0; }}
+        .conditions h3 {{ margin: 0 0 10px 0; color: #059669; }}
+        .conditions ul {{ margin: 5px 0; padding-left: 20px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Convite de Parceria Comercial</h1>
+        </div>
+        <div class="content">
+            <p>Ola, <strong>{to_name}</strong>!</p>
+
+            <p>Voce foi convidado(a) para ser <strong>Parceiro Comercial</strong> do <strong>Horario Inteligente</strong>!</p>
+
+            <div class="conditions">
+                <h3>Suas Condicoes Comerciais</h3>
+                <ul>
+                    <li><strong>Comissao:</strong> {percentual_comissao}%</li>
+                    <li><strong>Recorrencia:</strong> {desc_recorrencia}</li>
+                </ul>
+            </div>
+
+            <p>Para ativar sua conta de parceiro, voce precisa:</p>
+            <ol>
+                <li>Clicar no botao abaixo</li>
+                <li>Definir sua senha de acesso</li>
+                <li>Aceitar o Termo de Parceria Comercial</li>
+            </ol>
+
+            <p style="text-align: center;">
+                <a href="{activation_link}" class="button">
+                    Ativar Minha Conta de Parceiro
+                </a>
+            </p>
+
+            <div class="warning">
+                <strong>Importante:</strong>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                    <li>Este link expira em <strong>7 dias</strong></li>
+                    <li>Apos ativar, voce tera acesso ao Portal do Parceiro</li>
+                </ul>
+            </div>
+
+            <p>Ou copie e cole o link abaixo no navegador:</p>
+            <p style="font-size: 12px; word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 5px;">
+                {activation_link}
+            </p>
+
+            <p>Atenciosamente,<br>
+            <strong>Equipe Horario Inteligente</strong></p>
+        </div>
+        <div class="footer">
+            <p>Este e um email automatico, por favor nao responda.</p>
+            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+            """
+
+            text_body = f"""
+Ola, {to_name}!
+
+Voce foi convidado(a) para ser Parceiro Comercial do Horario Inteligente!
+
+Suas Condicoes Comerciais:
+- Comissao: {percentual_comissao}%
+- Recorrencia: {desc_recorrencia}
+
+Para ativar sua conta de parceiro, acesse o link abaixo:
+{activation_link}
+
+Passos:
+1. Acesse o link
+2. Defina sua senha de acesso
+3. Aceite o Termo de Parceria Comercial
+
+IMPORTANTE:
+- Este link expira em 7 dias
+- Apos ativar, voce tera acesso ao Portal do Parceiro
+
+Atenciosamente,
+Equipe Horario Inteligente
+            """
+
+            message = MIMEMultipart("alternative")
+            message["Subject"] = "Convite de Parceria - Horario Inteligente"
+            message["From"] = f"{self.from_name} <{self.from_email}>"
+            message["To"] = to_email
+
+            part1 = MIMEText(text_body, "plain", "utf-8")
+            part2 = MIMEText(html_body, "html", "utf-8")
+            message.attach(part1)
+            message.attach(part2)
+
+            if self.smtp_password:
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(message)
+
+                logger.info(f"Email de ativacao parceiro enviado para {to_email}")
+                return True
+            else:
+                logger.warning(f"SMTP nao configurado. Link de ativacao parceiro: {activation_link}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Erro ao enviar email de ativacao parceiro: {e}", exc_info=True)
+            return False
+
+    def send_ativacao_parceiro_com_senha(
+        self,
+        to_email: str,
+        to_name: str,
+        token: str,
+        senha_provisoria: str,
+        percentual_comissao: float = 0,
+        recorrencia_meses: int = None,
+        base_url: str = "https://horariointeligente.com.br"
+    ) -> bool:
+        """
+        Envia email de ativacao para parceiro aprovado via pre-cadastro.
+        Inclui senha provisoria no corpo do email.
+        """
+        try:
+            activation_link = f"{base_url}/static/parceiro/ativar-conta.html?token={token}"
+
+            if recorrencia_meses is None:
+                desc_recorrencia = "Permanente (enquanto o cliente estiver ativo)"
+            else:
+                desc_recorrencia = f"{recorrencia_meses} meses por cliente"
+
+            html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }}
+        .header {{ background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .header h1 {{ margin: 0; font-size: 24px; }}
+        .content {{ background: white; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .button {{ display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }}
+        .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
+        .info-box {{ background: #ecfdf5; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .warning {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .conditions {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0; }}
+        .conditions h3 {{ margin: 0 0 10px 0; color: #059669; }}
+        .conditions ul {{ margin: 5px 0; padding-left: 20px; }}
+        .senha-box {{ background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center; }}
+        .senha-box .senha {{ font-size: 24px; font-weight: bold; color: #92400e; letter-spacing: 2px; font-family: monospace; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Parceria Aprovada!</h1>
+        </div>
+        <div class="content">
+            <p>Ola, <strong>{to_name}</strong>!</p>
+
+            <p>Sua solicitacao de parceria com o <strong>Horario Inteligente</strong> foi <strong>aprovada</strong>!</p>
+
+            <div class="conditions">
+                <h3>Suas Condicoes Comerciais</h3>
+                <ul>
+                    <li><strong>Comissao:</strong> {percentual_comissao}%</li>
+                    <li><strong>Recorrencia:</strong> {desc_recorrencia}</li>
+                </ul>
+            </div>
+
+            <div class="senha-box">
+                <p style="margin: 0 0 8px 0; color: #92400e; font-weight: bold;">Sua Senha Provisoria</p>
+                <p class="senha">{senha_provisoria}</p>
+                <p style="margin: 8px 0 0 0; font-size: 12px; color: #a16207;">Guarde esta senha. Voce usara para acessar o portal.</p>
+            </div>
+
+            <p>Para ativar sua conta, siga os passos:</p>
+            <ol>
+                <li>Clique no botao abaixo</li>
+                <li>Aceite o Termo de Parceria Comercial</li>
+                <li>Acesse o portal com seu email e a senha provisoria acima</li>
+            </ol>
+
+            <p style="text-align: center;">
+                <a href="{activation_link}" class="button">
+                    Ativar Minha Conta de Parceiro
+                </a>
+            </p>
+
+            <div class="warning">
+                <strong>Importante:</strong>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                    <li>Este link expira em <strong>7 dias</strong></li>
+                    <li>Recomendamos alterar sua senha apos o primeiro acesso</li>
+                    <li>Apos ativar, voce tera acesso ao Portal do Parceiro</li>
+                </ul>
+            </div>
+
+            <p>Ou copie e cole o link abaixo no navegador:</p>
+            <p style="font-size: 12px; word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 5px;">
+                {activation_link}
+            </p>
+
+            <p>Atenciosamente,<br>
+            <strong>Equipe Horario Inteligente</strong></p>
+        </div>
+        <div class="footer">
+            <p>Este e um email automatico, por favor nao responda.</p>
+            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+            """
+
+            text_body = f"""
+Ola, {to_name}!
+
+Sua solicitacao de parceria com o Horario Inteligente foi APROVADA!
+
+Suas Condicoes Comerciais:
+- Comissao: {percentual_comissao}%
+- Recorrencia: {desc_recorrencia}
+
+SUA SENHA PROVISORIA: {senha_provisoria}
+Guarde esta senha. Voce usara para acessar o portal.
+
+Para ativar sua conta, siga os passos:
+1. Acesse o link abaixo
+2. Aceite o Termo de Parceria Comercial
+3. Acesse o portal com seu email e a senha provisoria
+
+Link de ativacao: {activation_link}
+
+IMPORTANTE:
+- Este link expira em 7 dias
+- Recomendamos alterar sua senha apos o primeiro acesso
+- Apos ativar, voce tera acesso ao Portal do Parceiro
+
+Atenciosamente,
+Equipe Horario Inteligente
+            """
+
+            message = MIMEMultipart("alternative")
+            message["Subject"] = "Parceria Aprovada - Horario Inteligente"
+            message["From"] = f"{self.from_name} <{self.from_email}>"
+            message["To"] = to_email
+
+            part1 = MIMEText(text_body, "plain", "utf-8")
+            part2 = MIMEText(html_body, "html", "utf-8")
+            message.attach(part1)
+            message.attach(part2)
+
+            if self.smtp_password:
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(message)
+
+                logger.info(f"Email de ativacao parceiro (com senha) enviado para {to_email}")
+                return True
+            else:
+                logger.warning(f"SMTP nao configurado. Link de ativacao parceiro: {activation_link} | Senha: {senha_provisoria}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Erro ao enviar email de ativacao parceiro com senha: {e}", exc_info=True)
+            return False
 
     def send_contact_form(
         self,

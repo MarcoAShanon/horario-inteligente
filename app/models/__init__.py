@@ -18,8 +18,8 @@ from app.models.agendamento import Agendamento
 from app.models.convenio import Convenio
 from app.models.configuracao import Configuracao
 
-from app.models.calendario import HorarioAtendimento, BloqueioAgenda
-from app.models.configuracoes import ConfiguracoesMedico, BloqueioAgenda as BloqueioAgendaNovo, HorarioEspecial
+from app.models.calendario import HorarioAtendimento
+from app.models.configuracoes import ConfiguracoesMedico, BloqueioAgenda, HorarioEspecial
 
 # Novos models para gestão interna
 from app.models.usuario_interno import UsuarioInterno
@@ -28,6 +28,10 @@ from app.models.cliente_parceiro import ClienteParceiro
 from app.models.custo_operacional import CustoOperacional
 from app.models.log_auditoria import LogAuditoria
 from app.models.pre_cadastro import PreCadastro
+from app.models.historico_aceite import HistoricoAceite
+from app.models.historico_aceite_parceiro import HistoricoAceiteParceiro
+from app.models.historico_inadimplencia import HistoricoInadimplencia
+from app.models.comissionamento_parceiro import ComissionamentoParceiro
 
 # Models de Conversas WhatsApp
 from app.models.conversa import Conversa, StatusConversa, NivelUrgencia
@@ -52,7 +56,6 @@ __all__ = [
     "HorarioAtendimento",
     "BloqueioAgenda",
     "ConfiguracoesMedico",
-    "BloqueioAgendaNovo",
     "HorarioEspecial",
     # Novos models
     "UsuarioInterno",
@@ -66,6 +69,13 @@ __all__ = [
     "Pagamento",
     # Model de Pré-Cadastro
     "PreCadastro",
+    # Model de Histórico de Aceites
+    "HistoricoAceite",
+    "HistoricoAceiteParceiro",
+    # Model de Histórico de Inadimplência
+    "HistoricoInadimplencia",
+    # Model de Comissionamento Parceiro
+    "ComissionamentoParceiro",
     # Models de Conversas WhatsApp
     "Conversa",
     "StatusConversa",

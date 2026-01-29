@@ -81,7 +81,7 @@ async def get_dashboard_stats(
 
     consultas_hoje = result.scalar() or 0
 
-    # Consultas na semana (TODOS os agendamentos, independente do status)
+    # Consultas na semana (excluir cancelado, remarcado, faltou)
     if medico_id:
         result = db.execute(text("""
             SELECT COUNT(*)
@@ -90,6 +90,7 @@ async def get_dashboard_stats(
             WHERE a.medico_id = :medico_id
             AND DATE(a.data_hora) >= :inicio_semana
             AND DATE(a.data_hora) <= :fim_semana
+            AND a.status NOT IN ('cancelado', 'remarcado', 'faltou')
             AND p.cliente_id = :cliente_id
         """), {"medico_id": medico_id, "inicio_semana": inicio_semana, "fim_semana": fim_semana, "cliente_id": cliente_id})
     else:
@@ -99,6 +100,7 @@ async def get_dashboard_stats(
             JOIN pacientes p ON a.paciente_id = p.id
             WHERE DATE(a.data_hora) >= :inicio_semana
             AND DATE(a.data_hora) <= :fim_semana
+            AND a.status NOT IN ('cancelado', 'remarcado', 'faltou')
             AND p.cliente_id = :cliente_id
         """), {"inicio_semana": inicio_semana, "fim_semana": fim_semana, "cliente_id": cliente_id})
 
@@ -214,6 +216,7 @@ async def get_agenda_hoje(
     hoje = date.today()
 
     # Buscar agendamentos de hoje
+    # IMPORTANTE: Ocultar cancelado, remarcado, faltou (ficam no banco para estatísticas)
     if medico_id:
         result = db.execute(text("""
             SELECT
@@ -228,6 +231,7 @@ async def get_agenda_hoje(
             WHERE a.medico_id = :medico_id
             AND DATE(a.data_hora) = :hoje
             AND p.cliente_id = :cliente_id
+            AND a.status NOT IN ('cancelado', 'remarcado', 'faltou')
             ORDER BY a.data_hora
         """), {"medico_id": medico_id, "hoje": hoje, "cliente_id": cliente_id})
     else:
@@ -245,6 +249,7 @@ async def get_agenda_hoje(
             JOIN medicos m ON a.medico_id = m.id
             WHERE DATE(a.data_hora) = :hoje
             AND p.cliente_id = :cliente_id
+            AND a.status NOT IN ('cancelado', 'remarcado', 'faltou')
             ORDER BY a.data_hora
         """), {"hoje": hoje, "cliente_id": cliente_id})
 

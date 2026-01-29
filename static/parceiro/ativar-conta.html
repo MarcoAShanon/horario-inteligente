@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ativar Conta - Portal do Parceiro - Horario Inteligente</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #22c55e;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-lg">
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-handshake text-white text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-white">Ativar Conta de Parceiro</h1>
+            <p class="text-gray-400">Horario Inteligente</p>
+        </div>
+
+        <!-- ========== STATE: LOADING ========== -->
+        <div id="stateLoading" class="bg-gray-900 rounded-xl border border-gray-800 p-8">
+            <div class="flex flex-col items-center justify-center py-12">
+                <div class="spinner mb-4"></div>
+                <p class="text-gray-400">Verificando convite de ativacao...</p>
+            </div>
+        </div>
+
+        <!-- ========== STATE: ACTIVATION FORM ========== -->
+        <div id="stateForm" class="hidden">
+            <div class="bg-gray-900 rounded-xl border border-gray-800 p-8 space-y-6">
+
+                <!-- Alert (for validation errors) -->
+                <div id="alertError" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg">
+                    <div class="flex items-center">
+                        <i class="fas fa-exclamation-triangle mr-2 flex-shrink-0"></i>
+                        <span id="alertErrorText"></span>
+                    </div>
+                </div>
+
+                <!-- Section: Partner Data -->
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                        <i class="fas fa-user mr-2 text-green-400"></i>Seus Dados
+                    </h2>
+                    <div class="bg-gray-800/60 rounded-lg border border-gray-700 p-4 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 text-sm">Nome</span>
+                            <span id="dadosNome" class="text-white font-medium text-sm"></span>
+                        </div>
+                        <div class="border-t border-gray-700"></div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 text-sm">Email</span>
+                            <span id="dadosEmail" class="text-white font-medium text-sm"></span>
+                        </div>
+                        <div class="border-t border-gray-700"></div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 text-sm">Documento</span>
+                            <span id="dadosDocumento" class="text-white font-medium text-sm"></span>
+                        </div>
+                        <div class="border-t border-gray-700"></div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 text-sm">Telefone</span>
+                            <span id="dadosTelefone" class="text-white font-medium text-sm"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Commercial Conditions -->
+                <div>
+                    <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                        <i class="fas fa-chart-line mr-2 text-green-400"></i>Condicoes Comerciais
+                    </h2>
+                    <div class="bg-emerald-900/20 rounded-lg border border-emerald-800/40 p-4 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 text-sm">Comissao</span>
+                            <span class="text-emerald-400 font-bold text-lg" id="condicaoComissao"></span>
+                        </div>
+                        <div class="border-t border-emerald-800/30"></div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400 text-sm">Tipo</span>
+                            <span id="condicaoTipo" class="text-white font-medium text-sm"></span>
+                        </div>
+                        <div class="border-t border-emerald-800/30"></div>
+                        <div class="flex justify-between items-start">
+                            <span class="text-gray-400 text-sm">Recorrencia</span>
+                            <span id="condicaoRecorrencia" class="text-white font-medium text-sm text-right max-w-[60%]"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Password -->
+                <form id="formAtivacao" class="space-y-5">
+                    <div id="sectionSenha">
+                        <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                            <i class="fas fa-lock mr-2 text-green-400"></i>Definir Senha de Acesso
+                        </h2>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Senha</label>
+                                <div class="relative">
+                                    <input type="password" id="inputSenha" minlength="6"
+                                           class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                           placeholder="Minimo 6 caracteres">
+                                    <button type="button" onclick="togglePassword('inputSenha', 'iconSenha')"
+                                            class="absolute right-3 top-3.5 text-gray-500 hover:text-gray-300 transition">
+                                        <i class="fas fa-eye" id="iconSenha"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Confirmar Senha</label>
+                                <div class="relative">
+                                    <input type="password" id="inputConfirmarSenha" minlength="6"
+                                           class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                           placeholder="Repita a senha">
+                                    <button type="button" onclick="togglePassword('inputConfirmarSenha', 'iconConfirmarSenha')"
+                                            class="absolute right-3 top-3.5 text-gray-500 hover:text-gray-300 transition">
+                                        <i class="fas fa-eye" id="iconConfirmarSenha"></i>
+                                    </button>
+                                </div>
+                                <p id="senhaFeedback" class="hidden text-red-400 text-xs mt-1">
+                                    <i class="fas fa-times-circle mr-1"></i>As senhas nao coincidem
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info when senha provisoria -->
+                    <div id="infoSenhaProvisoria" class="hidden">
+                        <div class="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
+                            <p class="text-green-300 text-sm">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Sua senha de acesso ja foi definida e enviada por email. Apos aceitar os termos, use a senha provisoria para acessar o portal.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Partnership Term Checkbox -->
+                    <div class="flex items-start gap-3">
+                        <input type="checkbox" id="checkTermo"
+                               class="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-800 text-green-500 focus:ring-green-500 focus:ring-offset-0 cursor-pointer">
+                        <label for="checkTermo" class="text-sm text-gray-300 cursor-pointer">
+                            Li e aceito o
+                            <a href="/static/termo-parceria-comercial.html" target="_blank"
+                               class="text-green-400 hover:text-green-300 underline underline-offset-2">
+                                Termo de Parceria Comercial
+                            </a>
+                        </label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="btnAtivar" disabled
+                            class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-green-500 disabled:hover:to-emerald-600">
+                        <i class="fas fa-check-circle" id="iconBtnAtivar"></i>
+                        <span id="btnAtivarText">Ativar Minha Conta</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ========== STATE: SUCCESS ========== -->
+        <div id="stateSuccess" class="hidden bg-gray-900 rounded-xl border border-gray-800 p-8">
+            <div class="text-center py-6">
+                <div class="w-16 h-16 bg-green-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-check-circle text-green-400 text-3xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-white mb-2">Conta Ativada com Sucesso!</h2>
+                <p class="text-gray-400 mb-2">Bem-vindo(a), <span id="sucessoNome" class="text-green-400 font-medium"></span>!</p>
+                <p class="text-gray-500 text-sm mb-6">Sua conta de parceiro foi ativada. Agora voce pode acessar o portal.</p>
+                <a href="/static/parceiro/login.html"
+                   class="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Acessar Portal do Parceiro
+                </a>
+            </div>
+        </div>
+
+        <!-- ========== STATE: EXPIRED ========== -->
+        <div id="stateExpired" class="hidden bg-gray-900 rounded-xl border border-gray-800 p-8">
+            <div class="text-center py-4">
+                <div class="w-16 h-16 bg-yellow-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-clock text-yellow-400 text-3xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-white mb-2">Link Expirado</h2>
+                <p class="text-gray-400 mb-6 text-sm">O link de ativacao expirou. Informe seu email para receber um novo link.</p>
+
+                <!-- Alert -->
+                <div id="alertReenvio" class="hidden px-4 py-3 rounded-lg mb-4 text-sm">
+                </div>
+
+                <form id="formReenvio" class="space-y-4">
+                    <div>
+                        <input type="email" id="inputEmailReenvio" required
+                               class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                               placeholder="Seu email de cadastro">
+                    </div>
+                    <button type="submit" id="btnReenviar"
+                            class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-white py-3 rounded-lg font-semibold hover:from-yellow-600 hover:to-amber-700 transition flex items-center justify-center gap-2">
+                        <i class="fas fa-paper-plane" id="iconBtnReenviar"></i>
+                        <span id="btnReenviarText">Reenviar Link de Ativacao</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ========== STATE: INVALID ========== -->
+        <div id="stateInvalid" class="hidden bg-gray-900 rounded-xl border border-gray-800 p-8">
+            <div class="text-center py-6">
+                <div class="w-16 h-16 bg-red-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-circle text-red-400 text-3xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-white mb-2">Token Invalido</h2>
+                <p class="text-gray-400 mb-6 text-sm">O link de ativacao nao foi encontrado ou e invalido. Verifique se voce copiou o link corretamente.</p>
+                <a href="/static/parceiro/login.html"
+                   class="text-green-400 hover:text-green-300 text-sm underline underline-offset-2">
+                    <i class="fas fa-arrow-left mr-1"></i>Voltar para o login
+                </a>
+            </div>
+        </div>
+
+        <!-- ========== STATE: ALREADY ACTIVATED ========== -->
+        <div id="stateAlready" class="hidden bg-gray-900 rounded-xl border border-gray-800 p-8">
+            <div class="text-center py-6">
+                <div class="w-16 h-16 bg-blue-900/40 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-info-circle text-blue-400 text-3xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-white mb-2">Conta Ja Ativada</h2>
+                <p class="text-gray-400 mb-6 text-sm">Esta conta de parceiro ja foi ativada anteriormente. Utilize suas credenciais para acessar o portal.</p>
+                <a href="/static/parceiro/login.html"
+                   class="inline-flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Ir para o Login
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-6">
+            <p class="text-gray-500 text-sm">
+                <i class="fas fa-shield-alt mr-1"></i>
+                Conexao segura
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Utility: Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ===== Globals =====
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        let dadosParceiro = null;
+        let versaoTermo = null;
+        let senhaProvisoria = false;
+
+        // ===== State Management =====
+        const states = ['stateLoading', 'stateForm', 'stateSuccess', 'stateExpired', 'stateInvalid', 'stateAlready'];
+
+        function showState(stateId) {
+            states.forEach(s => {
+                document.getElementById(s).classList.add('hidden');
+            });
+            document.getElementById(stateId).classList.remove('hidden');
+        }
+
+        // ===== Password Toggle =====
+        function togglePassword(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fas fa-eye';
+            }
+        }
+
+        // ===== Form Validation =====
+        function validateForm() {
+            const termoAceito = document.getElementById('checkTermo').checked;
+            const btn = document.getElementById('btnAtivar');
+
+            if (senhaProvisoria) {
+                // Senha ja definida, so precisa aceitar termos
+                btn.disabled = !termoAceito;
+                return;
+            }
+
+            const senha = document.getElementById('inputSenha').value;
+            const confirmar = document.getElementById('inputConfirmarSenha').value;
+            const feedback = document.getElementById('senhaFeedback');
+
+            // Password match feedback
+            if (confirmar.length > 0 && senha !== confirmar) {
+                feedback.classList.remove('hidden');
+            } else {
+                feedback.classList.add('hidden');
+            }
+
+            // Enable button only when all conditions are met
+            const senhaValida = senha.length >= 6;
+            const senhasIguais = senha === confirmar && confirmar.length > 0;
+            btn.disabled = !(senhaValida && senhasIguais && termoAceito);
+        }
+
+        document.getElementById('inputSenha').addEventListener('input', validateForm);
+        document.getElementById('inputConfirmarSenha').addEventListener('input', validateForm);
+        document.getElementById('checkTermo').addEventListener('change', validateForm);
+
+        // ===== Alert Helpers =====
+        function showFormError(msg) {
+            const el = document.getElementById('alertError');
+            el.classList.remove('hidden');
+            document.getElementById('alertErrorText').textContent = msg;
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function hideFormError() {
+            document.getElementById('alertError').classList.add('hidden');
+        }
+
+        function showReenvioAlert(msg, isSuccess) {
+            const el = document.getElementById('alertReenvio');
+            el.classList.remove('hidden');
+            el.className = isSuccess
+                ? 'px-4 py-3 rounded-lg mb-4 text-sm bg-green-900/50 border border-green-500 text-green-200'
+                : 'px-4 py-3 rounded-lg mb-4 text-sm bg-red-900/50 border border-red-500 text-red-200';
+            el.innerHTML = isSuccess
+                ? '<i class="fas fa-check-circle mr-2"></i>' + escapeHtml(msg)
+                : '<i class="fas fa-exclamation-triangle mr-2"></i>' + escapeHtml(msg);
+        }
+
+        // ===== Format Helpers =====
+        function formatTipoComissao(tipo) {
+            const map = {
+                'percentual': 'Percentual sobre vendas',
+                'fixo': 'Valor fixo por indicacao',
+                'recorrente': 'Recorrente sobre mensalidades'
+            };
+            return map[tipo] || tipo;
+        }
+
+        function formatDocumento(doc) {
+            if (!doc) return '-';
+            const num = doc.replace(/\D/g, '');
+            if (num.length === 11) {
+                return num.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            }
+            if (num.length === 14) {
+                return num.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+            }
+            return doc;
+        }
+
+        function formatTelefone(tel) {
+            if (!tel) return '-';
+            const num = tel.replace(/\D/g, '');
+            if (num.length === 11) {
+                return num.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+            }
+            if (num.length === 10) {
+                return num.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+            }
+            return tel;
+        }
+
+        // ===== Populate Form =====
+        function populateData(data) {
+            dadosParceiro = data.parceiro;
+            versaoTermo = data.versao_termo;
+            senhaProvisoria = data.senha_provisoria === true;
+
+            // Partner data
+            document.getElementById('dadosNome').textContent = data.parceiro.nome || '-';
+            document.getElementById('dadosEmail').textContent = data.parceiro.email || '-';
+            document.getElementById('dadosDocumento').textContent = formatDocumento(data.parceiro.documento);
+            document.getElementById('dadosTelefone').textContent = formatTelefone(data.parceiro.telefone);
+
+            // Commercial conditions
+            const condicoes = data.condicoes;
+            document.getElementById('condicaoComissao').textContent = condicoes.percentual_comissao + '%';
+            document.getElementById('condicaoTipo').textContent = formatTipoComissao(condicoes.tipo_comissao);
+            document.getElementById('condicaoRecorrencia').textContent = condicoes.descricao_recorrencia || '-';
+
+            // Hide password section if senha provisoria
+            if (senhaProvisoria) {
+                document.getElementById('sectionSenha').classList.add('hidden');
+                document.getElementById('infoSenhaProvisoria').classList.remove('hidden');
+                // Remove required from password fields
+                document.getElementById('inputSenha').removeAttribute('required');
+                document.getElementById('inputConfirmarSenha').removeAttribute('required');
+            }
+
+            showState('stateForm');
+        }
+
+        // ===== Fetch Activation Data =====
+        async function fetchActivationData() {
+            if (!token) {
+                showState('stateInvalid');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/parceiro/ativacao/' + encodeURIComponent(token));
+
+                if (response.ok) {
+                    const data = await response.json();
+                    populateData(data);
+                } else if (response.status === 404) {
+                    showState('stateInvalid');
+                } else if (response.status === 409) {
+                    showState('stateAlready');
+                } else if (response.status === 410) {
+                    showState('stateExpired');
+                } else {
+                    showState('stateInvalid');
+                }
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                showState('stateInvalid');
+            }
+        }
+
+        // ===== Activation Form Submit =====
+        document.getElementById('formAtivacao').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            hideFormError();
+
+            if (!document.getElementById('checkTermo').checked) {
+                showFormError('Voce precisa aceitar o Termo de Parceria Comercial.');
+                return;
+            }
+
+            let bodyData = { aceite_termo: true };
+
+            if (!senhaProvisoria) {
+                const senha = document.getElementById('inputSenha').value;
+                const confirmar = document.getElementById('inputConfirmarSenha').value;
+
+                // Client-side validation
+                if (senha.length < 6) {
+                    showFormError('A senha deve ter no minimo 6 caracteres.');
+                    return;
+                }
+                if (senha !== confirmar) {
+                    showFormError('As senhas nao coincidem.');
+                    return;
+                }
+                bodyData.senha = senha;
+                bodyData.confirmar_senha = confirmar;
+            }
+
+            const btn = document.getElementById('btnAtivar');
+            const btnText = document.getElementById('btnAtivarText');
+            const btnIcon = document.getElementById('iconBtnAtivar');
+
+            btn.disabled = true;
+            btnText.textContent = 'Ativando...';
+            btnIcon.className = 'fas fa-spinner fa-spin';
+
+            try {
+                const response = await fetch('/api/parceiro/ativacao/' + encodeURIComponent(token), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.sucesso) {
+                    document.getElementById('sucessoNome').textContent = data.parceiro ? data.parceiro.nome : (dadosParceiro ? dadosParceiro.nome : 'Parceiro');
+                    showState('stateSuccess');
+                } else if (response.status === 400) {
+                    showFormError(data.detail || 'Erro de validacao. Verifique os dados informados.');
+                    btn.disabled = false;
+                    btnText.textContent = 'Ativar Minha Conta';
+                    btnIcon.className = 'fas fa-check-circle';
+                } else if (response.status === 404) {
+                    showState('stateInvalid');
+                } else if (response.status === 409) {
+                    showState('stateAlready');
+                } else if (response.status === 410) {
+                    showState('stateExpired');
+                } else {
+                    showFormError(data.detail || 'Erro inesperado. Tente novamente.');
+                    btn.disabled = false;
+                    btnText.textContent = 'Ativar Minha Conta';
+                    btnIcon.className = 'fas fa-check-circle';
+                }
+            } catch (error) {
+                console.error('Erro na ativacao:', error);
+                showFormError('Erro de conexao. Verifique sua internet e tente novamente.');
+                btn.disabled = false;
+                btnText.textContent = 'Ativar Minha Conta';
+                btnIcon.className = 'fas fa-check-circle';
+            }
+        });
+
+        // ===== Resend Form Submit =====
+        document.getElementById('formReenvio').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('inputEmailReenvio').value;
+            const btn = document.getElementById('btnReenviar');
+            const btnText = document.getElementById('btnReenviarText');
+            const btnIcon = document.getElementById('iconBtnReenviar');
+
+            btn.disabled = true;
+            btnText.textContent = 'Enviando...';
+            btnIcon.className = 'fas fa-spinner fa-spin';
+
+            try {
+                const response = await fetch('/api/parceiro/ativacao/reenviar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.sucesso) {
+                    showReenvioAlert(data.mensagem || 'Um novo link de ativacao foi enviado para o seu email.', true);
+                } else {
+                    showReenvioAlert(data.detail || 'Nao foi possivel reenviar. Verifique o email informado.', false);
+                }
+            } catch (error) {
+                console.error('Erro ao reenviar:', error);
+                showReenvioAlert('Erro de conexao. Tente novamente.', false);
+            } finally {
+                btn.disabled = false;
+                btnText.textContent = 'Reenviar Link de Ativacao';
+                btnIcon.className = 'fas fa-paper-plane';
+            }
+        });
+
+        // ===== Init =====
+        fetchActivationData();
+    </script>
+</body>
+</html>

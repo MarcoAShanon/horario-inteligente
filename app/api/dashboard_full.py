@@ -185,10 +185,12 @@ async def get_agenda_hoje(
 ):
     """Obtém agenda de hoje"""
     hoje = date.today()
-    
+
+    # IMPORTANTE: Ocultar cancelado, remarcado, faltou (ficam no banco para estatísticas)
     agendamentos = db.query(Agendamento).join(Paciente).filter(
         Agendamento.medico_id == medico.id,
-        func.date(Agendamento.data_hora) == hoje
+        func.date(Agendamento.data_hora) == hoje,
+        Agendamento.status.notin_(['cancelado', 'remarcado', 'faltou'])
     ).order_by(Agendamento.data_hora).all()
     
     return [

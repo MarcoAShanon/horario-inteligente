@@ -666,11 +666,11 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <p class="text-gray-400 text-sm">Parceiro</p>
-                        <p class="text-white font-medium">${c.parceiro_nome || '-'}</p>
+                        <p class="text-white font-medium">${escapeHtml(c.parceiro_nome || '-')}</p>
                     </div>
                     <div>
                         <p class="text-gray-400 text-sm">Cliente</p>
-                        <p class="text-white font-medium">${c.cliente_nome || '-'}</p>
+                        <p class="text-white font-medium">${escapeHtml(c.cliente_nome || '-')}</p>
                     </div>
                     <div>
                         <p class="text-gray-400 text-sm">Mês Referência</p>
@@ -678,7 +678,7 @@
                     </div>
                     <div>
                         <p class="text-gray-400 text-sm">Data Referência</p>
-                        <p class="text-white">${c.data_referencia || '-'}</p>
+                        <p class="text-white">${escapeHtml(c.data_referencia || '-')}</p>
                     </div>
                     <div>
                         <p class="text-gray-400 text-sm">Valor Base</p>
@@ -704,14 +704,14 @@
                     <div class="mt-4 bg-gray-800 rounded-lg p-4">
                         <p class="text-gray-400 text-sm">Data do Pagamento</p>
                         <p class="text-white">${formatarData(c.data_pagamento)}</p>
-                        ${c.asaas_transfer_id ? `<p class="text-gray-500 text-xs mt-1">ID ASAAS: ${c.asaas_transfer_id}</p>` : ''}
+                        ${c.asaas_transfer_id ? `<p class="text-gray-500 text-xs mt-1">ID ASAAS: ${escapeHtml(c.asaas_transfer_id)}</p>` : ''}
                     </div>
                 ` : ''}
 
                 ${c.observacoes ? `
                     <div class="mt-4">
                         <p class="text-gray-400 text-sm">Observações</p>
-                        <p class="text-white">${c.observacoes}</p>
+                        <p class="text-white">${escapeHtml(c.observacoes)}</p>
                     </div>
                 ` : ''}
 

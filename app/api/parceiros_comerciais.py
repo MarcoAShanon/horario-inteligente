@@ -7,11 +7,16 @@ from sqlalchemy import text
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from decimal import Decimal
+from datetime import datetime, timedelta
 import json
 import logging
+import bcrypt
+import secrets
 
 from app.database import get_db
+from app.api.admin import get_current_admin
 from app.services.auditoria_service import get_auditoria_service
+from app.services.email_service import get_email_service
 
 router = APIRouter(prefix="/api/interno/parceiros", tags=["Parceiros Comerciais"])
 logger = logging.getLogger(__name__)
@@ -39,6 +44,8 @@ class ParceiroCreate(BaseModel):
     percentual_comissao: float = 0
     valor_fixo_comissao: Optional[float] = None
     tipo_comissao: str = 'percentual'  # 'percentual' ou 'fixo'
+    recorrencia_comissao_meses: Optional[int] = None  # null = permanente
+    recorrencia_renovavel: bool = True
     dados_bancarios: Optional[DadosBancarios] = None
     observacoes: Optional[str] = None
 
@@ -53,6 +60,8 @@ class ParceiroUpdate(BaseModel):
     percentual_comissao: Optional[float] = None
     valor_fixo_comissao: Optional[float] = None
     tipo_comissao: Optional[str] = None
+    recorrencia_comissao_meses: Optional[int] = None
+    recorrencia_renovavel: Optional[bool] = None
     dados_bancarios: Optional[DadosBancarios] = None
     observacoes: Optional[str] = None
     ativo: Optional[bool] = None
@@ -71,6 +80,8 @@ class VincularCliente(BaseModel):
 async def listar_parceiros(
     ativo: Optional[bool] = None,
     tipo_pessoa: Optional[str] = None,
+    status: Optional[str] = None,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Lista todos os parceiros comerciais"""
@@ -78,7 +89,8 @@ async def listar_parceiros(
         SELECT
             p.id, p.nome, p.tipo_pessoa, p.cpf_cnpj, p.email, p.telefone,
             p.percentual_comissao, p.tipo_comissao, p.ativo, p.criado_em,
-            (SELECT COUNT(*) FROM clientes_parceiros cp WHERE cp.parceiro_id = p.id AND cp.ativo = true) as total_clientes
+            (SELECT COUNT(*) FROM clientes_parceiros cp WHERE cp.parceiro_id = p.id AND cp.ativo = true) as total_clientes,
+            p.status
         FROM parceiros_comerciais p
         WHERE 1=1
     """
@@ -91,6 +103,10 @@ async def listar_parceiros(
     if tipo_pessoa:
         query += " AND p.tipo_pessoa = :tipo_pessoa"
         params["tipo_pessoa"] = tipo_pessoa
+
+    if status:
+        query += " AND p.status = :status"
+        params["status"] = status
 
     query += " ORDER BY p.nome"
 
@@ -108,7 +124,8 @@ async def listar_parceiros(
             "tipo_comissao": row[7],
             "ativo": row[8],
             "criado_em": row[9].isoformat() if row[9] else None,
-            "total_clientes": row[10]
+            "total_clientes": row[10],
+            "status": row[11]
         }
         for row in result
     ]
@@ -117,6 +134,7 @@ async def listar_parceiros(
 @router.get("/{parceiro_id}")
 async def obter_parceiro(
     parceiro_id: int,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Obtém detalhes de um parceiro comercial"""
@@ -124,7 +142,8 @@ async def obter_parceiro(
         SELECT
             id, nome, tipo_pessoa, cpf_cnpj, email, telefone, endereco,
             percentual_comissao, valor_fixo_comissao, tipo_comissao,
-            dados_bancarios, observacoes, ativo, criado_em, atualizado_em
+            dados_bancarios, observacoes, ativo, criado_em, atualizado_em,
+            status
         FROM parceiros_comerciais
         WHERE id = :id
     """), {"id": parceiro_id}).fetchone()
@@ -159,6 +178,7 @@ async def obter_parceiro(
         "ativo": result[12],
         "criado_em": result[13].isoformat() if result[13] else None,
         "atualizado_em": result[14].isoformat() if result[14] else None,
+        "status": result[15],
         "clientes": [
             {
                 "vinculo_id": c[0],
@@ -177,6 +197,7 @@ async def obter_parceiro(
 async def criar_parceiro(
     dados: ParceiroCreate,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Cria um novo parceiro comercial"""
@@ -196,6 +217,10 @@ async def criar_parceiro(
         if existe:
             raise HTTPException(status_code=400, detail="CPF/CNPJ já cadastrado")
 
+    # Gerar token de ativacao
+    token_ativacao = secrets.token_urlsafe(64)
+    token_expira = datetime.now() + timedelta(days=7)
+
     # Criar parceiro
     dados_bancarios_json = json.dumps(dados.dados_bancarios.dict()) if dados.dados_bancarios else None
 
@@ -203,11 +228,15 @@ async def criar_parceiro(
         INSERT INTO parceiros_comerciais (
             nome, tipo_pessoa, cpf_cnpj, email, telefone, endereco,
             percentual_comissao, valor_fixo_comissao, tipo_comissao,
-            dados_bancarios, observacoes, ativo
+            recorrencia_comissao_meses, recorrencia_renovavel,
+            dados_bancarios, observacoes, ativo,
+            status, token_ativacao, token_expira_em
         ) VALUES (
             :nome, :tipo_pessoa, :cpf_cnpj, :email, :telefone, :endereco,
             :percentual_comissao, :valor_fixo_comissao, :tipo_comissao,
-            CAST(:dados_bancarios AS jsonb), :observacoes, true
+            :recorrencia_comissao_meses, :recorrencia_renovavel,
+            CAST(:dados_bancarios AS jsonb), :observacoes, true,
+            'pendente_aceite', :token_ativacao, :token_expira_em
         ) RETURNING id
     """), {
         "nome": dados.nome,
@@ -219,12 +248,31 @@ async def criar_parceiro(
         "percentual_comissao": dados.percentual_comissao,
         "valor_fixo_comissao": dados.valor_fixo_comissao,
         "tipo_comissao": dados.tipo_comissao,
+        "recorrencia_comissao_meses": dados.recorrencia_comissao_meses,
+        "recorrencia_renovavel": dados.recorrencia_renovavel,
         "dados_bancarios": dados_bancarios_json,
-        "observacoes": dados.observacoes
+        "observacoes": dados.observacoes,
+        "token_ativacao": token_ativacao,
+        "token_expira_em": token_expira
     })
 
     parceiro_id = result.fetchone()[0]
     db.commit()
+
+    # Enviar email de ativacao (se parceiro tiver email)
+    link_ativacao = None
+    if dados.email:
+        try:
+            email_service = get_email_service()
+            email_service.send_ativacao_parceiro(
+                dados.email, dados.nome, token_ativacao,
+                percentual_comissao=dados.percentual_comissao,
+                recorrencia_meses=dados.recorrencia_comissao_meses
+            )
+            link_ativacao = f"https://horariointeligente.com.br/static/parceiro/ativar-conta.html?token={token_ativacao}"
+        except Exception as e:
+            logger.warning(f"Erro ao enviar email de ativacao para parceiro: {e}")
+            link_ativacao = f"https://horariointeligente.com.br/static/parceiro/ativar-conta.html?token={token_ativacao}"
 
     # Registrar auditoria
     auditoria = get_auditoria_service(db)
@@ -238,12 +286,13 @@ async def criar_parceiro(
         descricao=f"Parceiro comercial criado: {dados.nome}"
     )
 
-    logger.info(f"Parceiro comercial criado: {dados.nome}")
+    logger.info(f"Parceiro comercial criado: {dados.nome} (status=pendente_aceite)")
 
     return {
         "sucesso": True,
-        "mensagem": "Parceiro criado com sucesso",
-        "id": parceiro_id
+        "mensagem": "Parceiro criado com sucesso. Email de ativacao enviado.",
+        "id": parceiro_id,
+        "link_ativacao": link_ativacao
     }
 
 
@@ -252,6 +301,7 @@ async def atualizar_parceiro(
     parceiro_id: int,
     dados: ParceiroUpdate,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Atualiza um parceiro comercial"""
@@ -277,7 +327,8 @@ async def atualizar_parceiro(
 
     campos_simples = ['nome', 'tipo_pessoa', 'cpf_cnpj', 'email', 'telefone',
                       'endereco', 'percentual_comissao', 'valor_fixo_comissao',
-                      'tipo_comissao', 'observacoes', 'ativo']
+                      'tipo_comissao', 'recorrencia_comissao_meses', 'recorrencia_renovavel',
+                      'observacoes', 'ativo']
 
     for campo in campos_simples:
         valor = getattr(dados, campo, None)
@@ -320,6 +371,7 @@ async def atualizar_parceiro(
 async def desativar_parceiro(
     parceiro_id: int,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Desativa um parceiro comercial"""
@@ -351,6 +403,137 @@ async def desativar_parceiro(
     return {"sucesso": True, "mensagem": "Parceiro desativado com sucesso"}
 
 
+# ==================== APROVAÇÃO DE PARCEIRO (PRÉ-CADASTRO) ====================
+
+class AprovarParceiroRequest(BaseModel):
+    percentual_comissao: float = 0
+    tipo_comissao: str = 'percentual'
+    valor_fixo_comissao: Optional[float] = None
+    recorrencia_comissao_meses: Optional[int] = None
+    recorrencia_renovavel: bool = True
+
+
+@router.post("/{parceiro_id}/aprovar")
+async def aprovar_parceiro(
+    parceiro_id: int,
+    dados: AprovarParceiroRequest,
+    request: Request,
+    admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Aprova um parceiro com status pendente_aprovacao.
+    Gera senha provisoria, token de ativacao e envia email.
+    """
+    try:
+        # Buscar parceiro
+        parceiro = db.execute(
+            text("""
+                SELECT id, nome, email, status
+                FROM parceiros_comerciais
+                WHERE id = :id
+            """),
+            {"id": parceiro_id}
+        ).fetchone()
+
+        if not parceiro:
+            raise HTTPException(status_code=404, detail="Parceiro nao encontrado")
+
+        if parceiro[3] != 'pendente_aprovacao':
+            raise HTTPException(
+                status_code=400,
+                detail=f"Parceiro nao esta pendente de aprovacao (status atual: {parceiro[3]})"
+            )
+
+        # Gerar senha provisoria: Parceiro@ + 8 chars alfanumericos
+        chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+        codigo = ''.join([chars[secrets.randbelow(len(chars))] for _ in range(8)])
+        senha_provisoria = f"Parceiro@{codigo}"
+        senha_hash = bcrypt.hashpw(senha_provisoria.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        # Gerar token de ativacao
+        token_ativacao = secrets.token_urlsafe(64)
+        token_expira = datetime.now() + timedelta(days=7)
+
+        # Atualizar parceiro: comissao + senha + token + status
+        db.execute(
+            text("""
+                UPDATE parceiros_comerciais SET
+                    percentual_comissao = :percentual_comissao,
+                    tipo_comissao = :tipo_comissao,
+                    valor_fixo_comissao = :valor_fixo_comissao,
+                    recorrencia_comissao_meses = :recorrencia_comissao_meses,
+                    recorrencia_renovavel = :recorrencia_renovavel,
+                    senha_hash = :senha_hash,
+                    token_ativacao = :token_ativacao,
+                    token_expira_em = :token_expira_em,
+                    status = 'pendente_aceite',
+                    atualizado_em = NOW()
+                WHERE id = :id
+            """),
+            {
+                "id": parceiro_id,
+                "percentual_comissao": dados.percentual_comissao,
+                "tipo_comissao": dados.tipo_comissao,
+                "valor_fixo_comissao": dados.valor_fixo_comissao,
+                "recorrencia_comissao_meses": dados.recorrencia_comissao_meses,
+                "recorrencia_renovavel": dados.recorrencia_renovavel,
+                "senha_hash": senha_hash,
+                "token_ativacao": token_ativacao,
+                "token_expira_em": token_expira
+            }
+        )
+        db.commit()
+
+        link_ativacao = f"https://horariointeligente.com.br/static/parceiro/ativar-conta.html?token={token_ativacao}"
+
+        # Enviar email com senha provisoria
+        try:
+            email_service = get_email_service()
+            email_service.send_ativacao_parceiro_com_senha(
+                to_email=parceiro[2],
+                to_name=parceiro[1],
+                token=token_ativacao,
+                senha_provisoria=senha_provisoria,
+                percentual_comissao=dados.percentual_comissao,
+                recorrencia_meses=dados.recorrencia_comissao_meses
+            )
+        except Exception as e:
+            logger.warning(f"[AprovarParceiro] Erro ao enviar email: {e}")
+
+        # Registrar auditoria
+        auditoria = get_auditoria_service(db)
+        auditoria.registrar(
+            acao='aprovar',
+            recurso='parceiro_comercial',
+            recurso_id=parceiro_id,
+            usuario_tipo='sistema',
+            dados_novos={
+                "status": "pendente_aceite",
+                "percentual_comissao": dados.percentual_comissao,
+                "tipo_comissao": dados.tipo_comissao
+            },
+            ip_address=request.client.host if request.client else None,
+            descricao=f"Parceiro aprovado: {parceiro[1]} (ID={parceiro_id})"
+        )
+
+        logger.info(f"[AprovarParceiro] Parceiro {parceiro[1]} (ID={parceiro_id}) aprovado")
+
+        return {
+            "sucesso": True,
+            "mensagem": "Parceiro aprovado com sucesso. Email de ativacao enviado.",
+            "senha_provisoria": senha_provisoria,
+            "link_ativacao": link_ativacao
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[AprovarParceiro] Erro ao aprovar parceiro: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Erro ao aprovar parceiro")
+
+
 # ==================== VÍNCULOS COM CLIENTES ====================
 
 @router.post("/{parceiro_id}/vincular-cliente")
@@ -358,6 +541,7 @@ async def vincular_cliente(
     parceiro_id: int,
     dados: VincularCliente,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Vincula um cliente a um parceiro comercial"""
@@ -431,6 +615,7 @@ async def desvincular_cliente(
     parceiro_id: int,
     cliente_id: int,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Desvincula um cliente de um parceiro comercial"""
@@ -476,6 +661,7 @@ async def calcular_comissoes(
     parceiro_id: int,
     mes: Optional[int] = None,
     ano: Optional[int] = None,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """Calcula comissões devidas a um parceiro em um período"""
@@ -583,6 +769,7 @@ def calcular_comissao_parceiro(
 @router.post("/lancamento/configurar")
 async def configurar_parceria_lancamento(
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """
@@ -659,7 +846,7 @@ async def configurar_parceria_lancamento(
 
 
 @router.get("/lancamento/status")
-async def status_parceria_lancamento(db: Session = Depends(get_db)):
+async def status_parceria_lancamento(admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     """Retorna status atual da parceria de lançamento"""
     # Buscar parceiro de lançamento
     parceiro = db.execute(text("""
@@ -708,6 +895,7 @@ async def status_parceria_lancamento(db: Session = Depends(get_db)):
 async def relatorio_comissoes_mensais(
     mes: Optional[int] = None,
     ano: Optional[int] = None,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """
@@ -823,6 +1011,7 @@ async def relatorio_comissoes_mensais(
 async def vincular_cliente_parceria_lancamento(
     parceiro_id: int,
     request: Request,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """
@@ -931,6 +1120,7 @@ async def vincular_cliente_parceria_lancamento(
 @router.get("/lancamento/simulacao")
 async def simular_parceria_lancamento(
     receita_cliente: float = 150.0,
+    admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     """
@@ -960,3 +1150,55 @@ async def simular_parceria_lancamento(
             "40_clientes_12_meses": round(float(comissao * 40 * 12), 2)
         }
     }
+
+
+class DefinirSenhaRequest(BaseModel):
+    senha: str
+
+
+@router.post("/{parceiro_id}/definir-senha")
+async def definir_senha_parceiro(
+    parceiro_id: int,
+    dados: DefinirSenhaRequest,
+    admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Define senha de acesso ao portal do parceiro.
+    Apenas admin pode definir/resetar senha.
+    """
+    try:
+        # Verificar se parceiro existe
+        parceiro = db.execute(
+            text("SELECT id, nome FROM parceiros_comerciais WHERE id = :id"),
+            {"id": parceiro_id}
+        ).fetchone()
+
+        if not parceiro:
+            raise HTTPException(status_code=404, detail="Parceiro não encontrado")
+
+        if len(dados.senha) < 6:
+            raise HTTPException(status_code=400, detail="Senha deve ter pelo menos 6 caracteres")
+
+        # Gerar hash bcrypt
+        senha_hash = bcrypt.hashpw(dados.senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        db.execute(
+            text("UPDATE parceiros_comerciais SET senha_hash = :senha_hash WHERE id = :id"),
+            {"id": parceiro_id, "senha_hash": senha_hash}
+        )
+        db.commit()
+
+        logger.info(f"[Parceiro] Senha definida para parceiro {parceiro[1]} (ID={parceiro_id})")
+
+        return {
+            "success": True,
+            "message": f"Senha definida para parceiro {parceiro[1]}"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[Parceiro] Erro ao definir senha: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -180,9 +180,10 @@ def gerar_subdomain(nome: str) -> str:
 
 def gerar_senha_temporaria() -> str:
     """Gera senha temporária segura"""
-    # Formato: HI@2025 + 4 dígitos aleatórios
-    digitos = ''.join([str(secrets.randbelow(10)) for _ in range(4)])
-    return f"HI@2025{digitos}"
+    # Formato: HI@ + 8 caracteres alfanuméricos (2.8 trilhões de combinações)
+    chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+    codigo = ''.join([chars[secrets.randbelow(len(chars))] for _ in range(8)])
+    return f"HI@{codigo}"
 
 
 def hash_senha(senha: str) -> str:
@@ -199,8 +200,12 @@ def verificar_subdomain_disponivel(db: Session, subdomain: str) -> bool:
     return result is None
 
 
+TABELAS_EMAIL_VALIDAS = {"medicos", "usuarios", "super_admins"}
+
 def verificar_email_disponivel(db: Session, email: str, tabela: str = "medicos") -> bool:
     """Verifica se email está disponível"""
+    if tabela not in TABELAS_EMAIL_VALIDAS:
+        raise ValueError(f"Tabela invalida para verificacao de email: {tabela}")
     query = text(f"SELECT id FROM {tabela} WHERE email = :email")
     result = db.execute(query, {"email": email}).fetchone()
     return result is None
@@ -1299,6 +1304,140 @@ async def listar_usuarios_cliente(
     except Exception as e:
         logger.error(f"[Admin] Erro ao listar usuários: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/clientes/{cliente_id}/enviar-credenciais")
+async def enviar_credenciais(
+    cliente_id: int,
+    admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Gera novas senhas temporárias e envia credenciais de acesso
+    por email a todos os profissionais ativos do cliente.
+    """
+    try:
+        # 1. Validar cliente existe, status ativo e ativo=true
+        cliente = db.execute(
+            text("SELECT id, nome, subdomain, status, ativo FROM clientes WHERE id = :id"),
+            {"id": cliente_id}
+        ).fetchone()
+
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente não encontrado")
+
+        if cliente[3] != 'ativo' or not cliente[4]:
+            raise HTTPException(
+                status_code=400,
+                detail="Cliente precisa estar ativo para enviar credenciais"
+            )
+
+        nome_clinica = cliente[1]
+        subdomain = cliente[2]
+        login_url = f"https://{subdomain}.horariointeligente.com.br/static/login.html"
+
+        # 2. Buscar profissionais ativos com email
+        profissionais = db.execute(
+            text("""
+                SELECT id, nome, email, is_secretaria
+                FROM medicos
+                WHERE cliente_id = :cliente_id
+                  AND ativo = true
+                  AND email IS NOT NULL
+                  AND pode_fazer_login = true
+            """),
+            {"cliente_id": cliente_id}
+        ).fetchall()
+
+        if not profissionais:
+            raise HTTPException(
+                status_code=400,
+                detail="Nenhum profissional ativo com email encontrado"
+            )
+
+        # 3. Gerar novas senhas e atualizar no banco
+        credenciais_lista = []
+        for prof in profissionais:
+            senha_temp = gerar_senha_temporaria()
+            senha_hash_val = hash_senha(senha_temp)
+
+            db.execute(
+                text("""
+                    UPDATE medicos
+                    SET senha = :senha, email_verificado = true, atualizado_em = :atualizado_em
+                    WHERE id = :id
+                """),
+                {
+                    "senha": senha_hash_val,
+                    "id": prof[0],
+                    "atualizado_em": datetime.now()
+                }
+            )
+
+            credenciais_lista.append({
+                "id": prof[0],
+                "nome": prof[1],
+                "email": prof[2],
+                "is_secretaria": prof[3],
+                "senha_temporaria": senha_temp
+            })
+
+        # 4. Commit das senhas antes de enviar emails
+        db.commit()
+
+        # 5. Enviar emails
+        email_service = get_email_service()
+        detalhes = []
+        total_enviados = 0
+        total_falhas = 0
+
+        for cred in credenciais_lista:
+            tipo = "secretaria" if cred["is_secretaria"] else "medico"
+            email_enviado = email_service.send_credenciais_acesso(
+                to_email=cred["email"],
+                to_name=cred["nome"],
+                login_url=login_url,
+                email_login=cred["email"],
+                senha_temporaria=cred["senha_temporaria"],
+                nome_clinica=nome_clinica
+            )
+
+            if email_enviado:
+                total_enviados += 1
+            else:
+                total_falhas += 1
+
+            detalhes.append({
+                "nome": cred["nome"],
+                "email": cred["email"],
+                "tipo": tipo,
+                "email_enviado": email_enviado
+            })
+
+        # 6. Atualizar credenciais_enviadas_em no cliente
+        agora = datetime.now()
+        db.execute(
+            text("UPDATE clientes SET credenciais_enviadas_em = :agora, atualizado_em = :agora WHERE id = :id"),
+            {"agora": agora, "id": cliente_id}
+        )
+        db.commit()
+
+        logger.info(f"[Admin] Credenciais enviadas para cliente {cliente_id}: {total_enviados} OK, {total_falhas} falhas")
+
+        return {
+            "success": True,
+            "total_enviados": total_enviados,
+            "total_falhas": total_falhas,
+            "credenciais_enviadas_em": agora.isoformat(),
+            "detalhes": detalhes
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[Admin] Erro ao enviar credenciais: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao enviar credenciais: {str(e)}")
 
 
 @router.delete("/clientes/{cliente_id}/medicos/{medico_id}")

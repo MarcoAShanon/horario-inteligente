@@ -10,8 +10,21 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime, timedelta
+import pytz
 
 from app.database import get_db
+
+# Timezone Brasil
+TZ_BRAZIL = pytz.timezone('America/Sao_Paulo')
+
+def converter_para_brasil(dt):
+    """Converte datetime UTC para horário de Brasília."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        # Assume UTC se não tem timezone
+        dt = pytz.utc.localize(dt)
+    return dt.astimezone(TZ_BRAZIL).isoformat()
 from app.services.conversa_service import ConversaService
 from app.models.conversa import Conversa, StatusConversa
 from app.models.mensagem import Mensagem, DirecaoMensagem, RemetenteMensagem, TipoMensagem
@@ -264,7 +277,7 @@ async def get_conversa(
                 "tipo": m.tipo.value,
                 "conteudo": m.conteudo,
                 "midia_url": m.midia_url,
-                "timestamp": m.timestamp,
+                "timestamp": converter_para_brasil(m.timestamp),
                 "lida": m.lida
             }
             for m in mensagens
@@ -354,7 +367,7 @@ async def enviar_mensagem(
             "remetente": "atendente",
             "tipo": request.tipo,
             "conteudo": request.conteudo,
-            "timestamp": mensagem.timestamp.isoformat()
+            "timestamp": converter_para_brasil(mensagem.timestamp)
         }
     )
 
@@ -365,7 +378,7 @@ async def enviar_mensagem(
         "tipo": mensagem.tipo.value,
         "conteudo": mensagem.conteudo,
         "midia_url": mensagem.midia_url,
-        "timestamp": mensagem.timestamp,
+        "timestamp": converter_para_brasil(mensagem.timestamp),
         "lida": mensagem.lida
     }
 
