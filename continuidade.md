@@ -550,6 +550,8 @@ source /root/sistema_agendamento/venv/bin/activate
 - [x] ~~Email de ativação + boas-vindas~~ (Implementado)
 - [x] ~~Status badges no painel admin~~ (Implementado)
 - [x] ~~Navegação unificada (top nav desktop + bottom nav mobile)~~ (Implementado)
+- [x] ~~Calibrar IA: lembrete de 24h na confirmação de presença~~ (Corrigido)
+- [x] ~~Calibrar IA: "lotado" vs "não atende nesse dia"~~ (Corrigido)
 - [ ] Calibrar empatia da IA (não usar emojis em situações de dor/urgência)
 - [ ] Validar exibição do nome do convênio no modal de detalhes
 - [ ] Definir senha para parceiros existentes via admin
@@ -557,7 +559,7 @@ source /root/sistema_agendamento/venv/bin/activate
 
 ---
 
-## Alterações Pendentes de Commit (Sessão 29/01/2026)
+## Correções Realizadas (Sessão 29/01/2026)
 
 ### 36. Navegação Unificada — Top Nav (Desktop) + Bottom Nav (Mobile)
 - **Problema**: Cada página HTML tinha seu próprio header/nav inline com lógica duplicada de logout, menu mobile, navegação de secretária, etc. Manutenção difícil e comportamento inconsistente entre páginas.
@@ -599,6 +601,24 @@ source /root/sistema_agendamento/venv/bin/activate
 #### Backup:
 - `static/index.html.bak_20260128` — Backup do index.html antes das mudanças
 
+### 37. IA mencionava lembrete de 24h ao confirmar presença
+- **Problema**: Quando paciente confirmava presença (respondendo ao lembrete de 24h), a IA dizia "Você receberá um lembrete 24h antes e outro 2h antes" — mas o de 24h já tinha sido enviado
+- **Causa**: Regra de lembretes no prompt não distinguia entre criar novo agendamento e confirmar presença em um existente
+- **Solução**: Regra reformulada com 3 cenários:
+  1. **Confirmando presença** → NÃO mencionar lembrete de 24h (já recebeu). Só mencionar o de 2h se faltar mais de 2h para a consulta
+  2. **Novo agendamento > 24h** → Mencionar ambos os lembretes
+  3. **Novo agendamento < 24h** → Mencionar só o de 2h
+- **Arquivo**: `app/services/anthropic_service.py:545-550`
+
+### 38. IA dizia "agenda lotada" quando médico não atende no dia
+- **Problema**: Paciente pedia data em dia que o médico não atende (ex: quinta-feira), e a IA respondia "agenda completamente lotada" — quando na verdade o médico simplesmente não trabalha nesse dia
+- **Causa**: Quando `obter_horarios_disponiveis()` retornava lista vazia, o prompt sempre dizia "DIA LOTADO" sem verificar se o médico atende naquele dia da semana
+- **Solução**: Antes de declarar "lotado", verifica os `dias_atendimento` do médico contra o dia da semana solicitado:
+  - **Médico não atende no dia** → "O dia 26/02 é quinta-feira e o Dr. João não atende nesse dia. Ele atende às segundas, quartas e sextas."
+  - **Médico atende mas sem vagas** → "A agenda está lotada para esta data"
+- **Arquivo**: `app/services/anthropic_service.py:268-315`
+- **Lógica**: Busca `medico_info` no `contexto_clinica`, extrai `dias_atendimento` da `disponibilidade`, normaliza e compara com o dia da semana da data pedida
+
 ---
 
 ## Observações Técnicas
@@ -632,4 +652,4 @@ source /root/sistema_agendamento/venv/bin/activate
 
 ---
 
-*Última atualização: 29/01/2026 - Navegação unificada (top nav desktop + bottom nav mobile)*
+*Última atualização: 29/01/2026 - Calibração da IA (lembretes na confirmação, dia sem atendimento vs lotado)*
