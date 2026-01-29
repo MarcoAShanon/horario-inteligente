@@ -15,6 +15,10 @@ from app.database import get_db
 from app.api.admin import get_current_admin
 from app.services.auditoria_service import get_auditoria_service
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+limiter = Limiter(key_func=get_remote_address)
+
 router = APIRouter(prefix="/api/interno/usuarios", tags=["Usuarios Internos"])
 logger = logging.getLogger(__name__)
 
@@ -399,20 +403,34 @@ async def alterar_senha(
 
 
 @router.post("/login")
+@limiter.limit("5/minute")
 async def login_interno(
     dados: UsuarioInternoLogin,
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """Login de usuário interno"""
-    # Buscar usuário
+    """Login de usuário interno (verifica usuarios_internos e super_admins)"""
+    auditoria = get_auditoria_service(db)
+    ip = request.client.host if request.client else None
+    origem = 'usuarios_internos'
+
+    # Buscar em usuarios_internos primeiro
     usuario = db.execute(text("""
         SELECT id, nome, email, senha_hash, perfil, ativo
         FROM usuarios_internos WHERE email = :email
     """), {"email": dados.email}).fetchone()
 
-    auditoria = get_auditoria_service(db)
-    ip = request.client.host if request.client else None
+    # Fallback: buscar em super_admins
+    if not usuario:
+        super_admin = db.execute(text("""
+            SELECT id, nome, email, senha, ativo
+            FROM super_admins WHERE email = :email
+        """), {"email": dados.email}).fetchone()
+
+        if super_admin:
+            # Mapear para o mesmo formato: (id, nome, email, senha_hash, perfil, ativo)
+            usuario = (super_admin[0], super_admin[1], super_admin[2], super_admin[3], 'admin', super_admin[4])
+            origem = 'super_admins'
 
     if not usuario:
         auditoria.registrar(
@@ -452,9 +470,14 @@ async def login_interno(
         raise HTTPException(status_code=401, detail="Email ou senha incorretos")
 
     # Atualizar último acesso
-    db.execute(text("""
-        UPDATE usuarios_internos SET ultimo_acesso = NOW() WHERE id = :id
-    """), {"id": usuario[0]})
+    if origem == 'usuarios_internos':
+        db.execute(text("""
+            UPDATE usuarios_internos SET ultimo_acesso = NOW() WHERE id = :id
+        """), {"id": usuario[0]})
+    else:
+        db.execute(text("""
+            UPDATE super_admins SET atualizado_em = NOW() WHERE id = :id
+        """), {"id": usuario[0]})
     db.commit()
 
     # Registrar login bem-sucedido
@@ -468,10 +491,7 @@ async def login_interno(
         sucesso=True
     )
 
-    # TODO: Gerar JWT específico para usuários internos
-    # Por enquanto, retorna dados básicos
-
-    logger.info(f"Login interno bem-sucedido: {usuario[2]} ({usuario[4]})")
+    logger.info(f"Login interno bem-sucedido: {usuario[2]} ({usuario[4]}) via {origem}")
 
     return {
         "sucesso": True,
