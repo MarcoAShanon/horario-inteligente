@@ -47,39 +47,6 @@
 </head>
 <body>
     <div id="app" class="min-h-screen bg-gray-50">
-        <!-- Header -->
-        <header class="bg-white shadow">
-            <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                <div class="flex items-center gap-4">
-                    <h1 class="text-2xl font-bold text-purple-600">
-                        <i class="fas fa-hospital mr-2"></i>
-                        Horário Inteligente
-                    </h1>
-                    <span class="text-gray-400">|</span>
-                    <span class="text-lg text-gray-600">Dashboard Analítico</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="text-gray-700 hidden sm:inline" id="userName">
-                        <i class="fas fa-user-circle mr-2"></i>
-                        Carregando...
-                    </span>
-                    <button
-                        onclick="window.location.href = '/static/calendario-unificado.html'"
-                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-                    >
-                        <i class="fas fa-calendar-alt"></i>
-                        <span class="hidden sm:inline">Calendário</span>
-                    </button>
-                    <button
-                        onclick="logout()"
-                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center gap-2"
-                    >
-                        <i class="fas fa-sign-out-alt"></i>
-                        <span class="hidden sm:inline">Sair</span>
-                    </button>
-                </div>
-            </div>
-        </header>
 
         <!-- Filtro de Período -->
         <div class="bg-gradient-to-r from-purple-600 to-pink-600 shadow-lg">
@@ -261,13 +228,9 @@
         }
 
         const user = JSON.parse(userData);
-        document.getElementById('userName').innerHTML = `<i class="fas fa-user-circle mr-2"></i>${escapeHtml(user.nome)}`;
+        const userNameEl = document.getElementById('userName');
+        if (userNameEl) userNameEl.innerHTML = `<i class="fas fa-user-circle mr-2"></i>${escapeHtml(user.nome)}`;
 
-        // Função de Logout
-        function logout() {
-            localStorage.clear();
-            window.location.href = '/static/login.html';
-        }
 
         // Função para trocar período
         function setPeriodo(periodo) {
@@ -540,6 +503,18 @@
 
         // Carregar dados iniciais
         loadData();
+    </script>
+
+    <!-- Navigation Components -->
+    <script src="/static/js/components/bottom-nav.js"></script>
+    <script src="/static/js/components/top-nav.js"></script>
+    <script src="/static/js/components/nav-init.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof HiNavInit !== 'undefined') {
+                HiNavInit.init({ activeId: 'dashboard' });
+            }
+        });
     </script>
 
     <!-- Service Worker para PWA -->

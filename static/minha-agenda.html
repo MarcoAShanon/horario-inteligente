@@ -32,31 +32,6 @@
     </style>
 </head>
 <body class="bg-gray-50">
-    <!-- Header -->
-    <nav class="bg-white shadow-lg">
-        <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8">
-            <div class="flex justify-between h-14 sm:h-16">
-                <div class="flex items-center min-w-0 flex-1">
-                    <i class="fas fa-calendar-check text-blue-600 text-lg sm:text-2xl mr-2 sm:mr-3"></i>
-                    <span class="text-sm sm:text-lg md:text-xl font-bold text-gray-800 truncate">
-                        <span class="hidden sm:inline">Minha Agenda - Horário Inteligente</span>
-                        <span class="sm:hidden">Minha Agenda</span>
-                    </span>
-                </div>
-                <div class="flex items-center space-x-2 sm:space-x-4">
-                    <span class="text-xs sm:text-sm text-gray-600 hidden md:inline truncate max-w-[150px]" id="userName">Carregando...</span>
-                    <button onclick="window.location.href='/static/calendario-unificado.html'" class="bg-blue-500 text-white px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded hover:bg-blue-600 whitespace-nowrap">
-                        <i class="fas fa-calendar-alt sm:mr-2"></i>
-                        <span class="hidden sm:inline">Calendário</span>
-                    </button>
-                    <button onclick="logout()" class="bg-red-500 text-white px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded hover:bg-red-600 whitespace-nowrap">
-                        <i class="fas fa-sign-out-alt sm:mr-2"></i>
-                        <span class="hidden sm:inline">Sair</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
 
     <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-8">
         <!-- Tabs -->
@@ -347,7 +322,8 @@
                 medicoId = currentUser.id;
                 // Só exibe "Dr(a)." se for médico
                 const prefixo = currentUser.tipo === 'medico' ? 'Dr(a). ' : '';
-                document.getElementById('userName').textContent = `${prefixo}${currentUser.nome}`;
+                const userNameEl = document.getElementById('userName');
+                if (userNameEl) userNameEl.textContent = `${prefixo}${currentUser.nome}`;
 
                 // Carregar dados iniciais
                 carregarConfiguracoes();
@@ -361,10 +337,6 @@
             }
         }
 
-        function logout() {
-            localStorage.removeItem('authToken');
-            window.location.href = '/static/login.html';
-        }
 
         // ==================== TABS ====================
         function showTab(tabName) {
@@ -779,6 +751,18 @@
 
         // Inicializar ao carregar a página
         window.onload = checkAuth;
+    </script>
+
+    <!-- Navigation Components -->
+    <script src="/static/js/components/bottom-nav.js"></script>
+    <script src="/static/js/components/top-nav.js"></script>
+    <script src="/static/js/components/nav-init.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof HiNavInit !== 'undefined') {
+                HiNavInit.init({ activeId: 'config' });
+            }
+        });
     </script>
 
     <!-- PWA Update Manager -->

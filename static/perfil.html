@@ -38,24 +38,6 @@
         </div>
     </div>
 
-    <!-- Header -->
-    <div class="bg-white shadow-md border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <img src="/static/images/logo.png" alt="Horário Inteligente" class="w-20 h-20 object-contain">
-                    <div>
-                        <h1 class="text-xl sm:text-2xl font-bold text-gray-800">Horário Inteligente</h1>
-                        <p class="text-xs sm:text-sm text-gray-600">Meu Perfil</p>
-                    </div>
-                </div>
-                <button onclick="window.location.href='/static/calendario-unificado.html'" class="text-gray-600 hover:text-blue-600">
-                    <i class="fas fa-arrow-left mr-2"></i>
-                    <span class="hidden sm:inline">Voltar</span>
-                </button>
-            </div>
-        </div>
-    </div>
 
     <!-- Mensagens -->
     <div id="mensagemSucesso" class="hidden max-w-4xl mx-auto mt-4 px-4">
@@ -971,6 +953,8 @@
     <!-- Mobile Components -->
     <script src="/static/js/components/toast.js"></script>
     <script src="/static/js/components/bottom-nav.js"></script>
+    <script src="/static/js/components/top-nav.js"></script>
+    <script src="/static/js/components/nav-init.js"></script>
     <script src="/static/js/components/mobile-form.js"></script>
 
     <!-- Mobile Navigation & Demo Mode -->
@@ -995,18 +979,9 @@
                 }
             }
 
-            // Inicializa Bottom Navigation
-            if (typeof HiBottomNav !== 'undefined') {
-                HiBottomNav.init({
-                    activeId: 'perfil',
-                    items: [
-                        { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', href: '/static/calendario-unificado.html' },
-                        { id: 'config', label: 'Configurações', icon: 'fa-cog', href: '/static/configuracoes.html' },
-                        { id: 'novo', label: 'Novo', icon: 'fa-plus', primary: true, onClick: () => { window.location.href = '/static/calendario-unificado.html'; }},
-                        { id: 'dashboard', label: 'Painel', icon: 'fa-chart-line', href: '/static/dashboard.html' },
-                        { id: 'perfil', label: 'Perfil', icon: 'fa-user', href: '/static/perfil.html' }
-                    ]
-                });
+            // Inicializa navegacao unificada (top nav desktop + bottom nav mobile)
+            if (typeof HiNavInit !== 'undefined') {
+                HiNavInit.init({ activeId: 'perfil' });
             }
 
             // Aprimora formulários para mobile

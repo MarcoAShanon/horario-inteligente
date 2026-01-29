@@ -23,7 +23,12 @@
 
         /* Layout do chat */
         .chat-container {
-            height: calc(100vh - 64px);
+            height: calc(100vh - 48px);
+        }
+        @media (min-width: 1024px) {
+            .chat-container {
+                height: calc(100vh - 56px - 48px);
+            }
         }
 
         /* Lista de conversas */
@@ -285,64 +290,34 @@
     </style>
 </head>
 <body class="bg-gray-100">
-    <!-- Header -->
-    <header class="bg-white shadow-sm h-16 flex items-center px-4 fixed top-0 left-0 right-0 z-50">
+    <!-- Stats Bar -->
+    <div class="bg-white shadow-sm h-12 flex items-center px-4 fixed top-0 left-0 right-0 z-50 lg:relative lg:z-auto" id="conversasStatsBar">
         <div class="flex items-center gap-4 flex-1">
-            <!-- Mobile menu button -->
             <button id="menuBtn" class="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                 <i class="fas fa-bars text-xl"></i>
             </button>
-
             <div class="flex items-center gap-3">
-                <i class="fas fa-comments text-2xl text-purple-600"></i>
-                <div>
-                    <h1 class="text-lg font-bold text-gray-800">Painel de Conversas</h1>
-                    <p class="text-xs text-gray-500">WhatsApp Business</p>
-                </div>
+                <i class="fas fa-comments text-xl text-purple-600"></i>
+                <span class="text-sm font-semibold text-gray-800">Conversas</span>
             </div>
         </div>
-
-        <div class="flex items-center gap-4">
-            <!-- Stats -->
-            <div class="hidden sm:flex items-center gap-4 text-sm">
-                <span class="flex items-center gap-1">
-                    <span class="ws-status" id="wsStatus"></span>
-                    <span id="wsStatusText" class="text-gray-600">Conectando...</span>
-                </span>
-                <span class="text-gray-400">|</span>
-                <span id="statsAtivas" class="text-green-600">0 ativas</span>
-                <span id="statsNaoLidas" class="text-red-600">0 não lidas</span>
-                <span id="statsUrgencias" class="text-red-600 hidden">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span id="urgenciasCount">0</span> urgentes
-                </span>
-            </div>
-
-            <!-- Navigation -->
-            <div id="navMedico" class="flex items-center gap-2">
-                <a href="/static/dashboard.html" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Painel">
-                    <i class="fas fa-chart-line"></i>
-                </a>
-            </div>
-            <div id="navSecretaria" class="hidden flex items-center gap-2">
-                <a href="/static/calendario-unificado.html" class="p-2 text-blue-600 hover:bg-blue-100 rounded-lg" title="Calendário de Agendamentos">
-                    <i class="fas fa-calendar-alt"></i>
-                </a>
-                <a href="/static/configuracoes.html" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Configurações do Médico">
-                    <i class="fas fa-cog"></i>
-                </a>
-                <a href="/static/alterar-senha.html" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg" title="Alterar Senha">
-                    <i class="fas fa-key"></i>
-                </a>
-            </div>
-            <button onclick="logout()" class="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Sair">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
+        <div class="flex items-center gap-4 text-sm">
+            <span class="flex items-center gap-1">
+                <span class="ws-status" id="wsStatus"></span>
+                <span id="wsStatusText" class="text-gray-600 text-xs">Conectando...</span>
+            </span>
+            <span class="text-gray-300">|</span>
+            <span id="statsAtivas" class="text-green-600 text-xs">0 ativas</span>
+            <span id="statsNaoLidas" class="text-red-600 text-xs">0 nao lidas</span>
+            <span id="statsUrgencias" class="text-red-600 hidden text-xs">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="urgenciasCount">0</span> urgentes
+            </span>
         </div>
-    </header>
+    </div>
 
     <!-- Main Container -->
-    <div class="chat-container flex mt-16">
+    <div class="chat-container flex mt-12 lg:mt-0">
         <!-- Sidebar - Lista de Conversas -->
         <aside id="sidebar" class="sidebar w-80 bg-white border-r flex flex-col">
             <!-- Search and Filter -->
@@ -513,13 +488,6 @@
                     // Atualizar localStorage com dados mais recentes
                     localStorage.setItem('userData', JSON.stringify(currentUser));
 
-                    if (currentUser.is_secretaria) {
-                        document.getElementById('navMedico').classList.add('hidden');
-                        document.getElementById('navSecretaria').classList.remove('hidden');
-                    } else {
-                        document.getElementById('navMedico').classList.remove('hidden');
-                        document.getElementById('navSecretaria').classList.add('hidden');
-                    }
                 }
             } catch (error) {
                 console.error('Erro ao verificar usuário:', error);
@@ -1314,13 +1282,20 @@
             return div.innerHTML;
         }
 
-        function logout() {
-            localStorage.removeItem('authToken');
-            window.location.href = '/static/login.html';
-        }
 
         // Search input listener
         document.getElementById('searchInput').addEventListener('input', renderizarConversas);
+    </script>
+    <!-- Navigation Components -->
+    <script src="/static/js/components/bottom-nav.js"></script>
+    <script src="/static/js/components/top-nav.js"></script>
+    <script src="/static/js/components/nav-init.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof HiNavInit !== 'undefined') {
+                HiNavInit.init({ activeId: 'conversas' });
+            }
+        });
     </script>
 </body>
 </html>

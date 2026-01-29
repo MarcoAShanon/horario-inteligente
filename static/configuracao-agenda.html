@@ -570,6 +570,8 @@
     <!-- Mobile Components -->
     <script src="/static/js/components/toast.js"></script>
     <script src="/static/js/components/bottom-nav.js"></script>
+    <script src="/static/js/components/top-nav.js"></script>
+    <script src="/static/js/components/nav-init.js"></script>
 
     <!-- Demo Mode Functions -->
     <script>
@@ -585,7 +587,7 @@
         }
     </script>
 
-    <!-- Mobile Navigation -->
+    <!-- Navigation -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Mostrar banner de demo se estiver em modo demo
@@ -596,17 +598,8 @@
                 }
             }
 
-            if (typeof HiBottomNav !== 'undefined') {
-                HiBottomNav.init({
-                    activeId: 'config',
-                    items: [
-                        { id: 'agenda', label: 'Agenda', icon: 'fa-calendar-alt', href: '/static/calendario-unificado.html' },
-                        { id: 'config', label: 'Horários', icon: 'fa-clock', href: '/static/configuracao-agenda.html' },
-                        { id: 'novo', label: 'Novo', icon: 'fa-plus', primary: true, onClick: () => { window.location.href = '/static/calendario-unificado.html'; }},
-                        { id: 'dashboard', label: 'Painel', icon: 'fa-chart-line', href: '/static/dashboard.html' },
-                        { id: 'perfil', label: 'Perfil', icon: 'fa-user', href: '/static/perfil.html' }
-                    ]
-                });
+            if (typeof HiNavInit !== 'undefined') {
+                HiNavInit.init({ activeId: 'config' });
             }
         });
     </script>

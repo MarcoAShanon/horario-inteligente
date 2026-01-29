@@ -779,112 +779,6 @@
         </div>
     </div>
 
-    <!-- Header -->
-    <header class="bg-white shadow-sm border-b">
-        <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
-            <div class="flex justify-between items-center h-14 sm:h-16">
-                <div class="flex items-center flex-1 min-w-0">
-                    <h1 class="text-sm sm:text-lg md:text-xl font-semibold text-gray-900 truncate">
-                        <i class="fas fa-calendar-alt mr-1 sm:mr-2 text-blue-600"></i>
-                        <span class="hidden sm:inline">Calendário de Agendamentos</span>
-                        <span class="sm:hidden">Agendamentos</span>
-                    </h1>
-                </div>
-
-                <!-- Desktop Menu -->
-                <div class="hidden sm:flex items-center space-x-1 sm:space-x-2 md:space-x-4">
-                    <span id="userInfo" class="hidden md:flex text-xs sm:text-sm text-gray-600 mr-0 sm:mr-2">
-                        <i class="fas fa-user-circle mr-1"></i>
-                        <span id="userName"></span>
-                    </span>
-                    <button id="btnPerfil" onclick="window.location.href='/static/perfil.html'" class="inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 whitespace-nowrap">
-                        <i class="fas fa-user-edit sm:mr-2"></i>
-                        <span class="hidden md:inline">Perfil</span>
-                    </button>
-                    <!-- Botão WhatsApp para Secretária (oculto por padrão) -->
-                    <button id="btnWhatsAppCal" onclick="window.location.href='/static/conversas.html'" class="hidden inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 whitespace-nowrap">
-                        <i class="fab fa-whatsapp sm:mr-2"></i>
-                        <span class="hidden md:inline">Conversas</span>
-                    </button>
-                    <!-- Botão de Instalação PWA (oculto por padrão) -->
-                    <button id="installButton" onclick="instalarApp()" class="hidden px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 whitespace-nowrap shadow-lg">
-                        <i class="fas fa-download sm:mr-2"></i>
-                        <span class="hidden sm:inline">Instalar App</span>
-                    </button>
-                    <button onclick="abrirModalAgendamento()" class="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap">
-                        <i class="fas fa-plus sm:mr-2"></i>
-                        <span class="hidden sm:inline">Nova Consulta</span>
-                    </button>
-                    <button onclick="window.location.href='/static/configuracoes.html'" class="inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 whitespace-nowrap">
-                        <i class="fas fa-cog sm:mr-2"></i>
-                        <span class="hidden md:inline">Configurações</span>
-                    </button>
-                    <button id="btnPainel" onclick="window.location.href='/static/dashboard.html'" class="hidden lg:inline-flex px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 whitespace-nowrap">
-                        <i class="fas fa-arrow-left sm:mr-2"></i>
-                        <span class="hidden md:inline">Painel</span>
-                    </button>
-                    <button onclick="logout()" class="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 whitespace-nowrap">
-                        <i class="fas fa-sign-out-alt sm:mr-2"></i>
-                        <span class="hidden sm:inline">Sair</span>
-                    </button>
-                </div>
-
-                <!-- Mobile Menu -->
-                <div class="sm:hidden flex items-center space-x-2">
-                    <button onclick="abrirModalAgendamento()" class="px-2 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                    <button onclick="toggleMobileMenu()" class="px-2 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Mobile Menu Dropdown -->
-            <div id="mobileMenu" class="hidden sm:hidden bg-white border-t border-gray-200 py-2">
-                <div class="flex flex-col space-y-2">
-                    <button id="btnPerfilMobile" onclick="window.location.href='/static/perfil.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
-                        <i class="fas fa-user-edit mr-3 text-purple-600"></i>
-                        Meu Perfil
-                    </button>
-                    <!-- Botão WhatsApp para Secretária Mobile (oculto por padrão) -->
-                    <button id="btnWhatsAppMobile" onclick="window.location.href='/static/conversas.html'" class="hidden flex items-center px-4 py-2 text-sm text-green-700 hover:bg-green-50 rounded">
-                        <i class="fab fa-whatsapp mr-3 text-green-600"></i>
-                        Conversas WhatsApp
-                    </button>
-                    <button onclick="window.location.href='/static/configuracoes.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
-                        <i class="fas fa-cog mr-3 text-indigo-600"></i>
-                        Configurações
-                    </button>
-                    <button id="btnPainelMobile" onclick="window.location.href='/static/dashboard.html'" class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded">
-                        <i class="fas fa-arrow-left mr-3 text-gray-600"></i>
-                        Dashboard
-                    </button>
-                    <!-- Botão de Instalação PWA para Mobile -->
-                    <button id="installButtonMobile" onclick="instalarApp()" class="hidden flex items-center px-4 py-2 text-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 rounded mx-2">
-                        <i class="fas fa-download mr-3"></i>
-                        Instalar App
-                    </button>
-                    <div class="border-t border-gray-200 my-1"></div>
-                    <button onclick="logout()" class="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded">
-                        <i class="fas fa-sign-out-alt mr-3"></i>
-                        Sair
-                    </button>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Breadcrumb de Navegação -->
-    <nav class="breadcrumb-nav" aria-label="Navegação">
-        <span class="breadcrumb-item">
-            <i class="fas fa-home"></i> Horário Inteligente
-        </span>
-        <i class="fas fa-chevron-right breadcrumb-sep"></i>
-        <span class="breadcrumb-item active">
-            <i class="fas fa-calendar-alt"></i> Calendário
-        </span>
-    </nav>
 
     <!-- Filtro e Legenda -->
     <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 lg:px-8 mt-3 sm:mt-6">
@@ -1337,12 +1231,14 @@
 
                 // Exibir nome do usuário no header
                 const userNameEl = document.getElementById('userName');
-                if (currentUser.tipo === 'medico') {
-                    userNameEl.textContent = `Dr(a). ${currentUser.nome}`;
-                } else if (currentUser.is_secretaria) {
-                    userNameEl.textContent = `${currentUser.nome} (Secretária)`;
-                } else {
-                    userNameEl.textContent = currentUser.nome;
+                if (userNameEl) {
+                    if (currentUser.tipo === 'medico') {
+                        userNameEl.textContent = `Dr(a). ${currentUser.nome}`;
+                    } else if (currentUser.is_secretaria) {
+                        userNameEl.textContent = `${currentUser.nome} (Secretária)`;
+                    } else {
+                        userNameEl.textContent = currentUser.nome;
+                    }
                 }
 
                 // Ocultar filtro de médico se usuário for médico (vê apenas sua agenda)
@@ -1353,10 +1249,6 @@
                     }
                 }
 
-                // Configurar navegação para secretária
-                if (currentUser.is_secretaria) {
-                    configurarNavegacaoSecretaria();
-                }
 
             } catch (error) {
                 console.error('Erro na autenticação:', error);
@@ -1417,77 +1309,6 @@
             }
         });
 
-        // Função de logout
-        function logout() {
-            if (confirm('Deseja realmente sair do sistema?')) {
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('userData');
-                window.location.href = '/static/login.html';
-            }
-        }
-
-        // Configurar navegação para secretária
-        function configurarNavegacaoSecretaria() {
-            // Desktop: Esconder botão Perfil (secretária não tem perfil próprio)
-            const btnPerfil = document.getElementById('btnPerfil');
-            if (btnPerfil) {
-                btnPerfil.style.display = 'none';
-            }
-
-            // Desktop: Esconder botão Painel/Dashboard
-            const btnPainel = document.getElementById('btnPainel');
-            if (btnPainel) {
-                btnPainel.style.display = 'none';
-            }
-
-            // Desktop: Mostrar botão WhatsApp/Conversas
-            const btnWhatsApp = document.getElementById('btnWhatsAppCal');
-            if (btnWhatsApp) {
-                btnWhatsApp.classList.remove('hidden');
-            }
-
-            // Mobile: Esconder botão Perfil
-            const btnPerfilMobile = document.getElementById('btnPerfilMobile');
-            if (btnPerfilMobile) {
-                btnPerfilMobile.style.display = 'none';
-            }
-
-            // Mobile: Esconder botão Painel/Dashboard
-            const btnPainelMobile = document.getElementById('btnPainelMobile');
-            if (btnPainelMobile) {
-                btnPainelMobile.style.display = 'none';
-            }
-
-            // Mobile: Mostrar botão WhatsApp
-            const btnWhatsAppMobile = document.getElementById('btnWhatsAppMobile');
-            if (btnWhatsAppMobile) {
-                btnWhatsAppMobile.classList.remove('hidden');
-            }
-
-            console.log('Navegação configurada para secretária');
-        }
-
-        // Função para toggle do menu mobile
-        function toggleMobileMenu() {
-            const mobileMenu = document.getElementById('mobileMenu');
-            if (mobileMenu.classList.contains('hidden')) {
-                mobileMenu.classList.remove('hidden');
-            } else {
-                mobileMenu.classList.add('hidden');
-            }
-        }
-
-        // Fechar menu mobile ao clicar fora
-        document.addEventListener('click', function(event) {
-            const mobileMenu = document.getElementById('mobileMenu');
-            const menuButton = event.target.closest('button[onclick="toggleMobileMenu()"]');
-
-            if (!menuButton && !mobileMenu.contains(event.target)) {
-                if (!mobileMenu.classList.contains('hidden')) {
-                    mobileMenu.classList.add('hidden');
-                }
-            }
-        });
 
         // Função para fazer requisições autenticadas
         async function fetchAuth(url, options = {}) {
@@ -3325,6 +3146,8 @@
     <script src="/static/js/components/block-period.js"></script>
     <script src="/static/js/components/quick-actions.js"></script>
     <script src="/static/js/components/bottom-nav.js"></script>
+    <script src="/static/js/components/top-nav.js"></script>
+    <script src="/static/js/components/nav-init.js"></script>
     <script src="/static/js/components/swipe-actions.js"></script>
     <script src="/static/js/components/mobile-form.js"></script>
     <script src="/static/js/components/pull-refresh.js"></script>
@@ -3446,61 +3269,17 @@
                 }
             });
 
-            // Inicializa Bottom Navigation (apenas mobile)
-            if (typeof HiBottomNav !== 'undefined') {
-                HiBottomNav.init({
+            // Inicializa navegacao unificada (top nav desktop + bottom nav mobile)
+            if (typeof HiNavInit !== 'undefined') {
+                HiNavInit.init({
                     activeId: 'agenda',
-                    items: [
-                        {
-                            id: 'agenda',
-                            label: 'Agenda',
-                            icon: 'fa-calendar-alt',
-                            href: '/static/calendario-unificado.html'
-                        },
-                        {
-                            id: 'config',
-                            label: 'Horários',
-                            icon: 'fa-clock',
-                            onClick: () => {
-                                if (typeof HiScheduleSettings !== 'undefined') {
-                                    const token = localStorage.getItem('authToken');
-                                    fetch('/api/configuracao-agenda', {
-                                        headers: { 'Authorization': `Bearer ${token}` }
-                                    })
-                                    .then(r => r.json())
-                                    .then(config => {
-                                        HiScheduleSettings.show({ config });
-                                    })
-                                    .catch(() => HiScheduleSettings.show({}));
-                                }
-                            }
-                        },
-                        {
-                            id: 'novo',
-                            label: 'Consulta',
-                            icon: 'fa-plus',
-                            primary: true,
-                            onClick: () => {
-                                if (typeof abrirModalNovoAgendamento === 'function') {
-                                    abrirModalNovoAgendamento();
-                                } else {
-                                    document.dispatchEvent(new CustomEvent('hi:new-appointment'));
-                                }
-                            }
-                        },
-                        {
-                            id: 'dashboard',
-                            label: 'Painel',
-                            icon: 'fa-chart-line',
-                            href: '/static/dashboard.html'
-                        },
-                        {
-                            id: 'perfil',
-                            label: 'Perfil',
-                            icon: 'fa-user',
-                            href: '/static/perfil.html'
+                    onNewAppointment: function() {
+                        if (typeof abrirModalNovoAgendamento === 'function') {
+                            abrirModalNovoAgendamento();
+                        } else {
+                            document.dispatchEvent(new CustomEvent('hi:new-appointment'));
                         }
-                    ]
+                    }
                 });
             }
 

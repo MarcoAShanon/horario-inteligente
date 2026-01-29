@@ -26,6 +26,11 @@ Sistema de agendamento médico multi-tenant (SaaS) chamado **Horário Inteligent
 ├── static/
 │   ├── calendario-unificado.html  # Tela principal de agendamentos
 │   ├── dashboard.html             # Painel com métricas e financeiro
+│   ├── js/components/
+│   │   ├── top-nav.js             # Navegação desktop (HiTopNav)
+│   │   ├── nav-init.js            # Inicializador unificado (HiNavInit)
+│   │   ├── bottom-nav.js          # Navegação mobile (HiBottomNav)
+│   │   └── ...
 │   └── ...
 └── venv/
 ```
@@ -544,10 +549,55 @@ source /root/sistema_agendamento/venv/bin/activate
 - [x] ~~Página de ativação de conta~~ (Implementado)
 - [x] ~~Email de ativação + boas-vindas~~ (Implementado)
 - [x] ~~Status badges no painel admin~~ (Implementado)
+- [x] ~~Navegação unificada (top nav desktop + bottom nav mobile)~~ (Implementado)
 - [ ] Calibrar empatia da IA (não usar emojis em situações de dor/urgência)
 - [ ] Validar exibição do nome do convênio no modal de detalhes
 - [ ] Definir senha para parceiros existentes via admin
 - [ ] Testar fluxo completo: admin cria → email chega → aceitar → conta ativa
+
+---
+
+## Alterações Pendentes de Commit (Sessão 29/01/2026)
+
+### 36. Navegação Unificada — Top Nav (Desktop) + Bottom Nav (Mobile)
+- **Problema**: Cada página HTML tinha seu próprio header/nav inline com lógica duplicada de logout, menu mobile, navegação de secretária, etc. Manutenção difícil e comportamento inconsistente entre páginas.
+- **Solução**: Criados 2 componentes JS centralizados que gerenciam toda a navegação do sistema.
+
+#### Novos Arquivos:
+| Arquivo | Descrição |
+|---------|-----------|
+| `static/js/components/top-nav.js` | `HiTopNav` — Barra de navegação superior para desktop (>= 1024px). Sticky, 56px, com logo, links de navegação, nome do usuário e botão de sair. Suporta badges, dark mode e acessibilidade (ARIA). |
+| `static/js/components/nav-init.js` | `HiNavInit` — Inicializador que configura `HiTopNav` (desktop) + `HiBottomNav` (mobile) com itens baseados no perfil do usuário (médico vs secretária). Inclui menu overflow "Mais" no mobile com animação. |
+
+#### Navegação por Perfil:
+| Perfil | Desktop (Top Nav) | Mobile (Bottom Nav) |
+|--------|-------------------|---------------------|
+| **Médico** | Painel, Agenda, Conversas, Configurações, Perfil | Agenda, Conversas, **Novo** (FAB), Config, Mais (...) |
+| **Secretária** | Agenda, Conversas | Agenda, Conversas, **Novo** (FAB), Config, Senha |
+
+- **Menu "Mais" (mobile médico)**: Painel, Perfil, separador, Sair — com backdrop animado e menu popup
+
+#### Arquivos Modificados (8 páginas HTML):
+| Arquivo | Mudanças |
+|---------|----------|
+| `static/calendario-unificado.html` | Removidos: header inline (~110 linhas), breadcrumb, `configurarNavegacaoSecretaria()`, `toggleMobileMenu()`, `logout()`, config inline do `HiBottomNav`. Adicionado: `HiNavInit.init({ activeId: 'agenda', onNewAppointment: ... })`. Null checks em `userName`. |
+| `static/configuracao-agenda.html` | Substituída config inline do `HiBottomNav` por `HiNavInit.init({ activeId: 'config' })`. |
+| `static/configuracoes.html` | Removidos: header/nav inline (~30 linhas), `logout()`, botões de navegação para secretária. Adicionado: `HiNavInit.init({ activeId: 'config' })`. Null checks em `userName`. |
+| `static/conversas.html` | Removidos: header completo com links de navegação (~60 linhas), switching médico/secretária, `logout()`. Substituído por barra compacta de stats (48px). Adicionado: `HiNavInit.init({ activeId: 'conversas' })`. |
+| `static/dashboard-v2.html` | Removidos: header inline (~33 linhas), `logout()`. Adicionado: `HiNavInit.init({ activeId: 'dashboard' })`. Null check em `userName`. |
+| `static/dashboard.html` | Removidos: header inline (~40 linhas), `logout()`. Badge de conversas agora usa `HiTopNav.setBadge()` e `HiBottomNav.setBadge()`. Adicionado: `HiNavInit.init({ activeId: 'dashboard' })`. |
+| `static/minha-agenda.html` | Removidos: header/nav inline (~25 linhas), `logout()`. Adicionado: `HiNavInit.init({ activeId: 'config' })`. Null check em `userName`. |
+| `static/perfil.html` | Removido: header inline (~18 linhas). Substituída config inline do `HiBottomNav` por `HiNavInit.init({ activeId: 'perfil' })`. |
+
+#### Impacto:
+- **Redução de código**: ~522 linhas removidas, ~119 adicionadas (net -403 linhas)
+- **Logout centralizado**: Função `logout()` removida de todas as páginas — agora tratada pelos componentes de navegação
+- **Null checks**: Referências a `document.getElementById('userName')` agora verificam se o elemento existe, já que o header inline foi removido
+- **Consistência**: Todas as páginas agora compartilham o mesmo comportamento de navegação
+- **Uso**: `HiNavInit.init({ activeId: 'pagina' })` — uma única chamada configura desktop + mobile
+
+#### Backup:
+- `static/index.html.bak_20260128` — Backup do index.html antes das mudanças
 
 ---
 
@@ -573,4 +623,13 @@ source /root/sistema_agendamento/venv/bin/activate
 
 ---
 
-*Última atualização: 28/01/2026 - Sistema de onboarding com aceite de termos, portal do parceiro*
+### Navegação Unificada
+- **Desktop (>= 1024px)**: `HiTopNav` — barra superior sticky, 56px
+- **Mobile (< 1024px)**: `HiBottomNav` — barra inferior fixa com FAB central
+- **Inicialização**: `HiNavInit.init({ activeId: 'pagina' })` — configura ambas automaticamente
+- **Perfis**: Itens de menu variam por perfil (médico vs secretária)
+- **Componentes**: `static/js/components/top-nav.js`, `static/js/components/nav-init.js`, `static/js/components/bottom-nav.js`
+
+---
+
+*Última atualização: 29/01/2026 - Navegação unificada (top nav desktop + bottom nav mobile)*

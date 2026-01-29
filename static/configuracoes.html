@@ -83,36 +83,6 @@
         </div>
     </div>
 
-    <!-- Header -->
-    <nav class="bg-white shadow-lg sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
-                    <a href="/static/dashboard.html" class="flex items-center text-gray-600 hover:text-blue-600 mr-4">
-                        <i class="fas fa-arrow-left mr-2"></i>
-                        <span class="hidden sm:inline">Voltar</span>
-                    </a>
-                    <div class="flex items-center">
-                        <i class="fas fa-cog text-blue-600 text-xl mr-3"></i>
-                        <span class="text-lg font-bold text-gray-800">Configurações</span>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span class="text-sm text-gray-600 hidden md:inline" id="userName">Carregando...</span>
-                    <!-- Botões para secretária -->
-                    <a id="btnCalendario" href="/static/calendario-unificado.html" class="hidden text-blue-600 hover:text-blue-700 transition" title="Calendário de Agendamentos">
-                        <i class="fas fa-calendar-alt text-xl"></i>
-                    </a>
-                    <a id="btnWhatsApp" href="/static/conversas.html" class="hidden text-green-600 hover:text-green-700 transition" title="Conversas WhatsApp">
-                        <i class="fab fa-whatsapp text-xl"></i>
-                    </a>
-                    <button onclick="logout()" class="text-gray-500 hover:text-red-600 transition" title="Sair">
-                        <i class="fas fa-sign-out-alt text-lg"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
 
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <!-- Tabs Navigation -->
@@ -966,7 +936,8 @@
                     // Médico: usar próprio ID
                     medicoId = currentUser.id;
                     const prefixo = currentUser.tipo === 'medico' ? 'Dr(a). ' : '';
-                    document.getElementById('userName').textContent = `${prefixo}${currentUser.nome}`;
+                    const userNameEl = document.getElementById('userName');
+                    if (userNameEl) userNameEl.textContent = `${prefixo}${currentUser.nome}`;
                 }
 
                 console.log('medicoId final:', medicoId);
@@ -1015,17 +986,9 @@
             }
 
             // Atualizar nome do usuário no header
-            document.getElementById('userName').textContent = currentUser.nome;
+            const userNameEl2 = document.getElementById('userName');
+            if (userNameEl2) userNameEl2.textContent = currentUser.nome;
 
-            // Mostrar botões de navegação para secretária
-            const btnWhatsApp = document.getElementById('btnWhatsApp');
-            if (btnWhatsApp) {
-                btnWhatsApp.classList.remove('hidden');
-            }
-            const btnCalendario = document.getElementById('btnCalendario');
-            if (btnCalendario) {
-                btnCalendario.classList.remove('hidden');
-            }
 
             // Ocultar abas restritas: Valores e Assinatura
             const tabValores = document.getElementById('tab-valores');
@@ -1049,11 +1012,6 @@
             }
         }
 
-        function logout() {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userData');
-            window.location.href = '/static/login.html';
-        }
 
         function voltarParaDemos() {
             localStorage.removeItem('authToken');
@@ -1988,6 +1946,18 @@
             checkAuth();
             initHorariosEventListeners();
             gerarPreviewHorarios();
+        });
+    </script>
+
+    <!-- Navigation Components -->
+    <script src="/static/js/components/bottom-nav.js"></script>
+    <script src="/static/js/components/top-nav.js"></script>
+    <script src="/static/js/components/nav-init.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof HiNavInit !== 'undefined') {
+                HiNavInit.init({ activeId: 'config' });
+            }
         });
     </script>
 </body>
