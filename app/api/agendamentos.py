@@ -473,6 +473,8 @@ class AgendamentoUpdate(BaseModel):
     status: Optional[str] = None
     motivo_consulta: Optional[str] = None
     observacoes: Optional[str] = None
+    motivo_reagendamento: Optional[str] = None
+    notificar_paciente: Optional[bool] = True
 
 @router.put("/agendamentos/{agendamento_id}")
 async def atualizar_agendamento(
@@ -598,6 +600,10 @@ async def atualizar_agendamento(
             updates.append("motivo_consulta = :motivo")
             params["motivo"] = dados.motivo_consulta
 
+        if dados.motivo_reagendamento:
+            updates.append("observacoes = COALESCE(observacoes || ' | ', '') || :motivo_reagendamento")
+            params["motivo_reagendamento"] = f"Reagendado: {dados.motivo_reagendamento}"
+
         if dados.observacoes:
             updates.append("observacoes = :observacoes")
             params["observacoes"] = dados.observacoes
@@ -629,13 +635,15 @@ async def atualizar_agendamento(
         db.commit()
 
         # Notificar médico se data/hora foi alterada (reagendamento)
+        notificacao_paciente = False
         if dados.data and dados.hora:
             try:
-                # Buscar dados do paciente para notificação
+                # Buscar dados do paciente e médico para notificação
                 result_pac = db.execute(text("""
-                    SELECT p.nome
+                    SELECT p.nome, p.telefone, m.nome as medico_nome
                     FROM agendamentos a
                     JOIN pacientes p ON a.paciente_id = p.id
+                    JOIN medicos m ON a.medico_id = m.id
                     WHERE a.id = :id
                 """), {"id": agendamento_id})
                 paciente_info = result_pac.fetchone()
@@ -650,6 +658,75 @@ async def atualizar_agendamento(
                         "data_hora": nova_data_hora_tz
                     }
                 )
+
+                # Notificar paciente via WhatsApp se solicitado
+                if dados.notificar_paciente and paciente_info and paciente_info.telefone:
+                    try:
+                        from app.services.whatsapp_template_service import get_template_service
+                        import pytz
+                        tz_brazil = pytz.timezone('America/Sao_Paulo')
+
+                        template_service = get_template_service()
+
+                        # Formatar data/hora antiga (do agendamento original)
+                        data_hora_antiga = agendamento.data_hora
+                        if hasattr(data_hora_antiga, 'astimezone'):
+                            data_hora_antiga = data_hora_antiga.astimezone(tz_brazil)
+                        data_antiga_fmt = data_hora_antiga.strftime('%d/%m/%Y')
+                        hora_antiga_fmt = data_hora_antiga.strftime('%H:%M')
+
+                        # Formatar data/hora nova
+                        data_nova_br = nova_data_hora_tz.astimezone(tz_brazil)
+                        data_nova_fmt = data_nova_br.strftime('%d/%m/%Y')
+                        hora_nova_fmt = data_nova_br.strftime('%H:%M')
+
+                        result_whatsapp = await template_service.enviar_consulta_reagendada(
+                            telefone=paciente_info.telefone,
+                            paciente=paciente_info.nome,
+                            medico=paciente_info.medico_nome,
+                            data_antiga=data_antiga_fmt,
+                            hora_antiga=hora_antiga_fmt,
+                            data_nova=data_nova_fmt,
+                            hora_nova=hora_nova_fmt
+                        )
+                        notificacao_paciente = result_whatsapp.success if result_whatsapp else False
+
+                        # Registrar mensagem no painel de conversas
+                        if notificacao_paciente:
+                            try:
+                                from app.models.conversa import Conversa
+                                from app.models.mensagem import DirecaoMensagem, RemetenteMensagem, TipoMensagem
+                                from app.services.conversa_service import ConversaService
+
+                                conversa = db.query(Conversa).filter(
+                                    Conversa.paciente_telefone.like(f"%{paciente_info.telefone[-8:]}%"),
+                                    Conversa.cliente_id == current_user["cliente_id"]
+                                ).first()
+
+                                if conversa:
+                                    primeiro_nome = paciente_info.nome.split()[0] if paciente_info.nome else "Paciente"
+                                    texto_msg = (
+                                        f"📅 Reagendamento: Olá {primeiro_nome}! Sua consulta com {paciente_info.medico_nome} "
+                                        f"foi reagendada de {data_antiga_fmt} às {hora_antiga_fmt} "
+                                        f"para {data_nova_fmt} às {hora_nova_fmt}."
+                                    )
+                                    ConversaService.adicionar_mensagem(
+                                        db=db,
+                                        conversa_id=conversa.id,
+                                        direcao=DirecaoMensagem.SAIDA,
+                                        remetente=RemetenteMensagem.SISTEMA,
+                                        conteudo=texto_msg,
+                                        tipo=TipoMensagem.TEXTO
+                                    )
+                            except Exception as conv_err:
+                                import logging
+                                logging.getLogger(__name__).warning(f"Erro ao registrar reagendamento na conversa: {conv_err}")
+
+                    except Exception as wp_err:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Erro ao enviar WhatsApp de reagendamento ao paciente: {wp_err}")
+
             except Exception as e:
                 # Log do erro, mas não falha a atualização
                 import logging
@@ -659,7 +736,8 @@ async def atualizar_agendamento(
         return {
             "sucesso": True,
             "mensagem": "Agendamento atualizado com sucesso",
-            "agendamento_id": agendamento_id
+            "agendamento_id": agendamento_id,
+            "notificacao_paciente": notificacao_paciente
         }
 
     except HTTPException:
@@ -672,6 +750,7 @@ async def atualizar_agendamento(
 async def cancelar_agendamento(
     agendamento_id: int,
     motivo: Optional[str] = None,
+    notificar_paciente: bool = True,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -679,7 +758,7 @@ async def cancelar_agendamento(
     try:
         # Verificar se agendamento existe
         result = db.execute(text("""
-            SELECT id, status, medico_id FROM agendamentos
+            SELECT id, status, medico_id, data_hora FROM agendamentos
             WHERE id = :id
         """), {"id": agendamento_id})
 
@@ -722,12 +801,14 @@ async def cancelar_agendamento(
         db.commit()
 
         # Notificar médico sobre cancelamento
+        notificacao_paciente_enviada = False
         try:
             # Buscar dados do agendamento para notificação
             result_ag = db.execute(text("""
-                SELECT p.nome, a.data_hora
+                SELECT p.nome, a.data_hora, p.telefone, m.nome as medico_nome
                 FROM agendamentos a
                 JOIN pacientes p ON a.paciente_id = p.id
+                JOIN medicos m ON a.medico_id = m.id
                 WHERE a.id = :id
             """), {"id": agendamento_id})
             agendamento_info = result_ag.fetchone()
@@ -739,10 +820,74 @@ async def cancelar_agendamento(
                     cliente_id=current_user["cliente_id"],
                     evento="cancelado",
                     dados_agendamento={
-                        "paciente_nome": agendamento_info[0],
-                        "data_hora": agendamento_info[1]
+                        "paciente_nome": agendamento_info.nome,
+                        "data_hora": agendamento_info.data_hora
                     }
                 )
+
+                # Notificar paciente via WhatsApp se solicitado
+                if notificar_paciente and agendamento_info.telefone:
+                    try:
+                        from app.services.whatsapp_template_service import get_template_service
+                        import pytz
+                        tz_brazil = pytz.timezone('America/Sao_Paulo')
+
+                        template_service = get_template_service()
+
+                        # Formatar data/hora da consulta cancelada
+                        data_hora_consulta = agendamento_info.data_hora
+                        if hasattr(data_hora_consulta, 'astimezone'):
+                            data_hora_consulta = data_hora_consulta.astimezone(tz_brazil)
+                        data_fmt = data_hora_consulta.strftime('%d/%m/%Y')
+                        hora_fmt = data_hora_consulta.strftime('%H:%M')
+
+                        result_whatsapp = await template_service.enviar_consulta_cancelada(
+                            telefone=agendamento_info.telefone,
+                            paciente=agendamento_info.nome,
+                            medico=agendamento_info.medico_nome,
+                            data=data_fmt,
+                            hora=hora_fmt,
+                            motivo=motivo or "Cancelado pela clínica"
+                        )
+                        notificacao_paciente_enviada = result_whatsapp.success if result_whatsapp else False
+
+                        # Registrar mensagem no painel de conversas
+                        if notificacao_paciente_enviada:
+                            try:
+                                from app.models.conversa import Conversa
+                                from app.models.mensagem import DirecaoMensagem, RemetenteMensagem, TipoMensagem
+                                from app.services.conversa_service import ConversaService
+
+                                conversa = db.query(Conversa).filter(
+                                    Conversa.paciente_telefone.like(f"%{agendamento_info.telefone[-8:]}%"),
+                                    Conversa.cliente_id == current_user["cliente_id"]
+                                ).first()
+
+                                if conversa:
+                                    primeiro_nome = agendamento_info.nome.split()[0] if agendamento_info.nome else "Paciente"
+                                    motivo_display = motivo or "Cancelado pela clínica"
+                                    texto_msg = (
+                                        f"❌ Cancelamento: Olá {primeiro_nome}! Sua consulta com {agendamento_info.medico_nome} "
+                                        f"do dia {data_fmt} às {hora_fmt} foi cancelada. "
+                                        f"Motivo: {motivo_display}."
+                                    )
+                                    ConversaService.adicionar_mensagem(
+                                        db=db,
+                                        conversa_id=conversa.id,
+                                        direcao=DirecaoMensagem.SAIDA,
+                                        remetente=RemetenteMensagem.SISTEMA,
+                                        conteudo=texto_msg,
+                                        tipo=TipoMensagem.TEXTO
+                                    )
+                            except Exception as conv_err:
+                                import logging
+                                logging.getLogger(__name__).warning(f"Erro ao registrar cancelamento na conversa: {conv_err}")
+
+                    except Exception as wp_err:
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Erro ao enviar WhatsApp de cancelamento ao paciente: {wp_err}")
+
         except Exception as e:
             # Log do erro, mas não falha o cancelamento
             import logging
@@ -751,7 +896,8 @@ async def cancelar_agendamento(
 
         return {
             "sucesso": True,
-            "mensagem": "Agendamento cancelado com sucesso"
+            "mensagem": "Agendamento cancelado com sucesso",
+            "notificacao_paciente": notificacao_paciente_enviada
         }
 
     except HTTPException:

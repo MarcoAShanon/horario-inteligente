@@ -552,6 +552,11 @@ source /root/sistema_agendamento/venv/bin/activate
 - [x] ~~Navegação unificada (top nav desktop + bottom nav mobile)~~ (Implementado)
 - [x] ~~Calibrar IA: lembrete de 24h na confirmação de presença~~ (Corrigido)
 - [x] ~~Calibrar IA: "lotado" vs "não atende nesse dia"~~ (Corrigido)
+- [x] ~~Modal de cancelamento com motivos + notificação WhatsApp~~ (Implementado)
+- [x] ~~Motivo e notificação WhatsApp no reagendamento~~ (Implementado)
+- [x] ~~Templates WhatsApp registrados no painel de conversas~~ (Implementado)
+- [x] ~~Horários não desapareciam ao trocar data no reagendamento~~ (Corrigido)
+- [x] ~~IA não reconhecia datas curtas (DD/MM, D/M)~~ (Corrigido)
 - [ ] Calibrar empatia da IA (não usar emojis em situações de dor/urgência)
 - [ ] Validar exibição do nome do convênio no modal de detalhes
 - [ ] Definir senha para parceiros existentes via admin
@@ -619,6 +624,39 @@ source /root/sistema_agendamento/venv/bin/activate
 - **Arquivo**: `app/services/anthropic_service.py:268-315`
 - **Lógica**: Busca `medico_info` no `contexto_clinica`, extrai `dias_atendimento` da `disponibilidade`, normaliza e compara com o dia da semana da data pedida
 
+### 39. Modal de cancelamento e motivo no reagendamento + notificação WhatsApp
+- **Problema**: "Cancelar Consulta" usava `prompt()` nativo do browser (feio); "Reagendar" não pedia motivo; nenhum dos dois notificava o paciente via WhatsApp
+- **Solução**:
+  1. **Novo modal de cancelamento** (`#modalCancelamento`): select com motivos predefinidos (Paciente solicitou, Médico indisponível, etc.), input "Outro", checkbox "Notificar via WhatsApp" (checked por padrão)
+  2. **Campos novos no modal de reagendamento**: select de motivo (opcional), input "Outro", checkbox WhatsApp
+  3. **Backend PUT** (reagendar): `motivo_reagendamento` salvo em `observacoes`; envia template `consulta_reagendada_clinica` ao paciente se checkbox marcado
+  4. **Backend DELETE** (cancelar): parâmetro `notificar_paciente`; envia template `consulta_cancelada_clinica` ao paciente se checkbox marcado
+  5. **Registro na conversa**: Após envio WhatsApp com sucesso, mensagem salva no painel de conversas via `ConversaService.adicionar_mensagem()` (remetente=SISTEMA)
+  6. **Toast de feedback**: Indica se paciente foi notificado via WhatsApp ou se houve falha
+- **Arquivos modificados**:
+  - `app/api/agendamentos.py` — Schema `AgendamentoUpdate` (+`motivo_reagendamento`, `notificar_paciente`), PUT e DELETE com envio de templates e registro na conversa
+  - `static/calendario-unificado.html` — Modal cancelamento, campos motivo/checkbox no reagendamento, JS atualizado
+- **Templates WhatsApp usados** (já aprovados pela Meta):
+  - `consulta_reagendada_clinica` (paciente, medico, data_antiga, hora_antiga, data_nova, hora_nova)
+  - `consulta_cancelada_clinica` (paciente, medico, data, hora, motivo)
+
+### 40. Horários não desapareciam ao trocar data no reagendamento
+- **Problema**: No modal de reagendamento, ao trocar de uma data com horários para uma sem horários (médico não atende), os horários antigos continuavam visíveis
+- **Causa**: Função `verificarHorariosDisponiveisReagendamento()` só tinha lógica para *mostrar* horários, faltava `else` para esconder quando a API retornava lista vazia
+- **Solução**: Adicionado bloco `else` que esconde o container, limpa a lista e reseta o campo de hora; tratamento no `catch` também esconde os horários
+- **Arquivo**: `static/calendario-unificado.html`
+
+### 41. IA não reconhecia datas no formato curto (DD/MM ou D/M)
+- **Problema**: Paciente escrevia "03/2" (3 de fevereiro), e a IA não reconhecia — inventava o dia da semana e oferecia horários sem verificar o banco
+- **Causa**: Parser de datas só reconhecia formato completo `DD/MM/YYYY` (regex `\d{2}/\d{2}/\d{4}`). Formatos curtos como `03/2`, `3/02`, `15/3` não eram capturados
+- **Consequência**: Sem a data parseada, a função `_extrair_data_e_horarios_disponiveis()` retornava vazia. A IA não recebia horários disponíveis nem o alerta de "dia sem atendimento", ficando às cegas
+- **Solução**: Adicionado segundo parser com regex `(?<!\d)(\d{1,2})/(\d{1,2})(?!/|\d)` que:
+  1. Captura formatos: `D/M`, `DD/M`, `D/MM`, `DD/MM`
+  2. Não captura `DD/MM/YYYY` (lookahead negativo impede)
+  3. Infere o ano automaticamente: se a data já passou no ano atual, usa o próximo ano
+- **Arquivo**: `app/services/anthropic_service.py:113-130`
+- **Resultado**: "03/2" agora é corretamente parseado como 03/02/2026 (terça-feira), e o sistema injeta no prompt o alerta de "DIA SEM ATENDIMENTO" quando aplicável
+
 ---
 
 ## Observações Técnicas
@@ -652,4 +690,4 @@ source /root/sistema_agendamento/venv/bin/activate
 
 ---
 
-*Última atualização: 29/01/2026 - Calibração da IA (lembretes na confirmação, dia sem atendimento vs lotado)*
+*Última atualização: 29/01/2026 - Modal cancelamento/reagendamento com motivo + WhatsApp, registro na conversa, fix horários reagendamento, IA reconhece datas curtas*

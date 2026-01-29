@@ -110,7 +110,29 @@ class AnthropicService:
                 except ValueError:
                     pass
 
-            # Se não encontrou data no formato DD/MM/YYYY, tentar detectar expressões de tempo
+            # Se não encontrou no formato completo, tentar formato curto: D/M, DD/M, D/MM, DD/MM (sem ano)
+            if not data_encontrada:
+                padrao_data_curta = r'(?<!\d)(\d{1,2})/(\d{1,2})(?!/|\d)'
+                match_curta = re.search(padrao_data_curta, mensagem)
+                if match_curta:
+                    try:
+                        import pytz
+                        tz_brazil = pytz.timezone('America/Sao_Paulo')
+                        hoje = datetime.now(tz_brazil).date()
+
+                        dia = int(match_curta.group(1))
+                        mes = int(match_curta.group(2))
+                        # Inferir ano: se a data já passou neste ano, usar próximo ano
+                        ano = hoje.year
+                        candidata = date(ano, mes, dia)
+                        if candidata < hoje:
+                            candidata = date(ano + 1, mes, dia)
+                        data_encontrada = candidata
+                        logger.info(f"[Horários] Data curta encontrada: {match_curta.group(0)} -> {data_encontrada}")
+                    except (ValueError, Exception) as e:
+                        logger.warning(f"[Horários] Erro ao parsear data curta '{match_curta.group(0)}': {e}")
+
+            # Se não encontrou data em nenhum formato numérico, tentar detectar expressões de tempo
             if not data_encontrada:
                 import pytz
                 mensagem_lower = mensagem.lower()

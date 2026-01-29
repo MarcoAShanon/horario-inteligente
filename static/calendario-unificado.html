@@ -1170,6 +1170,44 @@
                         </div>
                     </div>
 
+                    <!-- Motivo do Reagendamento (opcional) -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                            Motivo do Reagendamento <span class="text-gray-400">(opcional)</span>
+                        </label>
+                        <select id="reagendamento_motivo" name="reagendamento_motivo"
+                                onchange="toggleReagendamentoOutro()"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Nenhum</option>
+                            <option value="Paciente solicitou">Paciente solicitou</option>
+                            <option value="Médico indisponível">Médico indisponível</option>
+                            <option value="Ajuste de agenda">Ajuste de agenda</option>
+                            <option value="Conflito de horário">Conflito de horário</option>
+                            <option value="outro">Outro...</option>
+                        </select>
+                    </div>
+
+                    <!-- Campo Outro Reagendamento (oculto por padrão) -->
+                    <div id="reagendamento_outro_container" class="hidden">
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                            Especifique o motivo
+                        </label>
+                        <input type="text" id="reagendamento_outro_texto" name="reagendamento_outro_texto"
+                               placeholder="Digite o motivo..."
+                               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Notificar Paciente -->
+                    <div class="flex items-center gap-2 p-3 bg-green-50 rounded-md border border-green-200">
+                        <input type="checkbox" id="reagendamento_notificar" name="reagendamento_notificar"
+                               checked
+                               class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                        <label for="reagendamento_notificar" class="text-xs sm:text-sm text-gray-700 flex items-center gap-1">
+                            <i class="fab fa-whatsapp text-green-600"></i>
+                            Notificar paciente via WhatsApp
+                        </label>
+                    </div>
+
                     <!-- Botões -->
                     <div class="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-0 sm:space-x-3">
                         <button type="button" onclick="fecharModalReagendamento()"
@@ -1180,6 +1218,73 @@
                                 class="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white text-xs sm:text-sm font-medium rounded-md hover:bg-blue-700 order-1 sm:order-2 whitespace-nowrap">
                             <i class="fas fa-check mr-1 sm:mr-2"></i>
                             <span class="hidden sm:inline">Confirmar Reagendamento</span>
+                            <span class="sm:hidden">Confirmar</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Cancelamento -->
+    <div id="modalCancelamento" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-2 sm:p-0">
+        <div class="relative top-4 sm:top-20 mx-auto p-4 sm:p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div class="mt-2 sm:mt-3">
+                <h3 class="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">
+                    <i class="fas fa-times-circle mr-1 sm:mr-2 text-red-600"></i>
+                    Cancelar Consulta
+                </h3>
+
+                <form id="formCancelamento" class="space-y-3 sm:space-y-4">
+                    <!-- Motivo do Cancelamento -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                            Motivo do Cancelamento *
+                        </label>
+                        <select id="cancelamento_motivo" name="cancelamento_motivo"
+                                onchange="toggleCancelamentoOutro()"
+                                class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" required>
+                            <option value="">Selecione o motivo...</option>
+                            <option value="Paciente solicitou">Paciente solicitou</option>
+                            <option value="Médico indisponível">Médico indisponível</option>
+                            <option value="Paciente doente">Paciente doente</option>
+                            <option value="Conflito de horário">Conflito de horário</option>
+                            <option value="Motivo pessoal">Motivo pessoal</option>
+                            <option value="outro">Outro...</option>
+                        </select>
+                    </div>
+
+                    <!-- Campo Outro (oculto por padrão) -->
+                    <div id="cancelamento_outro_container" class="hidden">
+                        <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                            Especifique o motivo
+                        </label>
+                        <input type="text" id="cancelamento_outro_texto" name="cancelamento_outro_texto"
+                               placeholder="Digite o motivo..."
+                               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500">
+                    </div>
+
+                    <!-- Notificar Paciente -->
+                    <div class="flex items-center gap-2 p-3 bg-green-50 rounded-md border border-green-200">
+                        <input type="checkbox" id="cancelamento_notificar" name="cancelamento_notificar"
+                               checked
+                               class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                        <label for="cancelamento_notificar" class="text-xs sm:text-sm text-gray-700 flex items-center gap-1">
+                            <i class="fab fa-whatsapp text-green-600"></i>
+                            Notificar paciente via WhatsApp
+                        </label>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-0 sm:space-x-3">
+                        <button type="button" onclick="fecharModalCancelamento()"
+                                class="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 text-xs sm:text-sm font-medium rounded-md hover:bg-gray-300 order-2 sm:order-1">
+                            Voltar
+                        </button>
+                        <button type="submit"
+                                class="w-full sm:w-auto px-4 py-2 bg-red-600 text-white text-xs sm:text-sm font-medium rounded-md hover:bg-red-700 order-1 sm:order-2 whitespace-nowrap">
+                            <i class="fas fa-times mr-1 sm:mr-2"></i>
+                            <span class="hidden sm:inline">Confirmar Cancelamento</span>
                             <span class="sm:hidden">Confirmar</span>
                         </button>
                     </div>
@@ -2873,13 +2978,28 @@
             document.getElementById('modalReagendamento').classList.add('hidden');
             document.getElementById('formReagendamento').reset();
             document.getElementById('horariosDisponiveisReagendamento').classList.add('hidden');
+            document.getElementById('reagendamento_outro_container').classList.add('hidden');
+        }
+
+        function toggleReagendamentoOutro() {
+            const select = document.getElementById('reagendamento_motivo');
+            const container = document.getElementById('reagendamento_outro_container');
+            if (select.value === 'outro') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+                document.getElementById('reagendamento_outro_texto').value = '';
+            }
         }
 
         async function verificarHorariosDisponiveisReagendamento() {
             if (!agendamentoAtual) return;
 
             const data = document.getElementById('reagendar_data').value;
-            if (!data) return;
+            if (!data) {
+                document.getElementById('horariosDisponiveisReagendamento').classList.add('hidden');
+                return;
+            }
 
             try {
                 const response = await fetch(`/api/horarios-disponiveis?medico_id=${agendamentoAtual.medico_id}&data=${data}`);
@@ -2926,9 +3046,15 @@
                     });
 
                     document.getElementById('horariosDisponiveisReagendamento').classList.remove('hidden');
+                } else {
+                    // Nenhum horário disponível — esconder lista e limpar campo de hora
+                    document.getElementById('horariosDisponiveisReagendamento').classList.add('hidden');
+                    document.getElementById('horariosListReagendamento').innerHTML = '';
+                    document.getElementById('reagendar_hora').value = '';
                 }
             } catch (error) {
                 console.error('Erro ao buscar horários:', error);
+                document.getElementById('horariosDisponiveisReagendamento').classList.add('hidden');
             }
         }
 
@@ -2996,23 +3122,46 @@
             if (!confirmado) return;
 
             try {
+                // Coletar motivo do reagendamento
+                const motivoSelect = document.getElementById('reagendamento_motivo').value;
+                let motivoReagendamento = '';
+                if (motivoSelect === 'outro') {
+                    motivoReagendamento = document.getElementById('reagendamento_outro_texto').value.trim();
+                } else {
+                    motivoReagendamento = motivoSelect;
+                }
+
+                const notificarPaciente = document.getElementById('reagendamento_notificar').checked;
+
+                const bodyData = {
+                    data: novaData,
+                    hora: novaHora,
+                    notificar_paciente: notificarPaciente
+                };
+                if (motivoReagendamento) {
+                    bodyData.motivo_reagendamento = motivoReagendamento;
+                }
+
                 const response = await fetch(`/api/agendamentos/${agendamentoAtual.id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
-                    body: JSON.stringify({
-                        data: novaData,
-                        hora: novaHora
-                    })
+                    body: JSON.stringify(bodyData)
                 });
 
                 const result = await response.json();
 
                 if (result.sucesso || response.ok) {
-                    // USABILIDADE: Toast de sucesso
-                    mostrarSucessoReag('Consulta Reagendada!', `Nova data: ${dataFormatada} às ${novaHora}`);
+                    // USABILIDADE: Toast de sucesso com indicação de notificação
+                    let msgSucesso = `Nova data: ${dataFormatada} às ${novaHora}`;
+                    if (notificarPaciente && result.notificacao_paciente) {
+                        msgSucesso += ' — Paciente notificado via WhatsApp';
+                    } else if (notificarPaciente && !result.notificacao_paciente) {
+                        msgSucesso += ' — Não foi possível notificar o paciente';
+                    }
+                    mostrarSucessoReag('Consulta Reagendada!', msgSucesso);
                     fecharModalReagendamento();
                     carregarEventos(); // Recarregar calendário
                 } else {
@@ -3086,7 +3235,7 @@
             }
         }
 
-        async function confirmarCancelamento() {
+        function confirmarCancelamento() {
             console.log('confirmarCancelamento() chamada, agendamentoAtual:', agendamentoAtual);
 
             if (!agendamentoAtual) {
@@ -3094,20 +3243,69 @@
                 return;
             }
 
-            try {
-                // Pedir motivo usando prompt nativo
-                const motivo = prompt('Digite o motivo do cancelamento:\n\n(Ex: Paciente solicitou, Médico indisponível, etc.)');
+            // Fechar modal de detalhes e abrir modal de cancelamento
+            document.getElementById('modalDetalhes').classList.add('hidden');
+            document.getElementById('modalCancelamento').classList.remove('hidden');
+        }
 
+        function fecharModalCancelamento() {
+            document.getElementById('modalCancelamento').classList.add('hidden');
+            document.getElementById('formCancelamento').reset();
+            document.getElementById('cancelamento_outro_container').classList.add('hidden');
+        }
+
+        function toggleCancelamentoOutro() {
+            const select = document.getElementById('cancelamento_motivo');
+            const container = document.getElementById('cancelamento_outro_container');
+            if (select.value === 'outro') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+                document.getElementById('cancelamento_outro_texto').value = '';
+            }
+        }
+
+        // Handler do formulário de cancelamento
+        document.getElementById('formCancelamento')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (!agendamentoAtual) return;
+
+            // Coletar motivo
+            const motivoSelect = document.getElementById('cancelamento_motivo').value;
+            let motivo = '';
+            if (motivoSelect === 'outro') {
+                motivo = document.getElementById('cancelamento_outro_texto').value.trim();
                 if (!motivo) {
-                    return; // Usuário cancelou
+                    if (typeof HiToast !== 'undefined' && HiToast.error) {
+                        HiToast.error('Motivo Obrigatório', 'Por favor, especifique o motivo do cancelamento');
+                    } else {
+                        alert('Por favor, especifique o motivo do cancelamento');
+                    }
+                    return;
                 }
+            } else {
+                motivo = motivoSelect;
+            }
 
-                // Confirmar cancelamento
-                const confirmado = confirm(`Cancelar consulta de ${agendamentoAtual.paciente_nome}?\n\nMotivo: ${motivo}\n\nEsta ação não pode ser desfeita.`);
+            if (!motivo) {
+                if (typeof HiToast !== 'undefined' && HiToast.error) {
+                    HiToast.error('Motivo Obrigatório', 'Por favor, selecione o motivo do cancelamento');
+                } else {
+                    alert('Por favor, selecione o motivo do cancelamento');
+                }
+                return;
+            }
 
-                if (!confirmado) return;
+            const notificarPaciente = document.getElementById('cancelamento_notificar').checked;
 
-                const response = await fetch(`/api/agendamentos/${agendamentoAtual.id}?motivo=${encodeURIComponent(motivo)}`, {
+            try {
+                const params = new URLSearchParams({
+                    motivo: motivo,
+                    notificar_paciente: notificarPaciente
+                });
+
+                const response = await fetch(`/api/agendamentos/${agendamentoAtual.id}?${params.toString()}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${authToken}`
@@ -3117,11 +3315,18 @@
                 const result = await response.json();
 
                 if (result.sucesso || response.ok) {
-                    if (typeof HiToast !== 'undefined' && HiToast.warning) {
-                        HiToast.warning('Consulta Cancelada', 'O paciente será notificado');
-                    } else {
-                        alert('Consulta cancelada com sucesso!');
+                    let msgSucesso = 'Consulta cancelada com sucesso';
+                    if (notificarPaciente && result.notificacao_paciente) {
+                        msgSucesso = 'Consulta cancelada — Paciente notificado via WhatsApp';
+                    } else if (notificarPaciente && !result.notificacao_paciente) {
+                        msgSucesso = 'Consulta cancelada — Não foi possível notificar o paciente';
                     }
+                    if (typeof HiToast !== 'undefined' && HiToast.warning) {
+                        HiToast.warning('Consulta Cancelada', msgSucesso);
+                    } else {
+                        alert(msgSucesso);
+                    }
+                    fecharModalCancelamento();
                     fecharModalDetalhes();
                     await carregarEventos();
                 } else {
@@ -3136,7 +3341,7 @@
                 console.error('Erro ao cancelar:', error);
                 alert('Erro ao cancelar agendamento: ' + error.message);
             }
-        }
+        });
     </script>
 
     <!-- Design System Scripts (toast.js e modal.js já carregados no head) -->
