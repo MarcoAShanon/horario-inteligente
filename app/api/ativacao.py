@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/ativacao", tags=["Ativação de Conta"])
 logger = logging.getLogger(__name__)
 
 # Versões atuais dos termos
-VERSAO_TERMOS = "1.0"
+VERSAO_TERMOS = "1.1"
 VERSAO_PRIVACIDADE = "1.1"
 
 

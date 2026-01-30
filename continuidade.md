@@ -688,6 +688,19 @@ source /root/sistema_agendamento/venv/bin/activate
 - **Perfis**: Itens de menu variam por perfil (médico vs secretária)
 - **Componentes**: `static/js/components/top-nav.js`, `static/js/components/nav-init.js`, `static/js/components/bottom-nav.js`
 
+## Correções Realizadas (Sessão 30/01/2026)
+
+### 42. Cláusula de prazo de 72h para ativação nos Termos de Uso
+- **Problema**: Os termos não informavam que a ativação da conta não é imediata após o aceite
+- **Motivo**: Configurações técnicas e aprovações de templates pela Meta (WhatsApp Business API) exigem prazo
+- **Solução**: Adicionada cláusula e ajustes em múltiplos arquivos
+- **Alterações**:
+  1. **Novo item 5.4 (Prazo de Ativação)** na Seção 5 do `static/termos-de-uso.html` — informa prazo de 72h úteis com justificativa técnica (aprovações Meta)
+  2. **Seção de Aceitação** atualizada com referência à Seção 5.4
+  3. **Versão dos termos** atualizada de 1.0 para 1.1; data de vigência para 30/01/2026
+  4. **`app/api/ativacao.py`** — `VERSAO_TERMOS` de "1.0" para "1.1"
+  5. **`static/ativar-conta.html`** — versão atualizada no checkbox, aviso informativo de 72h antes do botão de aceite, mensagem de sucesso ajustada ("Termos Aceitos com Sucesso" ao invés de "Conta Ativada")
+
 ---
 
-*Última atualização: 29/01/2026 - Modal cancelamento/reagendamento com motivo + WhatsApp, registro na conversa, fix horários reagendamento, IA reconhece datas curtas*
+*Última atualização: 30/01/2026 - Cláusula de prazo de 72h para ativação nos Termos de Uso (aprovações Meta)*
