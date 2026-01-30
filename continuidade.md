@@ -557,6 +557,7 @@ source /root/sistema_agendamento/venv/bin/activate
 - [x] ~~Templates WhatsApp registrados no painel de conversas~~ (Implementado)
 - [x] ~~Horários não desapareciam ao trocar data no reagendamento~~ (Corrigido)
 - [x] ~~IA não reconhecia datas curtas (DD/MM, D/M)~~ (Corrigido)
+- [x] ~~Exibir nomes de pacientes e telefones formatados na sidebar de conversas~~ (Implementado)
 - [ ] Calibrar empatia da IA (não usar emojis em situações de dor/urgência)
 - [ ] Validar exibição do nome do convênio no modal de detalhes
 - [ ] Definir senha para parceiros existentes via admin
@@ -701,6 +702,27 @@ source /root/sistema_agendamento/venv/bin/activate
   4. **`app/api/ativacao.py`** — `VERSAO_TERMOS` de "1.0" para "1.1"
   5. **`static/ativar-conta.html`** — versão atualizada no checkbox, aviso informativo de 72h antes do botão de aceite, mensagem de sucesso ajustada ("Termos Aceitos com Sucesso" ao invés de "Conta Ativada")
 
+### 43. Exibição de nomes e telefones formatados na sidebar de conversas
+- **Problema**: Lista de conversas exibia telefones crus (ex: `5524988493257`) quando `paciente_nome` era NULL na tabela `conversas`. O nome existia na tabela `pacientes` mas não era aproveitado. Mesmo como fallback, o telefone não era formatado.
+- **Solução**: Duas mudanças complementares (backend + frontend):
+
+#### Backend (`app/api/conversas.py`):
+1. **Import**: `from app.utils.phone_utils import format_phone_display`
+2. **Schema**: Adicionado campo `paciente_telefone_formatado: Optional[str] = None` em `ConversaResponse`
+3. **`listar_conversas`**: Busca nomes de pacientes da tabela `pacientes` (por telefone + cliente_id) para conversas sem `paciente_nome`. Usa `mapa_nomes` para enriquecer o campo. Adiciona `paciente_telefone_formatado` via `format_phone_display()`
+4. **`get_conversa`**: Mesma lógica de enriquecimento para a view de detalhe (usada no header do chat)
+
+#### Frontend (`static/conversas.html`):
+1. **Sidebar — nome**: Fallback chain: `paciente_nome || paciente_telefone_formatado || paciente_telefone`
+2. **Sidebar — subtítulo**: Quando paciente tem nome, exibe telefone formatado abaixo em cinza (`text-xs text-gray-400`)
+3. **Busca**: Filtro agora inclui `paciente_telefone_formatado` para busca por telefone formatado (ex: `(24) 98849`)
+4. **Header do chat**: Nome e telefone usam versão formatada
+
+#### Resultado:
+- Conversas exibem nome do paciente mesmo quando `paciente_nome` é NULL na conversa (busca da tabela `pacientes`)
+- Telefones formatados como `+55 (24) 98849-3257` ao invés de `5524988493257`
+- Busca funciona tanto por telefone cru quanto formatado
+
 ---
 
-*Última atualização: 30/01/2026 - Cláusula de prazo de 72h para ativação nos Termos de Uso (aprovações Meta)*
+*Última atualização: 30/01/2026 - Exibição de nomes e telefones formatados na sidebar de conversas*
