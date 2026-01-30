@@ -63,7 +63,7 @@ www IN A 200.100.50.10
 **Resultado:**
 - `horariointeligente.com.br` → 200.100.50.10
 - `www.horariointeligente.com.br` → 200.100.50.10
-- `prosaude.horariointeligente.com.br` → 200.100.50.10 ✅
+- `drjoao.horariointeligente.com.br` → 200.100.50.10 ✅
 - `drmarco.horariointeligente.com.br` → 200.100.50.10 ✅
 - `qualquercoisa.horariointeligente.com.br` → 200.100.50.10 ✅
 
@@ -122,7 +122,7 @@ ns2.cloudflare.com
 nslookup horariointeligente.com.br
 
 # Teste 2: Subdomínio existente
-nslookup prosaude.horariointeligente.com.br
+nslookup drjoao.horariointeligente.com.br
 
 # Teste 3: Subdomínio qualquer (wildcard)
 nslookup teste123.horariointeligente.com.br
@@ -245,7 +245,7 @@ sudo apt install certbot python3-certbot-nginx -y
 sudo certbot --nginx -d horariointeligente.com.br -d *.horariointeligente.com.br
 
 # OU se quiser especificar subdomínios (sem wildcard):
-sudo certbot --nginx -d horariointeligente.com.br -d www.horariointeligente.com.br -d prosaude.horariointeligente.com.br -d drmarco.horariointeligente.com.br
+sudo certbot --nginx -d horariointeligente.com.br -d www.horariointeligente.com.br -d drjoao.horariointeligente.com.br -d drmarco.horariointeligente.com.br
 ```
 
 **Durante a instalação, responda:**
@@ -290,8 +290,8 @@ sudo tail -f /var/log/nginx/horariointeligente_access.log
 ### 5.2 Verificar FastAPI rodando
 
 ```bash
-# Status do serviço ProSaude
-sudo systemctl status prosaude.service
+# Status do serviço Horário Inteligente
+sudo systemctl status horariointeligente.service
 
 # Deve estar "active (running)"
 ```
@@ -306,13 +306,13 @@ https://horariointeligente.com.br
 
 **2. Subdomínio existente:**
 ```
-https://prosaude.horariointeligente.com.br/static/login.html
+https://drjoao.horariointeligente.com.br/static/login.html
 ```
 **Esperado:** Tela de login
 
 **3. API Test:**
 ```
-https://prosaude.horariointeligente.com.br/webhook/whatsapp/test
+https://drjoao.horariointeligente.com.br/webhook/whatsapp/test
 ```
 **Esperado:** JSON com status do sistema
 
@@ -337,10 +337,10 @@ https://drmarco.horariointeligente.com.br/static/login.html
 
 ```bash
 # Ver logs do FastAPI
-sudo journalctl -u prosaude.service -f
+sudo journalctl -u horariointeligente.service -f
 
 # Em outro terminal, acesse:
-curl https://prosaude.horariointeligente.com.br/webhook/whatsapp/test
+curl https://drjoao.horariointeligente.com.br/webhook/whatsapp/test
 
 # Nos logs, deve aparecer:
 # "🏢 TenantMiddleware ativado - Sistema Multi-Tenant ATIVO"
@@ -350,7 +350,7 @@ curl https://prosaude.horariointeligente.com.br/webhook/whatsapp/test
 
 ```bash
 # Teste 1: ProSaude
-curl https://prosaude.horariointeligente.com.br/webhook/whatsapp/test | jq
+curl https://drjoao.horariointeligente.com.br/webhook/whatsapp/test | jq
 
 # Teste 2: DrMarco (se criou no banco)
 curl https://drmarco.horariointeligente.com.br/webhook/whatsapp/test | jq
@@ -362,7 +362,7 @@ curl https://drmarco.horariointeligente.com.br/webhook/whatsapp/test | jq
 
 ```bash
 # Fazer login na clínica ProSaude
-curl -X POST https://prosaude.horariointeligente.com.br/api/auth/login \
+curl -X POST https://drjoao.horariointeligente.com.br/api/auth/login \
   -F "username=admin@prosaude.com" \
   -F "password=admin123"
 
@@ -370,7 +370,7 @@ curl -X POST https://prosaude.horariointeligente.com.br/api/auth/login \
 TOKEN="cole-o-token-aqui"
 
 curl -H "Authorization: Bearer $TOKEN" \
-  https://prosaude.horariointeligente.com.br/api/agendamentos/calendario
+  https://drjoao.horariointeligente.com.br/api/agendamentos/calendario
 ```
 
 ---
@@ -401,10 +401,10 @@ nslookup horariointeligente.com.br 8.8.8.8
 **Solução:**
 ```bash
 # Verificar se FastAPI está rodando
-sudo systemctl status prosaude.service
+sudo systemctl status horariointeligente.service
 
 # Se não estiver, iniciar
-sudo systemctl start prosaude.service
+sudo systemctl start horariointeligente.service
 
 # Verificar porta
 sudo netstat -tlnp | grep 8000
@@ -430,7 +430,7 @@ sudo systemctl restart nginx
 
 ### Problema 4: Wildcard não funciona
 
-**Sintoma:** `prosaude.horariointeligente.com.br` funciona, mas `drmarco.horariointeligente.com.br` não
+**Sintoma:** `drjoao.horariointeligente.com.br` funciona, mas `drmarco.horariointeligente.com.br` não
 
 **Causa:** Wildcard DNS não configurado ou Nginx não captura
 
@@ -462,7 +462,7 @@ VALUES ('Nome da Clínica', 'subdominio', 'InstanciaNome', 'profissional', true,
 
 -- Limpar cache do middleware
 # Reiniciar FastAPI
-sudo systemctl restart prosaude.service
+sudo systemctl restart horariointeligente.service
 ```
 
 ---
@@ -473,12 +473,12 @@ Antes de considerar produção:
 
 - [ ] DNS propagado (teste com `nslookup`)
 - [ ] Nginx rodando (`sudo systemctl status nginx`)
-- [ ] FastAPI rodando (`sudo systemctl status prosaude.service`)
+- [ ] FastAPI rodando (`sudo systemctl status horariointeligente.service`)
 - [ ] SSL válido (cadeado verde no navegador)
 - [ ] Wildcard funcionando (teste subdomínios aleatórios)
 - [ ] Login funciona em diferentes subdomínios
 - [ ] WhatsApp recebe e responde
-- [ ] Logs sem erros (`journalctl -u prosaude.service`)
+- [ ] Logs sem erros (`journalctl -u horariointeligente.service`)
 - [ ] Firewall permite portas 80 e 443
 - [ ] Backup configurado
 
@@ -552,7 +552,7 @@ sudo tail -f /var/log/nginx/horariointeligente_access.log
 sudo tail -f /var/log/nginx/horariointeligente_error.log
 
 # FastAPI
-sudo journalctl -u prosaude.service -f
+sudo journalctl -u horariointeligente.service -f
 
 # Tudo junto (3 terminais)
 ```
@@ -582,7 +582,7 @@ Após seguir todos os passos, seu sistema estará:
 
 **URLs de exemplo funcionando:**
 - https://horariointeligente.com.br
-- https://prosaude.horariointeligente.com.br
+- https://drjoao.horariointeligente.com.br
 - https://drmarco.horariointeligente.com.br
 - https://qualquercoisa.horariointeligente.com.br (wildcard!)
 

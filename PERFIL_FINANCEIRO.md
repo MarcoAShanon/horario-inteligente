@@ -403,7 +403,7 @@ curl 'https://horariointeligente.com.br/api/financeiro/dashboard/clientes' \
 
 O **Perfil Financeiro** está **100% implementado e funcional**!
 
-Agora a equipe de gestão financeira do ProSaude SaaS pode:
+Agora a equipe de gestão financeira do Horário Inteligente SaaS pode:
 - 📊 Acompanhar métricas de negócio em tempo real
 - 💰 Analisar custos e lucratividade
 - 📈 Gerar relatórios de faturamento
@@ -415,5 +415,5 @@ Agora a equipe de gestão financeira do ProSaude SaaS pode:
 
 **Desenvolvido por:** Marco (com Claude Code)
 **Data:** 3 de dezembro de 2025
-**Versão:** 3.4.0 - ProSaude SaaS
+**Versão:** 3.4.0 - Horário Inteligente SaaS
 **Status:** ✅ Produção

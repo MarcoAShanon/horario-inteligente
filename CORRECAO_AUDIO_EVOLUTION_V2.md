@@ -152,7 +152,7 @@ Agora o sistema exibe logs detalhados:
 
 ### 1. Verificar Status do Serviço
 ```bash
-sudo systemctl status prosaude.service
+sudo systemctl status horariointeligente.service
 ```
 
 Deve mostrar: `Active: active (running)`
@@ -164,7 +164,7 @@ Deve mostrar: `Active: active (running)`
 
 ### 3. Monitorar Logs em Tempo Real
 ```bash
-journalctl -u prosaude.service -f | grep -E "áudio|audio|Audio|messageType"
+journalctl -u horariointeligente.service -f | grep -E "áudio|audio|Audio|messageType"
 ```
 
 ### Logs Esperados:
@@ -245,10 +245,10 @@ if ".enc" in audio_url:
 ### Comandos de Teste:
 ```bash
 # Monitorar logs
-journalctl -u prosaude.service -f
+journalctl -u horariointeligente.service -f
 
 # Status do serviço
-sudo systemctl status prosaude.service
+sudo systemctl status horariointeligente.service
 
 # Verificar variáveis de ambiente
 grep ENABLE_AUDIO /root/sistema_agendamento/.env

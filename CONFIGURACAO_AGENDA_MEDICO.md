@@ -1,4 +1,4 @@
-# Configuração de Agenda do Médico - ProSaúde
+# Configuração de Agenda do Médico - Horário Inteligente
 
 **Data:** 28 de novembro de 2025
 **Autor:** Marco com assistência do Claude Code

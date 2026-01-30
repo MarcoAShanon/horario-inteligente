@@ -30,7 +30,7 @@ class WhatsAppEvolutionService(WhatsAppProviderInterface):
     def __init__(self):
         self.evolution_url = os.getenv("EVOLUTION_API_URL", "http://localhost:8080")
         self.api_key = os.getenv("EVOLUTION_API_KEY", "")
-        self.default_instance = os.getenv("EVOLUTION_DEFAULT_INSTANCE", "ProSaude")
+        self.default_instance = os.getenv("EVOLUTION_DEFAULT_INSTANCE", "HorarioInteligente")
 
         self.headers = {
             "Content-Type": "application/json",
@@ -257,7 +257,7 @@ class WhatsAppEvolutionService(WhatsAppProviderInterface):
         Formato de entrada (Evolution API v2):
         {
             "event": "messages.upsert",
-            "instance": "ProSaude",
+            "instance": "HorarioInteligente",
             "data": {
                 "key": {
                     "remoteJid": "5521999999999@s.whatsapp.net",

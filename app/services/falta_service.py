@@ -328,7 +328,7 @@ class FaltaService:
             whatsapp_service = WhatsAppService()
 
             # Buscar nome da instância do cliente
-            instance_name = "ProSaude"  # TODO: buscar do banco baseado em cliente_id
+            instance_name = "HorarioInteligente"  # TODO: buscar do banco baseado em cliente_id
 
             resultado = await whatsapp_service.send_message(
                 instance_name=instance_name,

@@ -283,7 +283,7 @@ O paciente confirmou presença."""
         """Envia notificação via WhatsApp"""
         try:
             # Buscar nome da instância (TODO: buscar do banco baseado em cliente_id)
-            instance_name = "ProSaude"
+            instance_name = "HorarioInteligente"
 
             resultado = await self.whatsapp_service.send_message(
                 instance_name=instance_name,
@@ -346,7 +346,7 @@ O paciente confirmou presença."""
                   <p>{html_mensagem}</p>
                   <hr>
                   <p style="font-size: 12px; color: #666;">
-                    Esta é uma notificação automática do sistema de agendamentos ProSaude.
+                    Esta é uma notificação automática do sistema Horário Inteligente.
                   </p>
                 </div>
               </body>

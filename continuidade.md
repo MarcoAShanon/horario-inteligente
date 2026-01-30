@@ -1,10 +1,10 @@
 # Documento de Continuidade - Sistema de Agendamento
 
 ## Visão Geral
-Sistema de agendamento médico multi-tenant (SaaS) chamado **Horário Inteligente** / **ProSaude**.
+Sistema de agendamento médico multi-tenant (SaaS) chamado **Horário Inteligente**.
 
 - **Stack**: FastAPI (Python) + PostgreSQL + HTML/JS (Tailwind CSS)
-- **Serviço**: `prosaude.service` (systemd)
+- **Serviço**: `horariointeligente.service` (systemd)
 - **Porta**: 8000
 - **Diretório**: `/root/sistema_agendamento`
 
@@ -104,13 +104,13 @@ Sistema de agendamento médico multi-tenant (SaaS) chamado **Horário Inteligent
 
 ```bash
 # Reiniciar serviço
-systemctl restart prosaude.service
+systemctl restart horariointeligente.service
 
 # Ver status
-systemctl status prosaude.service
+systemctl status horariointeligente.service
 
 # Logs em tempo real
-journalctl -u prosaude.service -f
+journalctl -u horariointeligente.service -f
 
 # Acessar banco
 PGPASSWORD=postgres psql -h localhost -U postgres -d agendamento_saas
@@ -725,4 +725,29 @@ source /root/sistema_agendamento/venv/bin/activate
 
 ---
 
-*Última atualização: 30/01/2026 - Exibição de nomes e telefones formatados na sidebar de conversas*
+### 44. Renomeação de referências ProSaude → Horário Inteligente
+- **Problema**: Sistema nasceu como "ProSaude" mas agora se chama "Horário Inteligente". Referências ao nome antigo persistiam no código, config, scripts e docs
+- **Solução**: Renomeação completa em todo o codebase
+- **Alterações**:
+  1. **`app/middleware/tenant_middleware.py`** — Default de desenvolvimento: `prosaude` → `drjoao` (cliente real ID 11)
+  2. **`.env`** — `WHATSAPP_PROVIDER=official`, Evolution API comentada como legado
+  3. **Serviços Evolution (legado)** — `"ProSaude"` → `"HorarioInteligente"` em reminder_service, notification_service, falta_service, whatsapp_monitor
+  4. **`app/services/whatsapp_service.py`** — API key hardcoded → `os.getenv("EVOLUTION_API_KEY", "")`
+  5. **`scripts/seed_prosaude.py`** → renomeado para `scripts/seed_clinica_teste.py` com dados atualizados
+  6. **`scripts/populate_demo_data.py`** — subdomain `prosaude` → `drjoao`
+  7. **Systemd** — `prosaude.service` → `horariointeligente.service`
+  8. **Documentação** — continuidade.md, README.md e demais .md atualizados
+- **Nota**: Evolution API é código legado; sistema usa apenas API Oficial Meta
+
+### 45. Remoção de referências a "lançamento" na landing page
+- **Problema**: Textos na landing page e demo ainda diziam "quando lançarmos", "pré-lançamento", etc., mas o sistema já está em produção
+- **Solução**: Atualização de textos para refletir que o produto já foi lançado
+- **Alterações**:
+  1. **`static/index.html`** — "OFERTA EXCLUSIVA DE LANÇAMENTO" → "OFERTA EXCLUSIVA"; removido "quando lançarmos"; checkbox sem "sobre o lançamento"; mensagem de sucesso sem "lista VIP" e "em breve"
+  2. **`static/demo/index.html`** — "preço especial de lançamento" → "condições especiais"; checkbox e alerta atualizados
+  3. **`static/admin/pre-cadastros.html`** — "Leads do Pré-Lançamento" → "Leads e interessados"
+  4. **`static/admin/dashboard.html`** — "Leads de lançamento" → "Leads e interessados"
+
+---
+
+*Última atualização: 30/01/2026 - Remoção de referências a lançamento na landing page*

@@ -92,7 +92,7 @@ async def root(request: Request):
 
 ### **Subdomínios (Clientes):**
 ```
-✅ https://prosaude.horariointeligente.com.br
+✅ https://drjoao.horariointeligente.com.br
 ✅ https://drmarco.horariointeligente.com.br
 ✅ https://[cliente].horariointeligente.com.br
 ```
@@ -244,7 +244,7 @@ curl -s https://horariointeligente.com.br/ | grep "<title>"
 
 ### ✅ **Teste 2: Subdomínio Cliente**
 ```bash
-curl -s -L https://prosaude.horariointeligente.com.br/ | grep "<title>"
+curl -s -L https://drjoao.horariointeligente.com.br/ | grep "<title>"
 ```
 **Resultado:** ✅ Redirect para login funcionando
 

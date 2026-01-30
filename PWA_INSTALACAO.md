@@ -1,8 +1,8 @@
-# 📱 Guia de Instalação do PWA - ProSaúde
+# 📱 Guia de Instalação do PWA - Horário Inteligente
 
 ## ✅ PWA Implementado com Sucesso!
 
-O sistema ProSaúde agora é um **Progressive Web App (PWA)** completo! Os médicos e usuários podem instalar o sistema como se fosse um aplicativo nativo no celular.
+O sistema Horário Inteligente agora é um **Progressive Web App (PWA)** completo! Os médicos e usuários podem instalar o sistema como se fosse um aplicativo nativo no celular.
 
 ---
 
@@ -22,7 +22,7 @@ O sistema ProSaúde agora é um **Progressive Web App (PWA)** completo! Os médi
 ### Chrome/Edge (Android):
 
 1. **Abra o navegador Chrome** no celular
-2. **Acesse:** `https://prosaude.horariointeligente.com.br/static/login.html`
+2. **Acesse:** `https://drjoao.horariointeligente.com.br/static/login.html`
 3. **Aguarde 3-5 segundos** (aparecerá um banner na parte inferior)
 4. **Toque em "Instalar"** ou **"Adicionar à tela inicial"**
 5. **Pronto!** O ícone aparece na tela do celular
@@ -40,10 +40,10 @@ O sistema ProSaúde agora é um **Progressive Web App (PWA)** completo! Os médi
 ### Safari (iOS):
 
 1. **Abra o Safari** no iPhone
-2. **Acesse:** `https://prosaude.horariointeligente.com.br/static/login.html`
+2. **Acesse:** `https://drjoao.horariointeligente.com.br/static/login.html`
 3. **Toque no botão compartilhar** 🔗 (ícone de quadrado com seta para cima)
 4. **Role para baixo** e toque em **"Adicionar à Tela de Início"**
-5. **Edite o nome** (opcional) - já vem como "ProSaúde"
+5. **Edite o nome** (opcional) - já vem como "Horário Inteligente"
 6. **Toque em "Adicionar"**
 7. **Pronto!** O ícone aparece na tela inicial
 
@@ -53,8 +53,8 @@ O sistema ProSaúde agora é um **Progressive Web App (PWA)** completo! Os médi
 
 | Recurso | Descrição |
 |---------|-----------|
-| **Nome** | ProSaúde - Agendamento Médico |
-| **Nome curto** | ProSaúde |
+| **Nome** | Horário Inteligente - Agendamento Médico |
+| **Nome curto** | Horário Inteligente |
 | **Ícone** | ♥+ (coração médico azul) |
 | **Cor principal** | Azul (#3b82f6) |
 | **Tela inicial** | Login |
@@ -84,9 +84,9 @@ O sistema ProSaúde agora é um **Progressive Web App (PWA)** completo! Os médi
 2. Pressione **F12** (DevTools)
 3. Vá na aba **"Application"**
 4. No menu lateral:
-   - **Manifest** → Deve mostrar "ProSaúde" com ícones
+   - **Manifest** → Deve mostrar "Horário Inteligente" com ícones
    - **Service Workers** → Deve mostrar "activated and is running"
-   - **Cache Storage** → Deve mostrar "prosaude-v1.0.0"
+   - **Cache Storage** → Deve mostrar "horariointeligente-v1.0.0"
 
 ### No Celular:
 
@@ -139,7 +139,7 @@ done
 ## 🚀 URLs de Acesso:
 
 **Produção:**
-- Desktop: `https://prosaude.horariointeligente.com.br/static/login.html`
+- Desktop: `https://drjoao.horariointeligente.com.br/static/login.html`
 - Mobile: Mesma URL (instala como app)
 
 **Desenvolvimento:**

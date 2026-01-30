@@ -1,4 +1,4 @@
-# 🔔 Sistema de Lembretes Automáticos - ProSaude
+# 🔔 Sistema de Lembretes Automáticos - Horário Inteligente
 
 **Data de Implementação:** 28 de novembro de 2025
 **Desenvolvedor:** Marco (com assistência de Claude Code)
@@ -8,7 +8,7 @@
 
 ## 📋 Resumo da Implementação
 
-O sistema de lembretes automáticos foi implementado com sucesso, permitindo que o ProSaude envie notificações via WhatsApp para pacientes em **3 momentos diferentes** antes da consulta:
+O sistema de lembretes automáticos foi implementado com sucesso, permitindo que o Horário Inteligente envie notificações via WhatsApp para pacientes em **3 momentos diferentes** antes da consulta:
 
 - ⏰ **24 horas antes** - Lembrete com confirmação de presença
 - 🔔 **3 horas antes** - Preparação para a consulta
@@ -293,7 +293,7 @@ alembic upgrade head
 ### 3. Iniciar o Sistema
 ```bash
 # Via systemd
-sudo systemctl restart prosaude.service
+sudo systemctl restart horariointeligente.service
 
 # Ou manualmente
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
@@ -316,7 +316,7 @@ curl -X POST http://localhost:8000/api/reminders/scheduler/run-now
 tail -f logs/app.log | grep -E "🔔|⏰|📅"
 
 # Logs do serviço
-journalctl -u prosaude.service -f
+journalctl -u horariointeligente.service -f
 ```
 
 ---
@@ -443,12 +443,12 @@ curl -X POST http://localhost:8000/api/reminders/scheduler/run-now
 
 **Ver Logs:**
 ```bash
-journalctl -u prosaude.service -f --since "10 minutes ago"
+journalctl -u horariointeligente.service -f --since "10 minutes ago"
 ```
 
 **Reiniciar Sistema:**
 ```bash
-sudo systemctl restart prosaude.service
+sudo systemctl restart horariointeligente.service
 ```
 
 ---
@@ -468,7 +468,7 @@ sudo systemctl restart prosaude.service
 
 ---
 
-**Sistema desenvolvido com ❤️ para o ProSaude**
+**Sistema desenvolvido com ❤️ para o Horário Inteligente**
 **Implementação completa em 28/11/2025**
 
 ✅ **Pronto para uso!**

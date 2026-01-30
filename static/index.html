@@ -894,13 +894,13 @@
                 <!-- Header -->
                 <div class="text-center mb-12">
                     <span class="inline-block bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-semibold mb-4">
-                        <i class="fas fa-gift mr-2"></i>OFERTA EXCLUSIVA DE LANÇAMENTO
+                        <i class="fas fa-gift mr-2"></i>OFERTA EXCLUSIVA
                     </span>
                     <h2 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
                         Garanta Condições Especiais
                     </h2>
                     <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-                        Cadastre-se agora e seja o primeiro a saber quando lançarmos - com desconto exclusivo!
+                        Cadastre-se agora e garanta seu desconto exclusivo!
                     </p>
                 </div>
 
@@ -1046,7 +1046,7 @@
                                 class="w-5 h-5 mt-1 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                             >
                             <label for="pc-aceite" class="text-gray-600 text-sm">
-                                Aceito receber comunicações sobre o lançamento e concordo com a
+                                Aceito receber comunicações e concordo com a
                                 <a href="/static/politica-privacidade.html" target="_blank" class="text-blue-600 hover:underline">Política de Privacidade</a>
                                 <span class="text-red-500">*</span>
                             </label>
@@ -1077,8 +1077,8 @@
                         </div>
                         <h3 class="text-2xl font-bold text-gray-800 mb-4">Cadastro Realizado!</h3>
                         <p class="text-gray-600 mb-6">
-                            Você está na lista VIP! Verifique seu email para confirmar.<br>
-                            Em breve entraremos em contato com as condições especiais.
+                            Cadastro realizado com sucesso! Verifique seu email para confirmar.<br>
+                            Entraremos em contato com as condições especiais.
                         </p>
                         <a href="https://demo.horariointeligente.com.br" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
                             <i class="fas fa-play mr-2"></i>Explorar Demo
@@ -1465,7 +1465,7 @@
                         document.getElementById('pc-success').scrollIntoView({ behavior: 'smooth', block: 'center' });
                     } else if (response.status === 409) {
                         // Email duplicado
-                        alert('Este email já está cadastrado para o pré-lançamento. Verifique seu email para mais informações!');
+                        alert('Este email já está cadastrado. Verifique seu email para mais informações!');
                         submitBtn.innerHTML = originalBtnText;
                         submitBtn.disabled = false;
                     } else if (response.status === 429) {

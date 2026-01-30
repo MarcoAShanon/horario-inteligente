@@ -1,8 +1,8 @@
-# Sistema de Autenticação e Gestão de Usuários - ProSaúde
+# Sistema de Autenticação e Gestão de Usuários - Horário Inteligente
 
 ## Visão Geral
 
-Sistema completo de autenticação e gestão de usuários para o ProSaúde SaaS, incluindo:
+Sistema completo de autenticação e gestão de usuários para o Horário Inteligente SaaS, incluindo:
 - Cadastro de novos usuários (médicos e secretárias)
 - Login com email e senha
 - Recuperação de senha via email
@@ -505,8 +505,8 @@ SMTP_SERVER=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USERNAME=seu-email@gmail.com
 SMTP_PASSWORD=sua-senha-app
-SMTP_FROM_EMAIL=noreply@prosaude.com
-SMTP_FROM_NAME=ProSaúde Sistema
+SMTP_FROM_EMAIL=noreply@horariointeligente.com.br
+SMTP_FROM_NAME=Horário Inteligente Sistema
 
 # Base URL para links de recuperação
 BASE_URL=https://seu-dominio.com
@@ -678,6 +678,6 @@ Dados críticos para backup:
 
 ## Conclusão
 
-Este sistema fornece uma base sólida e profissional para gestão de usuários no ProSaúde SaaS. Com autenticação segura, recuperação de senha via email, e gestão completa de perfis, os médicos e secretárias podem gerenciar suas informações de forma autônoma e segura.
+Este sistema fornece uma base sólida e profissional para gestão de usuários no Horário Inteligente SaaS. Com autenticação segura, recuperação de senha via email, e gestão completa de perfis, os médicos e secretárias podem gerenciar suas informações de forma autônoma e segura.
 
 Para questões ou sugestões, consulte o desenvolvedor responsável.

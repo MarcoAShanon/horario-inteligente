@@ -9,19 +9,19 @@
 
 ### **Opção 1: Diretamente pelo Dashboard**
 ```
-https://prosaude.horariointeligente.com.br/static/dashboard.html
+https://drjoao.horariointeligente.com.br/static/dashboard.html
 ```
 
 ### **Opção 2: Pelo Login Principal**
 ```
-1. Acesse: https://prosaude.horariointeligente.com.br/static/login.html
+1. Acesse: https://drjoao.horariointeligente.com.br/static/login.html
 2. Faça login
 3. Clique em "Dashboard" no menu superior
 ```
 
 ### **Opção 3: Pelo Calendário**
 ```
-1. Acesse: https://prosaude.horariointeligente.com.br/static/calendario-unificado.html
+1. Acesse: https://drjoao.horariointeligente.com.br/static/calendario-unificado.html
 2. No menu superior, clique no botão "Dashboard"
 ```
 
@@ -79,13 +79,13 @@ Senha: admin123
 ## 🎯 Passos para Visualizar os Gráficos
 
 ### **Passo 1: Faça Login**
-1. Acesse: https://prosaude.horariointeligente.com.br/static/login.html
+1. Acesse: https://drjoao.horariointeligente.com.br/static/login.html
 2. Use: `admin@prosaude.com` / `admin123`
 3. Clique em **"Entrar"**
 
 ### **Passo 2: Vá para o Dashboard**
 - **Opção A:** Você será levado ao Calendário → Clique no botão "Dashboard" no topo
-- **Opção B:** Acesse direto: https://prosaude.horariointeligente.com.br/static/dashboard.html
+- **Opção B:** Acesse direto: https://drjoao.horariointeligente.com.br/static/dashboard.html
 
 ### **Passo 3: Veja os Gráficos**
 1. Você verá automaticamente o **Mês Atual** (Dezembro 2025)
@@ -147,11 +147,11 @@ Senha: admin123
 **Solução:**
 1. Limpe o cache do navegador (Ctrl + Shift + Del)
 2. Faça logout e login novamente
-3. Acesse direto: https://prosaude.horariointeligente.com.br/static/dashboard.html
+3. Acesse direto: https://drjoao.horariointeligente.com.br/static/dashboard.html
 
 ### **Problema 2: "Internal Server Error"**
 **Solução:**
-1. Verifique se está usando o subdomínio correto: `prosaude.horariointeligente.com.br`
+1. Verifique se está usando o subdomínio correto: `drjoao.horariointeligente.com.br`
 2. Não use: `horariointeligente.com.br` (sem subdomínio)
 
 ### **Problema 3: Dashboard vazio (sem dados)**
@@ -185,9 +185,9 @@ Senha: admin123
 ## 🔗 Links Úteis
 
 ### **Produção:**
-- 🏠 **Login:** https://prosaude.horariointeligente.com.br/static/login.html
-- 📊 **Dashboard:** https://prosaude.horariointeligente.com.br/static/dashboard.html
-- 📅 **Calendário:** https://prosaude.horariointeligente.com.br/static/calendario-unificado.html
+- 🏠 **Login:** https://drjoao.horariointeligente.com.br/static/login.html
+- 📊 **Dashboard:** https://drjoao.horariointeligente.com.br/static/dashboard.html
+- 📅 **Calendário:** https://drjoao.horariointeligente.com.br/static/calendario-unificado.html
 
 ### **Documentação:**
 - 📄 **Melhorias Dashboard:** `/root/sistema_agendamento/MELHORIAS_DASHBOARD.md`
@@ -199,7 +199,7 @@ Senha: admin123
 
 Execute estes passos para validar:
 
-- [ ] 1. Acesse https://prosaude.horariointeligente.com.br/static/login.html
+- [ ] 1. Acesse https://drjoao.horariointeligente.com.br/static/login.html
 - [ ] 2. Faça login com `admin@prosaude.com` / `admin123`
 - [ ] 3. Clique em "Dashboard" no menu superior
 - [ ] 4. Veja os 4 cards principais com números
@@ -217,8 +217,8 @@ Execute estes passos para validar:
 ## 📞 Suporte
 
 **Em caso de problemas:**
-1. Verifique logs do servidor: `journalctl -u prosaude.service -f`
-2. Reinicie o serviço: `sudo systemctl restart prosaude.service`
+1. Verifique logs do servidor: `journalctl -u horariointeligente.service -f`
+2. Reinicie o serviço: `sudo systemctl restart horariointeligente.service`
 3. Consulte a documentação completa em `MELHORIAS_DASHBOARD.md`
 
 ---

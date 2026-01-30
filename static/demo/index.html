@@ -152,7 +152,7 @@
                         <i class="fas fa-gift mr-1"></i> OFERTA ESPECIAL
                     </span>
                     <h3 class="text-2xl font-bold mb-2">Gostou do que viu?</h3>
-                    <p class="text-purple-100">Cadastre-se para garantir preço especial de lançamento!</p>
+                    <p class="text-purple-100">Cadastre-se e garanta condições especiais!</p>
                 </div>
             </div>
 
@@ -212,7 +212,7 @@
                         <input type="checkbox" id="modal-pc-aceite" required
                             class="w-4 h-4 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500">
                         <label for="modal-pc-aceite" class="text-gray-600 text-xs">
-                            Aceito receber comunicações sobre o lançamento e concordo com a
+                            Aceito receber comunicações e concordo com a
                             <a href="/static/politica-privacidade.html" target="_blank" class="text-purple-600 hover:underline">Política de Privacidade</a> *
                         </label>
                     </div>
@@ -426,7 +426,7 @@
                         // Salvar cookie para não mostrar novamente
                         setCookie('preCadastroModalClosed', 'true', 24);
                     } else if (response.status === 409) {
-                        alert('Este email já está cadastrado para o pré-lançamento!');
+                        alert('Este email já está cadastrado!');
                         submitBtn.innerHTML = originalBtnText;
                         submitBtn.disabled = false;
                     } else if (response.status === 429) {

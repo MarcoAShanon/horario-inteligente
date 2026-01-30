@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seed Script - Clínica PróSaúde
+Seed Script - Consultório Demonstração
 Horário Inteligente SaaS
 
 Cria dados de teste para validar o sistema completo:
@@ -9,8 +9,8 @@ Cria dados de teste para validar o sistema completo:
 - Horários de atendimento
 
 Uso:
-    python scripts/seed_prosaude.py          # Dry-run (mostra o que seria criado)
-    python scripts/seed_prosaude.py --execute  # Executa de verdade
+    python scripts/seed_clinica_teste.py          # Dry-run (mostra o que seria criado)
+    python scripts/seed_clinica_teste.py --execute  # Executa de verdade
 """
 
 import sys
@@ -33,20 +33,20 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 
-def seed_prosaude(execute: bool = False):
-    """Cria dados de teste da Clínica PróSaúde"""
+def seed_clinica_teste(execute: bool = False):
+    """Cria dados de teste do Consultório Demonstração"""
 
     db = SessionLocal()
 
     try:
         print("=" * 60)
-        print("SEED: Clínica PróSaúde")
+        print("SEED: Consultório Demonstração")
         print("=" * 60)
 
         # ============ 1. VERIFICAR SE JÁ EXISTE ============
-        existing = db.query(Cliente).filter(Cliente.subdomain == "prosaude").first()
+        existing = db.query(Cliente).filter(Cliente.subdomain == "drjoao").first()
         if existing:
-            print(f"\n✅ Cliente 'prosaude' já existe (ID: {existing.id})")
+            print(f"\n✅ Cliente 'drjoao' já existe (ID: {existing.id})")
             print("   Vou atualizar os dados e adicionar médicos de teste.")
             cliente_id = existing.id
 
@@ -65,14 +65,14 @@ def seed_prosaude(execute: bool = False):
         if not cliente_id:
             print("\n📋 CLIENTE (Tenant):")
             cliente_data = {
-                "nome": "Clínica PróSaúde",
+                "nome": "Consultório Demonstração",
                 "cnpj": "12.345.678/0001-90",
-                "email": "contato@prosaude.teste",
+                "email": "contato@teste.local",
                 "telefone": "(21) 3333-4444",
                 "endereco": "Av. Rio Branco, 123 - Centro, Rio de Janeiro - RJ",
-                "subdomain": "prosaude",
+                "subdomain": "drjoao",
                 "whatsapp_numero": "+5521923670092",
-                "whatsapp_instance": "ProSaude",
+                "whatsapp_instance": "HorarioInteligente",
                 "logo_icon": "fa-clinic-medical",
                 "cor_primaria": "#10b981",
                 "cor_secundaria": "#059669",
@@ -98,7 +98,7 @@ def seed_prosaude(execute: bool = False):
         medicos_data = [
             {
                 "nome": "Ana Silva",
-                "email": "ana@prosaude.teste",
+                "email": "ana@teste.local",
                 "senha": "ana123",
                 "crm": "SEC-001",
                 "especialidade": "Secretária",
@@ -107,7 +107,7 @@ def seed_prosaude(execute: bool = False):
             },
             {
                 "nome": "Dr. Carlos Mendes",
-                "email": "carlos@prosaude.teste",
+                "email": "carlos@teste.local",
                 "senha": "carlos123",
                 "crm": "CRM-RJ 12345",
                 "especialidade": "Cardiologia",
@@ -123,7 +123,7 @@ def seed_prosaude(execute: bool = False):
             },
             {
                 "nome": "Dra. Maria Santos",
-                "email": "maria@prosaude.teste",
+                "email": "maria@teste.local",
                 "senha": "maria123",
                 "crm": "CRM-RJ 54321",
                 "especialidade": "Dermatologia",
@@ -254,39 +254,39 @@ def seed_prosaude(execute: bool = False):
             print(f"""
 ✅ Dados criados com sucesso!
 
-🏥 Cliente: Clínica PróSaúde (ID: {cliente_id})
-   Subdomain: prosaude
+🏥 Cliente: Consultório Demonstração (ID: {cliente_id})
+   Subdomain: drjoao
    WhatsApp: +5521923670092
 
 👤 Usuários criados:
    1. Ana Silva (Secretária)
-      Email: ana@prosaude.teste
+      Email: ana@teste.local
       Senha: ana123
 
    2. Dr. Carlos Mendes (Cardiologia)
-      Email: carlos@prosaude.teste
+      Email: carlos@teste.local
       Senha: carlos123
       Horários: Seg-Sex 08:00-12:00, 14:00-18:00
 
    3. Dra. Maria Santos (Dermatologia)
-      Email: maria@prosaude.teste
+      Email: maria@teste.local
       Senha: maria123
       Horários: Seg/Qua/Sex 09:00-17:00
 
 🔗 Acesse:
-   - Login: https://prosaude.horariointeligente.com.br/static/login.html
-   - Dashboard: https://prosaude.horariointeligente.com.br/static/dashboard.html
-   - Conversas: https://prosaude.horariointeligente.com.br/static/conversas.html
+   - Login: https://drjoao.horariointeligente.com.br/static/login.html
+   - Dashboard: https://drjoao.horariointeligente.com.br/static/dashboard.html
+   - Conversas: https://drjoao.horariointeligente.com.br/static/conversas.html
 """)
         else:
             print("""
 🔍 DRY-RUN: Nenhum dado foi criado.
 
 Para executar de verdade, use:
-   python scripts/seed_prosaude.py --execute
+   python scripts/seed_clinica_teste.py --execute
 
 Para recriar dados existentes:
-   python scripts/seed_prosaude.py --execute --force
+   python scripts/seed_clinica_teste.py --execute --force
 """)
 
     except Exception as e:
@@ -299,4 +299,4 @@ Para recriar dados existentes:
 
 if __name__ == "__main__":
     execute = "--execute" in sys.argv
-    seed_prosaude(execute=execute)
+    seed_clinica_teste(execute=execute)

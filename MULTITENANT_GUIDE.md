@@ -163,7 +163,7 @@ TTL: 300
 ```
 # Adicionar para cada clínica
 drmarco.horariointeligente.com.br → SEU-IP
-prosaude.horariointeligente.com.br → SEU-IP
+drjoao.horariointeligente.com.br → SEU-IP
 clinicax.horariointeligente.com.br → SEU-IP
 ```
 
@@ -331,7 +331,7 @@ SELECT * FROM pacientes WHERE cliente_id = 3;  -- Clínica 2
                            │
            ┌───────────────┴───────────────┐
            │                               │
-    drmarco.horariointeligente.com.br   prosaude.horariointeligente.com.br
+    drmarco.horariointeligente.com.br   drjoao.horariointeligente.com.br
            │                               │
            └───────────────┬───────────────┘
                            │

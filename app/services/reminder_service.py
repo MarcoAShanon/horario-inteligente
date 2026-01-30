@@ -21,7 +21,7 @@ class ReminderService:
     """
 
     def __init__(self):
-        self.instance_name = "ProSaude"  # Nome da instância Evolution API
+        self.instance_name = "HorarioInteligente"  # Nome da instância Evolution API (legado)
 
     async def process_all_reminders(self) -> Dict[str, Any]:
         """

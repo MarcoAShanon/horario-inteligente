@@ -194,14 +194,14 @@ Adicionar mais logs para debug:
 vim /root/sistema_agendamento/app/api/webhooks.py
 
 # Reiniciar serviço
-sudo systemctl restart prosaude.service
+sudo systemctl restart horariointeligente.service
 ```
 
 ### Passo 2: Enviar Áudio de Teste
 1. Enviar áudio curto (5-10s) pelo WhatsApp
 2. Verificar logs:
 ```bash
-journalctl -u prosaude.service -f | grep -E "áudio|audio|messageType"
+journalctl -u horariointeligente.service -f | grep -E "áudio|audio|messageType"
 ```
 
 ### Passo 3: Verificar Logs Esperados

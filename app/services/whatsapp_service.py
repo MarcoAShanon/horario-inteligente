@@ -1,6 +1,7 @@
 # app/services/whatsapp_service.py
 import aiohttp
 import logging
+import os
 import base64
 from typing import Optional, Dict, Any
 
@@ -9,12 +10,12 @@ logger = logging.getLogger(__name__)
 
 class WhatsAppService:
     """
-    Serviço para integração com Evolution API WhatsApp
+    Serviço para integração com Evolution API WhatsApp (legado)
     """
-    
+
     def __init__(self):
         self.evolution_url = "http://localhost:8080"
-        self.api_key = "evolution-api-prosaude-123"
+        self.api_key = os.getenv("EVOLUTION_API_KEY", "")
         self.headers = {
             "Content-Type": "application/json",
             "apikey": self.api_key
@@ -30,7 +31,7 @@ class WhatsAppService:
         Envia mensagem de texto via Evolution API
         
         Args:
-            instance_name: Nome da instância (ex: "prosaude-whatsapp")
+            instance_name: Nome da instância Evolution API
             to_number: Número destino (ex: "5521999999999")
             message: Texto da mensagem
             

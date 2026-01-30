@@ -348,7 +348,7 @@ Um novo agendamento foi confirmado na sua agenda.
 - ✅ Botão "Marcar Falta" oculta-se automaticamente quando status é incompatível
 - ✅ Reset automático do estado do botão ao reabrir detalhes
 - ✅ Correção de nome da tabela: `medico_config` → `configuracoes_medico`
-- ✅ Correção de instância WhatsApp: `prosaude-whatsapp` → `ProSaude`
+- ✅ Correção de instância WhatsApp: `prosaude-whatsapp` → `HorarioInteligente`
 - ✅ Limpeza de banco com reset de sequências para testes
 
 ---
@@ -364,7 +364,7 @@ https://horariointeligente.com.br
 
 **Clínicas Multi-Tenant:**
 ```
-https://prosaude.horariointeligente.com.br
+https://drjoao.horariointeligente.com.br
 https://drmarco.horariointeligente.com.br
 https://[sua-clinica].horariointeligente.com.br
 ```
@@ -378,14 +378,14 @@ https://[sua-clinica].horariointeligente.com.br
 - **FastAPI:** Porta 8000 (internal)
 - **PostgreSQL:** Banco multi-tenant
 - **Redis:** Cache e conversas isoladas por tenant
-- **WhatsApp:** Evolution API (instância: ProSaude)
+- **WhatsApp:** API Oficial Meta (Evolution API legada)
 
 ### Status do Sistema:
 
 ✅ DNS configurado e propagado
 ✅ SSL válido até 28/02/2026
 ✅ Nginx rodando (multi-tenant)
-✅ FastAPI ativo (systemd: prosaude.service)
+✅ FastAPI ativo (systemd: horariointeligente.service)
 ✅ Firewall configurado (portas 80, 443, 22)
 ✅ Redirecionamento HTTP → HTTPS automático
 ✅ WhatsApp conectado e funcionando
@@ -677,8 +677,8 @@ O sistema é um **PWA completo**, permitindo instalação como app nativo:
 **Manifesto (`static/manifest.json`):**
 ```json
 {
-  "name": "ProSaude - Agendamento Médico",
-  "short_name": "ProSaude",
+  "name": "Horário Inteligente - Agendamento",
+  "short_name": "HorarioInteligente",
   "start_url": "/static/dashboard.html",
   "display": "standalone",
   "theme_color": "#3b82f6",
@@ -806,9 +806,9 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ### Configuração Systemd (Produção)
 
 ```bash
-# /etc/systemd/system/prosaude.service
+# /etc/systemd/system/horariointeligente.service
 [Unit]
-Description=ProSaude FastAPI Sistema de Agendamento
+Description=Horário Inteligente - Sistema de Agendamento
 After=network.target
 
 [Service]
@@ -827,9 +827,9 @@ WantedBy=multi-user.target
 ```bash
 # Ativar serviço
 sudo systemctl daemon-reload
-sudo systemctl enable prosaude.service
-sudo systemctl start prosaude.service
-sudo systemctl status prosaude.service
+sudo systemctl enable horariointeligente.service
+sudo systemctl start horariointeligente.service
+sudo systemctl status horariointeligente.service
 ```
 
 ### Nginx (Reverse Proxy Multi-Tenant)

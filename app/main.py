@@ -301,6 +301,10 @@ try:
     app.include_router(analytics_router, tags=["Analytics"])
     app.include_router(admin_comissoes_router, tags=["Admin - Comissões"])
 
+    from app.api.admin_whatsapp import router as admin_whatsapp_router
+    app.include_router(admin_whatsapp_router, tags=["Admin - WhatsApp"])
+    logger.info("✅ Router Admin WhatsApp registrado")
+
     # Router de Pré-Cadastro (leads de lançamento)
     from app.api.pre_cadastro import router as pre_cadastro_router
     app.include_router(pre_cadastro_router, tags=["Pre-Cadastro"])
@@ -350,6 +354,11 @@ try:
     from app.api.parceiro_auth import router as parceiro_auth_router
     app.include_router(parceiro_auth_router, tags=["Portal do Parceiro"])
     logger.info("✅ Router do portal do parceiro registrado")
+
+    # Router de Ativação de Parceiro (página pública de aceite de termos)
+    from app.api.parceiro_ativacao import router as parceiro_ativacao_router
+    app.include_router(parceiro_ativacao_router, tags=["Ativacao Parceiro"])
+    logger.info("✅ Router de ativação de parceiro registrado")
 
     # Router de Registro Público de Parceiro (auto-registro)
     from app.api.parceiro_registro import router as parceiro_registro_router
@@ -483,7 +492,7 @@ async def root(request: Request):
     """
     Rota raiz - Serve o site comercial ou redireciona para login
     - Domínio principal (horariointeligente.com.br): Site comercial
-    - Subdomínios (prosaude.horariointeligente.com.br): Login do cliente
+    - Subdomínios (drjoao.horariointeligente.com.br): Login do cliente
     - Admin (admin.horariointeligente.com.br): Login admin
     """
     # Verificar se é o painel admin

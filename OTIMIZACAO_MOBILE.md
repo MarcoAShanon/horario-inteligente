@@ -1,4 +1,4 @@
-# 📱 Otimização Mobile - ProSaude
+# 📱 Otimização Mobile - Horário Inteligente
 
 ## 📋 Resumo das Alterações
 
@@ -6,7 +6,7 @@ Data: 28 de novembro de 2025
 Versão: 2.4.1
 Status: ✅ **Concluído**
 
-Todas as interfaces web do sistema ProSaude foram **otimizadas para dispositivos móveis**, garantindo uma experiência perfeita em smartphones, tablets e desktops.
+Todas as interfaces web do sistema Horário Inteligente foram **otimizadas para dispositivos móveis**, garantindo uma experiência perfeita em smartphones, tablets e desktops.
 
 ---
 
@@ -85,7 +85,7 @@ Desktop: ≥ 768px  (md:)
 #### Melhorias Implementadas:
 
 **Header:**
-- ✅ Título **abreviado em mobile** ("Minha Agenda" vs "Minha Agenda - ProSaude")
+- ✅ Título **abreviado em mobile** ("Minha Agenda" vs "Minha Agenda - Horário Inteligente")
 - ✅ Nome do usuário **oculto em mobile/tablet**, visível em desktop
 - ✅ Botão sair **apenas ícone em mobile**, com texto em desktop
 
@@ -285,7 +285,7 @@ max-w-sm sm:w-96        <!-- largura máxima adaptativa -->
 
 ## ✅ Conclusão
 
-**Todas as interfaces do sistema ProSaude foram otimizadas para mobile!**
+**Todas as interfaces do sistema Horário Inteligente foram otimizadas para mobile!**
 
 ### Resultado Final:
 - ✅ **100% responsivo** em todos os tamanhos de tela

@@ -54,7 +54,7 @@ Tipo: A  | Nome: *   | Valor: 145.223.95.35  (wildcard - todos subdomínios)
 nslookup horariointeligente.com.br 8.8.8.8
 # Retorna: 145.223.95.35 ✅
 
-nslookup prosaude.horariointeligente.com.br 8.8.8.8
+nslookup drjoao.horariointeligente.com.br 8.8.8.8
 # Retorna: 145.223.95.35 ✅
 ```
 
@@ -121,12 +121,12 @@ sudo apt install certbot python3-certbot-nginx -y
 sudo certbot --nginx \
   -d horariointeligente.com.br \
   -d www.horariointeligente.com.br \
-  -d prosaude.horariointeligente.com.br
+  -d drjoao.horariointeligente.com.br
 ```
 
 **Certificado:**
 ```
-Domínios: horariointeligente.com.br, www.horariointeligente.com.br, prosaude.horariointeligente.com.br
+Domínios: horariointeligente.com.br, www.horariointeligente.com.br, drjoao.horariointeligente.com.br
 Validade: até 28 de Fevereiro de 2026
 Renovação: Automática (cron job criado pelo Certbot)
 ```
@@ -177,7 +177,7 @@ sudo ufw status
 ```python
 def extract_subdomain(request):
     # Extrai subdomínio do host
-    # prosaude.horariointeligente.com.br → "prosaude"
+    # drjoao.horariointeligente.com.br → "prosaude"
 
 def get_cliente_id(subdomain):
     # Busca cliente_id no banco de dados
@@ -217,7 +217,7 @@ sudo chmod 644 /root/sistema_agendamento/static/*.html
 nslookup horariointeligente.com.br 8.8.8.8
 # ✅ Address: 145.223.95.35
 
-nslookup prosaude.horariointeligente.com.br 8.8.8.8
+nslookup drjoao.horariointeligente.com.br 8.8.8.8
 # ✅ Address: 145.223.95.35
 
 nslookup www.horariointeligente.com.br 8.8.8.8
@@ -226,11 +226,11 @@ nslookup www.horariointeligente.com.br 8.8.8.8
 
 ### 2. HTTPS
 ```bash
-curl -I https://prosaude.horariointeligente.com.br/static/login.html
+curl -I https://drjoao.horariointeligente.com.br/static/login.html
 # ✅ HTTP/1.1 200 OK
 # ✅ Server: nginx/1.24.0 (Ubuntu)
 
-curl -I https://prosaude.horariointeligente.com.br/webhook/whatsapp/test
+curl -I https://drjoao.horariointeligente.com.br/webhook/whatsapp/test
 # ✅ HTTP/1.1 200 OK
 # ✅ {"status":"active","multi_tenant":true,...}
 ```
@@ -249,13 +249,13 @@ curl -I https://horariointeligente.com.br
 # ✅ Usa clínica padrão (prosaude)
 
 # Teste 2: Subdomínio específico
-curl https://prosaude.horariointeligente.com.br/webhook/whatsapp/test
+curl https://drjoao.horariointeligente.com.br/webhook/whatsapp/test
 # ✅ {"cliente_id_teste":1,...}
 ```
 
 ### 5. Arquivos Estáticos
 ```bash
-curl -I https://prosaude.horariointeligente.com.br/static/login.html
+curl -I https://drjoao.horariointeligente.com.br/static/login.html
 # ✅ HTTP/1.1 200 OK
 # ✅ Content-Type: text/html
 # ✅ Cache-Control: max-age=2592000
@@ -284,17 +284,17 @@ curl -I https://prosaude.horariointeligente.com.br/static/login.html
 ### Produção:
 ```
 https://horariointeligente.com.br
-https://prosaude.horariointeligente.com.br
-https://prosaude.horariointeligente.com.br/static/login.html
-https://prosaude.horariointeligente.com.br/webhook/whatsapp/test
+https://drjoao.horariointeligente.com.br
+https://drjoao.horariointeligente.com.br/static/login.html
+https://drjoao.horariointeligente.com.br/webhook/whatsapp/test
 ```
 
 ### API:
 ```
-GET  https://prosaude.horariointeligente.com.br/webhook/whatsapp/test
-GET  https://prosaude.horariointeligente.com.br/sistema/status
-POST https://prosaude.horariointeligente.com.br/api/auth/login
-GET  https://prosaude.horariointeligente.com.br/api/agendamentos/calendario
+GET  https://drjoao.horariointeligente.com.br/webhook/whatsapp/test
+GET  https://drjoao.horariointeligente.com.br/sistema/status
+POST https://drjoao.horariointeligente.com.br/api/auth/login
+GET  https://drjoao.horariointeligente.com.br/api/agendamentos/calendario
 ```
 
 ---
@@ -309,7 +309,7 @@ GET  https://prosaude.horariointeligente.com.br/api/agendamentos/calendario
 sudo systemctl status nginx
 
 # FastAPI
-sudo systemctl status prosaude.service
+sudo systemctl status horariointeligente.service
 
 # SSL
 sudo certbot certificates
@@ -322,7 +322,7 @@ sudo tail -f /var/log/nginx/horariointeligente_access.log
 sudo tail -f /var/log/nginx/horariointeligente_error.log
 
 # FastAPI
-sudo journalctl -u prosaude.service -f
+sudo journalctl -u horariointeligente.service -f
 ```
 
 **Reiniciar serviços:**
@@ -334,7 +334,7 @@ sudo systemctl reload nginx
 sudo systemctl restart nginx
 
 # FastAPI
-sudo systemctl restart prosaude.service
+sudo systemctl restart horariointeligente.service
 ```
 
 **SSL:**
@@ -379,8 +379,8 @@ sudo certbot --nginx -d novosubdominio.horariointeligente.com.br
 **Causa:** FastAPI não está rodando
 **Solução:**
 ```bash
-sudo systemctl status prosaude.service
-sudo systemctl start prosaude.service
+sudo systemctl status horariointeligente.service
+sudo systemctl start horariointeligente.service
 ```
 
 ### Problema: SSL expirado

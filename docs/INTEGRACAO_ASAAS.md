@@ -284,7 +284,7 @@ curl -X POST "https://horariointeligente.com.br/api/billing/charges" \
 
 ### Verificar logs do webhook
 ```bash
-journalctl -u prosaude.service --since "15 minutes ago" | grep -i "asaas\|payment"
+journalctl -u horariointeligente.service --since "15 minutes ago" | grep -i "asaas\|payment"
 ```
 
 ### Verificar pagamentos no banco

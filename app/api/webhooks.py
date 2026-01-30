@@ -54,7 +54,7 @@ def get_cliente_id_from_instance(instance_name: str) -> int:
     Usa cache para performance
 
     Exemplos:
-    - "ProSaude" → 1
+    - "HorarioInteligente" → 1
     - "DrMarco" → 2
     - "ClinicaX" → 3
     """
@@ -1375,7 +1375,7 @@ async def refresh_qr_code(request: Request):
                         html_content = f'''<!DOCTYPE html>
 <html>
 <head>
-    <title>QR Code - WhatsApp ProSaude</title>
+    <title>QR Code - WhatsApp Horário Inteligente</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -1499,7 +1499,7 @@ async def refresh_qr_code(request: Request):
 <body>
     <div class="container">
         <h1>📱 Conectar WhatsApp</h1>
-        <p class="subtitle">Sistema ProSaude - Horário Inteligente</p>
+        <p class="subtitle">Horário Inteligente - Sistema de Agendamento</p>
 
         <div class="success">
             <strong>✅ QR Code gerado com sucesso!</strong>
@@ -1532,7 +1532,7 @@ async def refresh_qr_code(request: Request):
         <button class="refresh-btn" onclick="location.reload()">🔄 Atualizar QR Code Agora</button>
 
         <div class="footer">
-            ProSaude - Agendamento Inteligente com IA<br>
+            Horário Inteligente - Agendamento com IA<br>
             Gerado em {datetime.now().strftime("%d/%m/%Y às %H:%M:%S")}
         </div>
     </div>

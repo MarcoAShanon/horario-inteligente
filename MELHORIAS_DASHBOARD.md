@@ -166,7 +166,7 @@ O dashboard foi completamente renovado com **visualizações por período** (mê
 **Exemplo de Request:**
 ```bash
 curl -H "Authorization: Bearer TOKEN" \
-  "https://prosaude.horariointeligente.com.br/api/dashboard/metricas?periodo=mes_atual"
+  "https://drjoao.horariointeligente.com.br/api/dashboard/metricas?periodo=mes_atual"
 ```
 
 **Exemplo de Response:**
@@ -372,7 +372,7 @@ Secretária vê:
 
 ### **1. Acessar Dashboard V2**
 ```
-URL: https://prosaude.horariointeligente.com.br/static/dashboard-v2.html
+URL: https://drjoao.horariointeligente.com.br/static/dashboard-v2.html
 ```
 
 ### **2. Fazer Login**
@@ -489,31 +489,31 @@ URL: https://prosaude.horariointeligente.com.br/static/dashboard-v2.html
 ### **Testar API**
 ```bash
 # Login
-TOKEN=$(curl -s -X POST 'https://prosaude.horariointeligente.com.br/api/auth/login' \
+TOKEN=$(curl -s -X POST 'https://drjoao.horariointeligente.com.br/api/auth/login' \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d 'username=tania@prosaude.com&password=admin123' | jq -r '.access_token')
 
 # Mês Atual
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://prosaude.horariointeligente.com.br/api/dashboard/metricas?periodo=mes_atual" | jq '.'
+  "https://drjoao.horariointeligente.com.br/api/dashboard/metricas?periodo=mes_atual" | jq '.'
 
 # Mês Anterior
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://prosaude.horariointeligente.com.br/api/dashboard/metricas?periodo=mes_anterior" | jq '.'
+  "https://drjoao.horariointeligente.com.br/api/dashboard/metricas?periodo=mes_anterior" | jq '.'
 
 # 12 Meses
 curl -H "Authorization: Bearer $TOKEN" \
-  "https://prosaude.horariointeligente.com.br/api/dashboard/metricas?periodo=12_meses" | jq '.'
+  "https://drjoao.horariointeligente.com.br/api/dashboard/metricas?periodo=12_meses" | jq '.'
 ```
 
 ### **Reiniciar Sistema**
 ```bash
-sudo systemctl restart prosaude.service
+sudo systemctl restart horariointeligente.service
 ```
 
 ### **Ver Logs**
 ```bash
-journalctl -u prosaude.service -f
+journalctl -u horariointeligente.service -f
 ```
 
 ---

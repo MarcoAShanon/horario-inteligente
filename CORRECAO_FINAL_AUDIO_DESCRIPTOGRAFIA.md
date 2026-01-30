@@ -234,7 +234,7 @@ mac_key = expanded[48:80]    # 32 bytes
 
 ### 1. Verificar Serviço:
 ```bash
-sudo systemctl status prosaude.service
+sudo systemctl status horariointeligente.service
 # Deve mostrar: Active: active (running)
 ```
 
@@ -245,7 +245,7 @@ sudo systemctl status prosaude.service
 
 ### 3. Monitorar Logs:
 ```bash
-journalctl -u prosaude.service -f | grep -E "🔐|Descriptografia|transcri"
+journalctl -u horariointeligente.service -f | grep -E "🔐|Descriptografia|transcri"
 ```
 
 ### 4. Resultado Esperado:

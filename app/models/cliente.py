@@ -14,13 +14,13 @@ class Cliente(BaseModel):
     endereco = Column(Text, nullable=True)
 
     # Multi-tenant (NOVO)
-    subdomain = Column(String(100), unique=True, nullable=True, index=True)  # drmarco, prosaude, etc
+    subdomain = Column(String(100), unique=True, nullable=True, index=True)  # drmarco, drjoao, etc
     whatsapp_instance = Column(String(100), nullable=True)  # Nome da instância Evolution API
     whatsapp_numero = Column(String(20), nullable=True)  # Número WhatsApp da clínica
     whatsapp_phone_number_id = Column(String(50), nullable=True, index=True)  # Phone Number ID da Meta
 
     # Branding e Identidade Visual (NOVO - v3.4.0)
-    logo_url = Column(String(500), nullable=True)  # URL da logo (ex: /static/logos/prosaude.png)
+    logo_url = Column(String(500), nullable=True)  # URL da logo (ex: /static/logos/clinica.png)
     logo_icon = Column(String(100), default="fa-heartbeat", nullable=False)  # Ícone FontAwesome
     cor_primaria = Column(String(7), default="#3b82f6", nullable=False)  # Cor primária (hex)
     cor_secundaria = Column(String(7), default="#1e40af", nullable=False)  # Cor secundária (hex)

@@ -1,4 +1,4 @@
-# Sistema de Autenticação Web - ProSaúde
+# Sistema de Autenticação Web - Horário Inteligente
 
 **Data:** 28 de novembro de 2025
 **Autor:** Marco com assistência do Claude Code

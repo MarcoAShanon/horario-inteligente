@@ -1,4 +1,4 @@
-# Individualização de Configurações por Médico - ProSaude
+# Individualização de Configurações por Médico - Horário Inteligente
 
 **Data:** 28 de novembro de 2025
 **Desenvolvedor:** Marco (com assistência de Claude Code)
@@ -499,7 +499,7 @@ horarios_base = db.execute(text("""
 
 ✅ **Implementação 100% Concluída!**
 
-O sistema ProSaude agora possui configurações **completamente individualizadas por médico**, permitindo:
+O sistema Horário Inteligente agora possui configurações **completamente individualizadas por médico**, permitindo:
 - Durações de consulta diferentes para cada profissional
 - Horários semanais flexíveis com múltiplos períodos por dia
 - Interface moderna e intuitiva para gerenciamento
@@ -512,4 +512,4 @@ O sistema ProSaude agora possui configurações **completamente individualizadas
 
 **Desenvolvido com ❤️ por Marco com assistência de Claude Code**
 **Data:** 28 de novembro de 2025
-**Versão do Sistema:** ProSaude 2.4.0
+**Versão do Sistema:** Horário Inteligente 2.4.0

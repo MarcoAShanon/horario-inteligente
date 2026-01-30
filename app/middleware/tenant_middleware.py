@@ -19,7 +19,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
     Exemplos:
     - drmarco.horariointeligente.com.br → cliente_id = X
-    - prosaude.horariointeligente.com.br → cliente_id = 1
+    - drjoao.horariointeligente.com.br → cliente_id = 11
     - localhost:8000 → cliente_id = 1 (desenvolvimento)
     """
 
@@ -93,7 +93,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         Exemplos:
         - drmarco.horariointeligente.com.br → drmarco
-        - prosaude.horariointeligente.com.br → prosaude
+        - drjoao.horariointeligente.com.br → drjoao
         - localhost:8000 → localhost (dev)
         - 192.168.1.100:8000 → 192.168.1.100 (dev)
         """
@@ -101,7 +101,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
 
         # Desenvolvimento: localhost ou IP
         if host in ['localhost', '127.0.0.1'] or re.match(r'^\d+\.\d+\.\d+\.\d+$', host):
-            return 'prosaude'  # Padrão para desenvolvimento
+            return 'drjoao'  # Padrão para desenvolvimento
 
         # Caso especial: domínio principal sem subdomínio (verificar ANTES de extrair partes)
         if host in ['horariointeligente.com.br', 'www.horariointeligente.com.br']:
@@ -114,7 +114,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
             return parts[0]
 
         # Fallback
-        return 'prosaude'
+        return 'drjoao'
 
     async def get_cliente_id(self, request: Request) -> int:
         """
@@ -141,7 +141,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 # Fallback para cliente padrão em desenvolvimento
                 import os
                 default_cliente = int(os.getenv('DEFAULT_CLIENTE_ID', '3'))
-                if subdomain in ['localhost', 'prosaude']:
+                if subdomain in ['localhost', 'drjoao']:
                     cliente_id = default_cliente
                     logger.info(f"🔧 Usando cliente padrão (DEFAULT_CLIENTE_ID): {cliente_id}")
                 else:

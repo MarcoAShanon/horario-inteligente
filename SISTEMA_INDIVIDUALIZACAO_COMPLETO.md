@@ -1,5 +1,5 @@
 # Sistema de Individualização de Agendas por Médico
-**ProSaude - Versão 2.4.0**
+**Horário Inteligente - Versão 2.4.0**
 **Data de Implementação:** 28 de novembro de 2025
 **Desenvolvedor:** Marco com Claude Code
 
@@ -258,9 +258,9 @@ Senha: admin123
 
 ### Verificar Serviço
 ```bash
-sudo systemctl status prosaude.service
-sudo systemctl restart prosaude.service
-journalctl -u prosaude.service -f
+sudo systemctl status horariointeligente.service
+sudo systemctl restart horariointeligente.service
+journalctl -u horariointeligente.service -f
 ```
 
 ### Testar API

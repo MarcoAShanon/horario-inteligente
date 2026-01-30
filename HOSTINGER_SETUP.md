@@ -104,7 +104,7 @@ nslookup horariointeligente.com.br
 nslookup www.horariointeligente.com.br
 
 # Teste 3: Wildcard (qualquer subdomínio)
-nslookup prosaude.horariointeligente.com.br
+nslookup drjoao.horariointeligente.com.br
 nslookup drmarco.horariointeligente.com.br
 nslookup teste123.horariointeligente.com.br
 
@@ -217,7 +217,7 @@ sudo certbot --nginx -d horariointeligente.com.br -d www.horariointeligente.com.
 
 # Se pedir wildcard, pode ser que precise validação DNS manual
 # Nesse caso, use sem wildcard primeiro:
-sudo certbot --nginx -d horariointeligente.com.br -d www.horariointeligente.com.br -d prosaude.horariointeligente.com.br
+sudo certbot --nginx -d horariointeligente.com.br -d www.horariointeligente.com.br -d drjoao.horariointeligente.com.br
 
 # Durante instalação:
 # - Email: seu-email@exemplo.com
@@ -249,14 +249,14 @@ curl -I http://horariointeligente.com.br
 No navegador:
 https://horariointeligente.com.br
 https://www.horariointeligente.com.br
-https://prosaude.horariointeligente.com.br
+https://drjoao.horariointeligente.com.br
 
 # Deve aparecer cadeado verde 🔒
 ```
 
 #### **Teste 3: Login Multi-Tenant**
 ```
-https://prosaude.horariointeligente.com.br/static/login.html
+https://drjoao.horariointeligente.com.br/static/login.html
 
 Login: admin@prosaude.com
 Senha: admin123
@@ -264,7 +264,7 @@ Senha: admin123
 
 #### **Teste 4: API Status**
 ```
-https://prosaude.horariointeligente.com.br/webhook/whatsapp/test
+https://drjoao.horariointeligente.com.br/webhook/whatsapp/test
 
 # Deve retornar JSON com:
 {
@@ -331,7 +331,7 @@ sudo ufw reload
 sudo certbot --nginx \
   -d horariointeligente.com.br \
   -d www.horariointeligente.com.br \
-  -d prosaude.horariointeligente.com.br \
+  -d drjoao.horariointeligente.com.br \
   -d drmarco.horariointeligente.com.br
 
 # Adicionar mais subdomínios conforme criar clínicas
@@ -362,13 +362,13 @@ sudo certbot certonly --manual --preferred-challenges dns \
 **Solução:**
 ```bash
 # Verificar status
-sudo systemctl status prosaude.service
+sudo systemctl status horariointeligente.service
 
 # Se não estiver rodando:
-sudo systemctl start prosaude.service
+sudo systemctl start horariointeligente.service
 
 # Ver logs
-sudo journalctl -u prosaude.service -n 50
+sudo journalctl -u horariointeligente.service -n 50
 
 # Verificar porta 8000
 sudo netstat -tlnp | grep 8000
@@ -395,7 +395,7 @@ VALUES ('Nome da Clínica', 'subdominio', 'ProSaude', 'profissional', true, NOW(
 # Sair: \q
 
 # Reiniciar FastAPI para limpar cache
-sudo systemctl restart prosaude.service
+sudo systemctl restart horariointeligente.service
 ```
 
 ---
@@ -407,10 +407,10 @@ sudo systemctl restart prosaude.service
 - [ ] DNS propagado (teste com `nslookup`)
 - [ ] Nginx instalado e rodando
 - [ ] Configuração Nginx criada e ativada
-- [ ] FastAPI rodando (`systemctl status prosaude.service`)
+- [ ] FastAPI rodando (`systemctl status horariointeligente.service`)
 - [ ] Firewall permite portas 80, 443, 22
 - [ ] SSL instalado e funcionando (cadeado verde)
-- [ ] Login funciona em https://prosaude.horariointeligente.com.br
+- [ ] Login funciona em https://drjoao.horariointeligente.com.br
 - [ ] Logs sem erros
 
 ---
@@ -431,15 +431,15 @@ sudo systemctl restart nginx
 
 # === INSTALAR SSL ===
 sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d horariointeligente.com.br -d www.horariointeligente.com.br -d prosaude.horariointeligente.com.br
+sudo certbot --nginx -d horariointeligente.com.br -d www.horariointeligente.com.br -d drjoao.horariointeligente.com.br
 
 # === VERIFICAR STATUS ===
 sudo systemctl status nginx
-sudo systemctl status prosaude.service
+sudo systemctl status horariointeligente.service
 
 # === VER LOGS ===
 sudo tail -f /var/log/nginx/horariointeligente_access.log
-sudo journalctl -u prosaude.service -f
+sudo journalctl -u horariointeligente.service -f
 
 # === FIREWALL (se necessário) ===
 sudo ufw allow 80/tcp

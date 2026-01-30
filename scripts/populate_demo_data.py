@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Script para popular banco de dados com dados de demonstração
-Cliente: ProSaude
+Cliente: drjoao (Consultório Demonstração)
 - 100 agendamentos no mês de dezembro 2025
 - 70 confirmados, 18 remarcados, 12 cancelados
 - 30 pacientes fictícios
@@ -199,7 +199,7 @@ def main():
     print("=" * 60)
     print("🎯 POPULAR BANCO COM DADOS DE DEMONSTRAÇÃO")
     print("=" * 60)
-    print("Cliente: ProSaude")
+    print("Cliente: drjoao (Consultório Demonstração)")
     print("Período: Dezembro 2025")
     print("Agendamentos: 100 (70 confirmados, 18 remarcados, 12 cancelados)")
     print("=" * 60)
@@ -211,13 +211,13 @@ def main():
         return
 
     with engine.connect() as conn:
-        # 1. Buscar cliente ProSaude
+        # 1. Buscar cliente drjoao
         result = conn.execute(
-            text("SELECT id FROM clientes WHERE subdomain = 'prosaude'")
+            text("SELECT id FROM clientes WHERE subdomain = 'drjoao'")
         )
         cliente = result.fetchone()
         if not cliente:
-            print("❌ Cliente ProSaude não encontrado!")
+            print("❌ Cliente drjoao não encontrado!")
             return
         cliente_id = cliente[0]
         print(f"\n✓ Cliente encontrado (ID: {cliente_id})")
@@ -295,7 +295,7 @@ def main():
         print("=" * 60)
         print("\n💡 Agora você pode:")
         print("  1. Acessar o dashboard em: https://horariointeligente.com.br")
-        print("  2. Fazer login como: admin@prosaude.com")
+        print("  2. Fazer login como: drjoao@teste.com")
         print("  3. Ver as estatísticas e gráficos com dados reais")
         print("\n" + "=" * 60)
 

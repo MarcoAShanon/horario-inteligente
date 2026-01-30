@@ -3,6 +3,7 @@ Serviço de Monitoramento do WhatsApp
 Verifica status da conexão e envia alertas se desconectar
 """
 import logging
+import os
 import aiohttp
 from datetime import datetime
 from typing import Dict, Any
@@ -16,8 +17,8 @@ class WhatsAppMonitor:
 
     def __init__(self):
         self.evolution_url = "http://localhost:8080"
-        self.api_key = "evolution-api-prosaude-123"
-        self.instances = ["ProSaude"]  # Lista de instâncias para monitorar
+        self.api_key = os.getenv("EVOLUTION_API_KEY", "")
+        self.instances = ["HorarioInteligente"]  # Lista de instâncias para monitorar
         self.last_status = {}
 
     async def verificar_status_instancia(self, instance_name: str) -> Dict[str, Any]:

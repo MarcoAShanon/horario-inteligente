@@ -131,7 +131,7 @@ redis-cli KEYS "*5524988493257*" | xargs -r redis-cli DEL
 
 ### 1. Verificar Serviço
 ```bash
-sudo systemctl status prosaude.service
+sudo systemctl status horariointeligente.service
 ```
 ✅ Deve mostrar: `Active: active (running)`
 
@@ -142,7 +142,7 @@ sudo systemctl status prosaude.service
 
 ### 3. Monitorar Logs
 ```bash
-journalctl -u prosaude.service -f | grep -E "áudio|Audio|Whisper|transcri"
+journalctl -u horariointeligente.service -f | grep -E "áudio|Audio|Whisper|transcri"
 ```
 
 ### 4. Comportamento Esperado
@@ -240,12 +240,12 @@ Implementaremos descriptografia manual usando:
 
 ### Ver Logs em Tempo Real
 ```bash
-journalctl -u prosaude.service -f
+journalctl -u horariointeligente.service -f
 ```
 
 ### Ver Últimas Mensagens
 ```bash
-journalctl -u prosaude.service --since "5 minutes ago" | grep áudio
+journalctl -u horariointeligente.service --since "5 minutes ago" | grep áudio
 ```
 
 ### Status do WhatsApp
@@ -256,7 +256,7 @@ curl http://localhost:8080/instance/connectionState/ProSaude \
 
 ### Reiniciar se Necessário
 ```bash
-sudo systemctl restart prosaude.service
+sudo systemctl restart horariointeligente.service
 ```
 
 ---

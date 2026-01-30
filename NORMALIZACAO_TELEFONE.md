@@ -1,4 +1,4 @@
-# Normalização de Telefone - ProSaude/Horário Inteligente
+# Normalização de Telefone - Horário Inteligente
 
 ## 📋 Visão Geral
 

@@ -1,4 +1,4 @@
-# 🔐 Sistema de Gestão de Agendamentos - ProSaude
+# 🔐 Sistema de Gestão de Agendamentos - Horário Inteligente
 
 **Data de Implementação:** 28 de novembro de 2025
 **Desenvolvedor:** Marco (com assistência de Claude Code)
@@ -529,7 +529,7 @@ curl -H "Authorization: Bearer TOKEN" \
 
 **Reiniciar Sistema:**
 ```bash
-sudo systemctl restart prosaude.service
+sudo systemctl restart horariointeligente.service
 ```
 
 ---
@@ -549,7 +549,7 @@ sudo systemctl restart prosaude.service
 
 ---
 
-**Sistema desenvolvido com ❤️ para o ProSaude**
+**Sistema desenvolvido com ❤️ para o Horário Inteligente**
 **Implementação completa em 28/11/2025**
 
 ✅ **Pronto para uso!**
