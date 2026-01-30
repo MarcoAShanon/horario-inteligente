@@ -7,12 +7,14 @@ Endpoints para gerenciar conversas e mensagens do painel de atendimento.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from typing import Optional, List
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import pytz
 
 from app.database import get_db
+from app.utils.phone_utils import format_phone_display
 
 # Timezone Brasil
 TZ_BRAZIL = pytz.timezone('America/Sao_Paulo')
@@ -54,6 +56,7 @@ class MensagemResponse(BaseModel):
 class ConversaResponse(BaseModel):
     id: int
     paciente_telefone: str
+    paciente_telefone_formatado: Optional[str] = None
     paciente_nome: Optional[str]
     status: str
     atendente_id: Optional[int]
@@ -118,6 +121,16 @@ async def listar_conversas(
 
     conversas = ConversaService.listar_conversas(db, cliente_id, status_enum, limit)
 
+    # Buscar nomes de pacientes para conversas sem paciente_nome
+    telefones_sem_nome = [c.paciente_telefone for c in conversas if not c.paciente_nome]
+    mapa_nomes = {}
+    if telefones_sem_nome:
+        pacientes_encontrados = db.execute(text(
+            "SELECT telefone, nome FROM pacientes "
+            "WHERE telefone IN :telefones AND cliente_id = :cli_id"
+        ), {"telefones": tuple(telefones_sem_nome), "cli_id": cliente_id}).fetchall()
+        mapa_nomes = {p.telefone: p.nome for p in pacientes_encontrados}
+
     # Enriquecer com contagem de não lidas e última mensagem
     result = []
     for conv in conversas:
@@ -136,7 +149,8 @@ async def listar_conversas(
         conv_dict = {
             "id": conv.id,
             "paciente_telefone": conv.paciente_telefone,
-            "paciente_nome": conv.paciente_nome,
+            "paciente_telefone_formatado": format_phone_display(conv.paciente_telefone),
+            "paciente_nome": conv.paciente_nome or mapa_nomes.get(conv.paciente_telefone),
             "status": conv.status.value,
             "atendente_id": conv.atendente_id,
             "ultima_mensagem_at": conv.ultima_mensagem_at,
@@ -256,10 +270,21 @@ async def get_conversa(
     # Buscar mensagens
     mensagens = ConversaService.buscar_mensagens(db, conversa_id)
 
+    # Enriquecer paciente_nome se NULL
+    paciente_nome = conversa.paciente_nome
+    if not paciente_nome:
+        paciente_encontrado = db.execute(text(
+            "SELECT nome FROM pacientes "
+            "WHERE telefone = :tel AND cliente_id = :cli_id LIMIT 1"
+        ), {"tel": conversa.paciente_telefone, "cli_id": current_user["cliente_id"]}).fetchone()
+        if paciente_encontrado:
+            paciente_nome = paciente_encontrado.nome
+
     return {
         "id": conversa.id,
         "paciente_telefone": conversa.paciente_telefone,
-        "paciente_nome": conversa.paciente_nome,
+        "paciente_telefone_formatado": format_phone_display(conversa.paciente_telefone),
+        "paciente_nome": paciente_nome,
         "status": conversa.status.value,
         "atendente_id": conversa.atendente_id,
         "ultima_mensagem_at": conversa.ultima_mensagem_at,
@@ -324,18 +349,98 @@ async def enviar_mensagem(
             }
         )
 
+    # Definir contexto de billing
+    try:
+        from app.services.whatsapp_billing_service import set_billing_context
+        set_billing_context(current_user["cliente_id"])
+    except Exception:
+        pass
+
     # Enviar via WhatsApp (API Oficial Meta)
     from app.services.whatsapp_official_service import WhatsAppOfficialService
     whatsapp = WhatsAppOfficialService()
 
     try:
         if request.template_name:
-            # Enviar via template
-            result = await whatsapp.send_template(
-                to=conversa.paciente_telefone,
-                template_name=request.template_name,
-                parameters=request.template_params or []
-            )
+            # Enviar via template usando WhatsAppTemplateService
+            from app.services.whatsapp_template_service import get_template_service
+            template_service = get_template_service()
+
+            nome_paciente = conversa.paciente_nome or "Paciente"
+
+            if request.template_name == "boas_vindas_clinica":
+                # Buscar nome da clínica
+                nome_clinica = "nossa clínica"
+                try:
+                    clinica = db.execute(text(
+                        "SELECT nome FROM clientes WHERE id = :cid"
+                    ), {"cid": current_user["cliente_id"]}).fetchone()
+                    if clinica:
+                        nome_clinica = clinica[0]
+                except Exception:
+                    pass
+
+                result = await template_service.enviar_boas_vindas(
+                    telefone=conversa.paciente_telefone,
+                    clinica=nome_clinica,
+                    paciente=nome_paciente
+                )
+                # Texto para salvar na conversa (conteúdo real do template)
+                from app.services.whatsapp_template_service import WhatsAppTemplateService
+                request.conteudo = WhatsAppTemplateService.renderizar_template(
+                    "boas_vindas_clinica",
+                    paciente=nome_paciente,
+                    clinica=nome_clinica
+                )
+
+            elif request.template_name == "paciente_inativo":
+                # Buscar nome da clínica e última consulta
+                nome_clinica = "nossa clínica"
+                ultima_consulta = "algum tempo"
+                try:
+                    clinica = db.execute(text(
+                        "SELECT nome FROM clientes WHERE id = :cid"
+                    ), {"cid": current_user["cliente_id"]}).fetchone()
+                    if clinica:
+                        nome_clinica = clinica[0]
+
+                    pac = db.execute(text("""
+                        SELECT MAX(a.data_hora) FROM agendamentos a
+                        JOIN pacientes p ON a.paciente_id = p.id
+                        WHERE p.telefone = :tel AND a.status IN ('realizado', 'realizada', 'concluido', 'concluida')
+                    """), {"tel": conversa.paciente_telefone}).fetchone()
+                    if pac and pac[0]:
+                        import pytz
+                        tz_brazil = pytz.timezone('America/Sao_Paulo')
+                        dt = pac[0]
+                        if hasattr(dt, 'astimezone'):
+                            dt = dt.astimezone(tz_brazil)
+                        ultima_consulta = dt.strftime('%d/%m/%Y')
+                except Exception:
+                    pass
+
+                result = await template_service.enviar_paciente_inativo(
+                    telefone=conversa.paciente_telefone,
+                    paciente=nome_paciente,
+                    clinica=nome_clinica,
+                    ultima_consulta=ultima_consulta
+                )
+                # Texto para salvar na conversa (conteúdo real do template)
+                from app.services.whatsapp_template_service import WhatsAppTemplateService
+                request.conteudo = WhatsAppTemplateService.renderizar_template(
+                    "paciente_inativo",
+                    paciente=nome_paciente,
+                    clinica=nome_clinica,
+                    ultima_consulta=ultima_consulta
+                )
+
+            else:
+                # Template desconhecido — fallback para envio direto
+                result = await whatsapp.send_template(
+                    to=conversa.paciente_telefone,
+                    template_name=request.template_name,
+                    components=None
+                )
         else:
             # Enviar mensagem livre (janela ativa)
             result = await whatsapp.send_text(to=conversa.paciente_telefone, message=request.conteudo)

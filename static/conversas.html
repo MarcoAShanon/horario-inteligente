@@ -416,13 +416,10 @@
                     </label>
                     <select id="templateSelect" onchange="onTemplateChange()">
                         <option value="">-- Selecione um template --</option>
-                        <option value="lembrete_consulta">Lembrete de Consulta</option>
-                        <option value="confirmacao_agendamento">Confirmação de Agendamento</option>
-                        <option value="retorno_contato">Retorno de Contato</option>
+                        <option value="boas_vindas_clinica">Boas-vindas ao Paciente</option>
+                        <option value="paciente_inativo">Reativação de Paciente Inativo</option>
                     </select>
-                    <div id="templateParams" class="template-params hidden">
-                        <label class="text-xs text-gray-600">Parâmetros do template:</label>
-                        <input type="text" id="templateParam1" placeholder="Parâmetro 1 (ex: nome do paciente)">
+                    <div id="templatePreview" class="hidden mt-2 p-2 bg-blue-50 rounded text-xs text-gray-700 border border-blue-200">
                     </div>
                 </div>
 
@@ -650,22 +647,35 @@
 
         function onTemplateChange() {
             const templateSelect = document.getElementById('templateSelect');
-            const templateParams = document.getElementById('templateParams');
+            const templatePreview = document.getElementById('templatePreview');
             const mensagemInput = document.getElementById('mensagemInput');
 
+            // Nome do paciente da conversa atual
+            const nomePaciente = conversaAtual ? conversaAtual.paciente_nome || 'Paciente' : 'Paciente';
+            const primeiroNome = nomePaciente.split(' ')[0];
+
+            // Nome da clínica (do contexto do usuário logado)
+            const nomeClinica = currentUser?.nome_clinica || 'nossa clínica';
+
+            const templatePreviews = {
+                'boas_vindas_clinica': `Boas-vindas: Olá ${primeiroNome}! Seja bem-vindo(a) à ${nomeClinica}. Estamos à disposição para cuidar da sua saúde.`,
+                'paciente_inativo': `Reativação: Olá ${primeiroNome}! Faz tempo que não nos vemos. A ${nomeClinica} está com saudades! Que tal agendar uma consulta?`
+            };
+
             if (templateSelect.value) {
-                templateParams.classList.remove('hidden');
-                // Preencher o input com uma prévia do template
-                const templatePreviews = {
-                    'lembrete_consulta': 'Olá! Passando para lembrar da sua consulta agendada.',
-                    'confirmacao_agendamento': 'Seu agendamento foi confirmado com sucesso!',
-                    'retorno_contato': 'Olá! Estamos retornando seu contato.'
+                templatePreview.classList.remove('hidden');
+                templatePreview.innerHTML = `<i class="fab fa-whatsapp text-green-600 mr-1"></i> ${templatePreviews[templateSelect.value] || ''}`;
+
+                // Preencher input com texto de exibição para salvar na conversa
+                const textosSalvar = {
+                    'boas_vindas_clinica': `Boas-vindas enviada para ${primeiroNome}`,
+                    'paciente_inativo': `Mensagem de reativação enviada para ${primeiroNome}`
                 };
-                mensagemInput.value = templatePreviews[templateSelect.value] || '';
+                mensagemInput.value = textosSalvar[templateSelect.value] || '';
                 mensagemInput.classList.remove('input-desabilitado');
-                mensagemInput.disabled = false;
+                mensagemInput.disabled = true; // Não permite editar — o template é fixo
             } else {
-                templateParams.classList.add('hidden');
+                templatePreview.classList.add('hidden');
                 mensagemInput.value = '';
                 if (!janelaAtual.ativa) {
                     mensagemInput.classList.add('input-desabilitado');
@@ -680,12 +690,11 @@
             const input = document.getElementById('mensagemInput');
             const conteudo = input.value.trim();
             const templateSelect = document.getElementById('templateSelect');
-            const templateParam1 = document.getElementById('templateParam1');
 
-            if (!conteudo || !conversaAtual) return;
+            if (!conversaAtual) return;
 
             // Preparar payload
-            let payload = { conteudo, tipo: 'texto' };
+            let payload = { conteudo: conteudo || 'Template enviado', tipo: 'texto' };
 
             // Se janela expirada, verificar se tem template selecionado
             if (!janelaAtual.ativa) {
@@ -696,7 +705,6 @@
 
                 // Adicionar dados do template ao payload
                 payload.template_name = templateSelect.value;
-                payload.template_params = templateParam1.value ? [templateParam1.value] : [];
             }
 
             try {
@@ -730,8 +738,7 @@
                 // Limpar seleção de template se usado
                 if (!janelaAtual.ativa) {
                     templateSelect.value = '';
-                    templateParam1.value = '';
-                    document.getElementById('templateParams').classList.add('hidden');
+                    document.getElementById('templatePreview').classList.add('hidden');
                 }
 
             } catch (error) {
@@ -1003,7 +1010,8 @@
             if (busca) {
                 lista = lista.filter(c =>
                     (c.paciente_nome && c.paciente_nome.toLowerCase().includes(busca)) ||
-                    c.paciente_telefone.includes(busca)
+                    c.paciente_telefone.includes(busca) ||
+                    (c.paciente_telefone_formatado && c.paciente_telefone_formatado.includes(busca))
                 );
             }
 
@@ -1033,13 +1041,14 @@
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center justify-between">
                                 <span class="font-medium text-gray-800 truncate">
-                                    ${escapeHtml(conv.paciente_nome || conv.paciente_telefone)}
+                                    ${escapeHtml(conv.paciente_nome || conv.paciente_telefone_formatado || conv.paciente_telefone)}
                                 </span>
                                 <div class="flex items-center gap-1">
                                     ${urgenciaBadge}
                                     ${conv.nao_lidas > 0 ? `<span class="unread-badge">${conv.nao_lidas}</span>` : ''}
                                 </div>
                             </div>
+                            ${conv.paciente_nome ? `<p class="text-xs text-gray-400 truncate">${escapeHtml(conv.paciente_telefone_formatado || conv.paciente_telefone)}</p>` : ''}
                             <p class="text-sm text-gray-500 truncate">${escapeHtml(conv.ultima_mensagem || 'Sem mensagens')}</p>
                             <div class="flex items-center justify-between mt-1">
                                 <span class="status-badge ${getStatusClass(conv.status)}">${getStatusLabel(conv.status)}</span>
@@ -1112,8 +1121,8 @@
         }
 
         function atualizarHeader(conversa) {
-            document.getElementById('chatNome').textContent = conversa.paciente_nome || 'Paciente';
-            document.getElementById('chatTelefone').textContent = conversa.paciente_telefone;
+            document.getElementById('chatNome').textContent = conversa.paciente_nome || conversa.paciente_telefone_formatado || 'Paciente';
+            document.getElementById('chatTelefone').textContent = conversa.paciente_telefone_formatado || conversa.paciente_telefone;
 
             const statusEl = document.getElementById('chatStatus');
             statusEl.className = `status-badge ${getStatusClass(conversa.status)}`;
