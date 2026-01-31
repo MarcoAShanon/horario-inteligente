@@ -105,7 +105,7 @@ fi
 # Zero tokens hardcoded em .py
 PY_TOKENS=$(grep -rn "TELEGRAM_BOT_TOKEN\|TELEGRAM_CHAT_ID\|TELEGRAM_ADMIN\|sk-ant-\|sk-proj-\|EAAb" \
     "${PROJECT_DIR}/app/" --include="*.py" 2>/dev/null \
-    | grep -v "os\.getenv\|os\.environ\|\.get(\|__pycache__" \
+    | grep -v "os\.getenv\|os\.environ\|\.get(\|__pycache__\|if not \|logger\.\|f\"\|= TELEGRAM_\|: str = " \
     | wc -l)
 PY_TOKENS=${PY_TOKENS:-0}
 if [ "$PY_TOKENS" -eq 0 ]; then

@@ -144,7 +144,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 
 # ==================== CSRF PROTECTION ====================
 class CsrfSettings(BaseModel):
-    secret_key: str = os.getenv("SECRET_KEY", "")
+    secret_key: str = os.getenv("SECRET_KEY") or ""
     cookie_name: str = "csrf_token"
     cookie_secure: bool = os.getenv("ENVIRONMENT") == "production"  # HTTPS only em produção
     cookie_samesite: str = "lax"  # Proteção contra CSRF cross-site
