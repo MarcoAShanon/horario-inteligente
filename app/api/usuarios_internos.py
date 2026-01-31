@@ -14,6 +14,7 @@ import logging
 from app.database import get_db
 from app.api.admin import get_current_admin
 from app.services.auditoria_service import get_auditoria_service
+from app.api.auth import _unified_login_logic
 
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -409,96 +410,49 @@ async def login_interno(
     request: Request,
     db: Session = Depends(get_db)
 ):
-    """Login de usuário interno (verifica usuarios_internos e super_admins)"""
+    """Login de usuário interno - wrapper que usa lógica unificada + auditoria"""
     auditoria = get_auditoria_service(db)
     ip = request.client.host if request.client else None
-    origem = 'usuarios_internos'
 
-    # Buscar em usuarios_internos primeiro
-    usuario = db.execute(text("""
-        SELECT id, nome, email, senha_hash, perfil, ativo
-        FROM usuarios_internos WHERE email = :email
-    """), {"email": dados.email}).fetchone()
+    try:
+        # Chamar lógica unificada
+        result = await _unified_login_logic(dados.email, dados.senha, db, request)
 
-    # Fallback: buscar em super_admins
-    if not usuario:
-        super_admin = db.execute(text("""
-            SELECT id, nome, email, senha, ativo
-            FROM super_admins WHERE email = :email
-        """), {"email": dados.email}).fetchone()
+        user_info = result.get("user", {})
+        user_type = user_info.get("user_type") or user_info.get("tipo", "")
 
-        if super_admin:
-            # Mapear para o mesmo formato: (id, nome, email, senha_hash, perfil, ativo)
-            usuario = (super_admin[0], super_admin[1], super_admin[2], super_admin[3], 'admin', super_admin[4])
-            origem = 'super_admins'
+        # Registrar login bem-sucedido
+        auditoria.registrar_login(
+            usuario_id=user_info.get("id"),
+            usuario_tipo=user_type,
+            usuario_nome=user_info.get("nome", ""),
+            usuario_email=user_info.get("email", ""),
+            ip_address=ip,
+            user_agent=request.headers.get('user-agent'),
+            sucesso=True
+        )
 
-    if not usuario:
+        logger.info(f"Login interno bem-sucedido: {user_info.get('email')} ({user_type})")
+
+        # Retornar no formato legado esperado pelo frontend antigo
+        return {
+            "sucesso": True,
+            "usuario": {
+                "id": user_info.get("id"),
+                "nome": user_info.get("nome"),
+                "email": user_info.get("email"),
+                "perfil": user_info.get("perfil") or user_type
+            }
+        }
+
+    except HTTPException as e:
+        # Registrar falha de login na auditoria
         auditoria.registrar(
             acao='login',
             usuario_tipo='desconhecido',
             usuario_email=dados.email,
             ip_address=ip,
             sucesso=False,
-            erro_mensagem="Email não encontrado"
+            erro_mensagem=e.detail
         )
-        raise HTTPException(status_code=401, detail="Email ou senha incorretos")
-
-    if not usuario[5]:  # ativo
-        auditoria.registrar(
-            acao='login',
-            usuario_id=usuario[0],
-            usuario_tipo=usuario[4],
-            usuario_nome=usuario[1],
-            usuario_email=usuario[2],
-            ip_address=ip,
-            sucesso=False,
-            erro_mensagem="Usuário inativo"
-        )
-        raise HTTPException(status_code=401, detail="Usuário inativo")
-
-    if not verificar_senha(dados.senha, usuario[3]):
-        auditoria.registrar(
-            acao='login',
-            usuario_id=usuario[0],
-            usuario_tipo=usuario[4],
-            usuario_nome=usuario[1],
-            usuario_email=usuario[2],
-            ip_address=ip,
-            sucesso=False,
-            erro_mensagem="Senha incorreta"
-        )
-        raise HTTPException(status_code=401, detail="Email ou senha incorretos")
-
-    # Atualizar último acesso
-    if origem == 'usuarios_internos':
-        db.execute(text("""
-            UPDATE usuarios_internos SET ultimo_acesso = NOW() WHERE id = :id
-        """), {"id": usuario[0]})
-    else:
-        db.execute(text("""
-            UPDATE super_admins SET atualizado_em = NOW() WHERE id = :id
-        """), {"id": usuario[0]})
-    db.commit()
-
-    # Registrar login bem-sucedido
-    auditoria.registrar_login(
-        usuario_id=usuario[0],
-        usuario_tipo=usuario[4],
-        usuario_nome=usuario[1],
-        usuario_email=usuario[2],
-        ip_address=ip,
-        user_agent=request.headers.get('user-agent'),
-        sucesso=True
-    )
-
-    logger.info(f"Login interno bem-sucedido: {usuario[2]} ({usuario[4]}) via {origem}")
-
-    return {
-        "sucesso": True,
-        "usuario": {
-            "id": usuario[0],
-            "nome": usuario[1],
-            "email": usuario[2],
-            "perfil": usuario[4]
-        }
-    }
+        raise

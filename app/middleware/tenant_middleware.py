@@ -62,6 +62,14 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 response = await call_next(request)
                 return response
 
+            # Exceção especial para portal do parceiro
+            if subdomain == 'parceiro':
+                request.state.cliente_id = None  # Parceiro não tem cliente_id
+                request.state.is_admin = True  # Bypass tenant resolution
+                logger.debug(f"🤝 Portal Parceiro acessado: subdomain=parceiro")
+                response = await call_next(request)
+                return response
+
             # Exceção especial para ambiente demo
             if subdomain == 'demo':
                 request.state.cliente_id = 3  # ID fixo do cliente demo

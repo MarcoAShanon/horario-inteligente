@@ -24,9 +24,11 @@ router = APIRouter(prefix="/api/admin", tags=["Admin"])
 logger = logging.getLogger(__name__)
 
 # Configurações JWT
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("ERRO CRITICO: SECRET_KEY nao configurada. Defina a variavel de ambiente SECRET_KEY no arquivo .env")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 horas
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hora
 
 
 # ==================== AUTENTICAÇÃO ====================
@@ -72,7 +74,7 @@ async def get_current_admin(request: Request, db: Session = Depends(get_db)):
 
     token = auth_header.split(' ')[1]
 
-    # Verificar se é token do novo sistema (usuarios_internos)
+    # Caminho 1: Token do sistema usuarios_internos (string "interno_X")
     if token.startswith('interno_'):
         try:
             user_id = int(token.replace('interno_', ''))
@@ -110,9 +112,65 @@ async def get_current_admin(request: Request, db: Session = Depends(get_db)):
                 detail="Token inválido"
             )
 
-    # Token JWT legado (super_admins)
+    # Caminho 2 e 3: Decodificar JWT
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        # Caminho 2: Token unificado (tem source_table)
+        source_table = payload.get('source_table')
+        if source_table:
+            user_type = payload.get('user_type')
+            user_id = payload.get('sub') or payload.get('user_id')
+
+            # Validar que é um tipo admin
+            if user_type not in ('admin', 'financeiro', 'suporte'):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Acesso restrito a administradores"
+                )
+
+            # Buscar na tabela correta
+            if source_table == 'usuarios_internos':
+                result = db.execute(
+                    text("""
+                        SELECT id, nome, email, perfil, ativo
+                        FROM usuarios_internos
+                        WHERE id = :id AND perfil IN ('admin', 'financeiro', 'suporte')
+                    """),
+                    {"id": user_id}
+                ).fetchone()
+            elif source_table == 'super_admins':
+                result = db.execute(
+                    text("SELECT id, nome, email, 'admin' as perfil, ativo FROM super_admins WHERE id = :id"),
+                    {"id": user_id}
+                ).fetchone()
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Tipo de usuário sem permissão admin"
+                )
+
+            if not result:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Admin não encontrado"
+                )
+
+            if not result[4]:  # ativo
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Conta administrativa desativada"
+                )
+
+            return {
+                "id": result[0],
+                "nome": result[1],
+                "email": result[2],
+                "perfil": result[3],
+                "ativo": result[4]
+            }
+
+        # Caminho 3: Token JWT legado (super_admins - tem admin_id)
         admin_id = payload.get('admin_id')
         is_super_admin = payload.get('is_super_admin', False)
 
@@ -378,7 +436,8 @@ async def obter_cliente(
                     COUNT(DISTINCT p.id) as total_pacientes,
                     COUNT(DISTINCT CASE WHEN a.status NOT IN ('cancelado', 'remarcado', 'faltou') THEN a.id END) as total_agendamentos,
                     c.credenciais_enviadas_em,
-                    c.status
+                    c.status,
+                    c.endereco
                 FROM clientes c
                 LEFT JOIN medicos m ON m.cliente_id = c.id
                 LEFT JOIN pacientes p ON p.cliente_id = c.id
@@ -412,6 +471,7 @@ async def obter_cliente(
             "total_agendamentos": result[13],
             "credenciais_enviadas_em": result[14].isoformat() if result[14] else None,
             "status": result[15],
+            "endereco": result[16],
             "url": f"https://{result[2]}.horariointeligente.com.br"
         }
 

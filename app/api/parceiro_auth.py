@@ -17,11 +17,14 @@ import unicodedata
 
 from app.database import get_db
 from app.services.email_service import get_email_service
+from app.api.auth import _unified_login_logic
 
 router = APIRouter(prefix="/api/parceiro", tags=["Portal do Parceiro"])
 logger = logging.getLogger(__name__)
 
-SECRET_KEY = os.getenv("SECRET_KEY", "parceiro-secret-key-change-in-production")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("ERRO CRITICO: SECRET_KEY nao configurada. Defina a variavel de ambiente SECRET_KEY no arquivo .env")
 ALGORITHM = "HS256"
 
 
@@ -67,7 +70,7 @@ def criar_token_parceiro(parceiro_id: int, nome: str) -> str:
 
 
 def get_current_parceiro(request: Request):
-    """Dependency para obter parceiro autenticado do JWT"""
+    """Dependency para obter parceiro autenticado do JWT (legado e unificado)"""
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Token não fornecido")
@@ -75,6 +78,18 @@ def get_current_parceiro(request: Request):
     token = auth_header.replace("Bearer ", "")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        # Token unificado (tem source_table)
+        if payload.get("source_table"):
+            if payload.get("user_type") != "parceiro":
+                raise HTTPException(status_code=401, detail="Token inválido")
+            # Garantir que parceiro_id esteja presente
+            payload["parceiro_id"] = payload.get("parceiro_id") or payload.get("sub")
+            payload["tipo"] = "parceiro"
+            payload["nome"] = payload.get("nome", "")
+            return payload
+
+        # Token legado (tem tipo="parceiro")
         if payload.get("tipo") != "parceiro":
             raise HTTPException(status_code=401, detail="Token inválido")
         return payload
@@ -105,70 +120,26 @@ def gerar_senha_temporaria() -> str:
 @router.post("/login")
 async def login_parceiro(
     dados: ParceiroLogin,
+    request: Request = None,
     db: Session = Depends(get_db)
 ):
-    """Login do parceiro comercial"""
+    """Login do parceiro comercial - wrapper que usa lógica unificada"""
     try:
-        result = db.execute(
-            text("""
-                SELECT id, nome, email, senha_hash, ativo, status, token_ativacao
-                FROM parceiros_comerciais
-                WHERE email = :email
-            """),
-            {"email": dados.email}
-        ).fetchone()
+        # Chamar lógica unificada
+        result = await _unified_login_logic(dados.email, dados.senha, db, request)
 
-        if not result:
-            raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+        user_info = result.get("user", {})
 
-        parceiro_id, nome, email, senha_hash, ativo, status, token_ativacao = result
+        logger.info(f"[Parceiro] Login: {user_info.get('nome')} (ID={user_info.get('id')})")
 
-        if not ativo:
-            raise HTTPException(status_code=403, detail="Conta do parceiro desativada")
-
-        if not senha_hash:
-            raise HTTPException(status_code=401, detail="Conta sem senha definida. Contate o administrador.")
-
-        if not verificar_senha(dados.senha, senha_hash):
-            raise HTTPException(status_code=401, detail="Email ou senha incorretos")
-
-        # Verificar status do parceiro
-        if status == 'pendente_aprovacao':
-            raise HTTPException(
-                status_code=403,
-                detail="pendente_aprovacao"
-            )
-        elif status == 'pendente_aceite':
-            raise HTTPException(
-                status_code=403,
-                detail="pendente_ativacao"
-            )
-        elif status == 'suspenso':
-            raise HTTPException(status_code=403, detail="conta_suspensa")
-        elif status == 'inativo':
-            raise HTTPException(status_code=403, detail="conta_inativa")
-        elif status != 'ativo':
-            raise HTTPException(status_code=403, detail="Conta do parceiro nao esta ativa")
-
-        # Gerar JWT
-        token = criar_token_parceiro(parceiro_id, nome)
-
-        # Atualizar último login
-        db.execute(
-            text("UPDATE parceiros_comerciais SET ultimo_login = :agora WHERE id = :id"),
-            {"id": parceiro_id, "agora": datetime.now()}
-        )
-        db.commit()
-
-        logger.info(f"[Parceiro] Login: {nome} (ID={parceiro_id})")
-
+        # Retornar no formato legado esperado pelo frontend antigo
         return {
             "sucesso": True,
-            "token": token,
+            "token": result["access_token"],
             "parceiro": {
-                "id": parceiro_id,
-                "nome": nome,
-                "email": email
+                "id": user_info.get("id"),
+                "nome": user_info.get("nome"),
+                "email": user_info.get("email")
             }
         }
 

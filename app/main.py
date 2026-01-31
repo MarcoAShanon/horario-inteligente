@@ -114,9 +114,10 @@ root_dir = Path(__file__).parent.parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
-# Configurar Rate Limiter (proteção contra brute force)
+# Configurar Rate Limiter (proteção contra brute force e abuso)
 # Usa IP do cliente como identificador
-limiter = Limiter(key_func=get_remote_address)
+# Limite global: 120 requisições/minuto por IP para todos os endpoints
+limiter = Limiter(key_func=get_remote_address, default_limits=["120/minute"])
 
 # Criar instância do FastAPI
 app = FastAPI(
@@ -143,7 +144,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 
 # ==================== CSRF PROTECTION ====================
 class CsrfSettings(BaseModel):
-    secret_key: str = os.getenv("SECRET_KEY", "csrf-secret-key-change-in-production")
+    secret_key: str = os.getenv("SECRET_KEY", "")
     cookie_name: str = "csrf_token"
     cookie_secure: bool = os.getenv("ENVIRONMENT") == "production"  # HTTPS only em produção
     cookie_samesite: str = "lax"  # Proteção contra CSRF cross-site
@@ -174,19 +175,23 @@ ALLOWED_ORIGINS = [
     "https://app.horariointeligente.com.br",
     "https://demo.horariointeligente.com.br",
     "https://admin.horariointeligente.com.br",
-    # Desenvolvimento local
-    "http://localhost:3000",
-    "http://localhost:8000",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:8000",
 ]
+
+# Incluir localhost apenas em desenvolvimento
+if os.getenv("ENVIRONMENT") != "production":
+    ALLOWED_ORIGINS.extend([
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+    ])
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With", "X-CSRF-Token"],
 )
 
 # Middleware de Headers de Segurança
@@ -512,8 +517,11 @@ async def root(request: Request):
         # Servir o site comercial (landing page)
         return FileResponse("static/index.html")
     elif is_admin or subdomain == 'admin':
-        # Redirecionar para login admin (com versão para cache bust)
-        return RedirectResponse(url=f"/static/admin/login.html?v={STATIC_VERSION}", status_code=302)
+        # Redirecionar para login unificado com contexto admin
+        return RedirectResponse(url=f"/static/login.html?context=admin&v={STATIC_VERSION}", status_code=302)
+    elif subdomain == 'parceiro':
+        # Redirecionar para login unificado com contexto parceiro
+        return RedirectResponse(url=f"/static/login.html?context=parceiro&v={STATIC_VERSION}", status_code=302)
     elif is_demo or subdomain == 'demo':
         # Redirecionar para página de demo (com versão para cache bust)
         return RedirectResponse(url=f"/static/demo/index.html?v={STATIC_VERSION}", status_code=302)

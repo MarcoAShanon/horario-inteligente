@@ -21,15 +21,72 @@
 
     <!-- Design System -->
     <link rel="stylesheet" href="/static/css/design-system.css">
+
+    <style>
+        /* Tema padrão (cliente) */
+        body.context-default {
+            background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+        }
+        /* Tema admin */
+        body.context-admin {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        body.context-admin .login-card {
+            background: #111827;
+            border: 1px solid #374151;
+        }
+        body.context-admin .login-card * { color: #e5e7eb; }
+        body.context-admin .login-card .text-gray-600 { color: #9ca3af !important; }
+        body.context-admin .login-card input {
+            background: #1f2937;
+            border-color: #374151;
+            color: #fff;
+        }
+        body.context-admin .login-card input::placeholder { color: #6b7280; }
+        body.context-admin .login-card .btn-login {
+            background: linear-gradient(to right, #7c3aed, #db2777);
+        }
+        body.context-admin .login-card .btn-login:hover {
+            background: linear-gradient(to right, #6d28d9, #be185d);
+        }
+        body.context-admin .login-card .link-forgot { color: #9ca3af !important; }
+        body.context-admin .login-card .link-forgot:hover { color: #a78bfa !important; }
+        body.context-admin .login-logo { filter: brightness(0) invert(1); }
+        /* Tema parceiro */
+        body.context-parceiro {
+            background: #0f172a;
+        }
+        body.context-parceiro .login-card {
+            background: #111827;
+            border: 1px solid #1f2937;
+        }
+        body.context-parceiro .login-card * { color: #e5e7eb; }
+        body.context-parceiro .login-card .text-gray-600 { color: #9ca3af !important; }
+        body.context-parceiro .login-card input {
+            background: #1f2937;
+            border-color: #374151;
+            color: #fff;
+        }
+        body.context-parceiro .login-card input::placeholder { color: #6b7280; }
+        body.context-parceiro .login-card .btn-login {
+            background: linear-gradient(to right, #22c55e, #059669);
+        }
+        body.context-parceiro .login-card .btn-login:hover {
+            background: linear-gradient(to right, #16a34a, #047857);
+        }
+        body.context-parceiro .login-card .link-forgot { color: #9ca3af !important; }
+        body.context-parceiro .login-card .link-forgot:hover { color: #4ade80 !important; }
+        body.context-parceiro .login-logo { filter: brightness(0) invert(1); }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 w-full max-w-md mx-auto">
+<body class="context-default min-h-screen flex items-center justify-center p-4">
+    <div class="login-card bg-white rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 w-full max-w-md mx-auto">
         <!-- Logo e Título -->
         <div class="text-center mb-6 sm:mb-8">
             <div class="inline-flex items-center justify-center mb-3 sm:mb-4">
-                <img src="/static/images/logo.png" alt="Horário Inteligente" class="h-16 sm:h-20">
+                <img src="/static/images/logo.png" alt="Horário Inteligente" class="login-logo h-16 sm:h-20">
             </div>
-            <p class="text-sm sm:text-base text-gray-600">Sistema de Agendamento para Profissionais de Saúde</p>
+            <p id="loginSubtitle" class="text-sm sm:text-base text-gray-600">Sistema de Agendamento para Profissionais de Saúde</p>
         </div>
 
         <!-- Mensagem de erro -->
@@ -52,6 +109,17 @@
             <button onclick="reenviarVerificacao()" id="btnReenviar" class="w-full bg-yellow-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-yellow-600 transition">
                 <i class="fas fa-paper-plane mr-1"></i>Reenviar Email de Verificação
             </button>
+        </div>
+
+        <!-- Mensagem de parceiro pendente -->
+        <div id="parceiroPendente" class="hidden bg-blue-50 border border-blue-400 text-blue-800 px-4 py-4 rounded-lg mb-4">
+            <div class="flex items-start">
+                <i class="fas fa-clock mr-2 mt-1 text-blue-600"></i>
+                <div>
+                    <p class="font-semibold" id="parceiroStatusTitle">Cadastro em análise</p>
+                    <p class="text-sm mt-1" id="parceiroStatusText"></p>
+                </div>
+            </div>
         </div>
 
         <!-- Formulário de Login -->
@@ -102,7 +170,7 @@
             <button
                 type="submit"
                 id="submitBtn"
-                class="w-full bg-blue-600 text-white py-3 text-base rounded-lg font-semibold hover:bg-blue-700 transition duration-200 flex items-center justify-center min-h-[44px]"
+                class="btn-login w-full bg-blue-600 text-white py-3 text-base rounded-lg font-semibold hover:bg-blue-700 transition duration-200 flex items-center justify-center min-h-[44px]"
             >
                 <i class="fas fa-sign-in-alt mr-2" aria-hidden="true"></i>
                 <span id="submitText">Entrar</span>
@@ -110,13 +178,20 @@
 
             <!-- Links Úteis -->
             <div class="mt-4 text-center text-xs sm:text-sm">
-                <a href="/static/esqueci-senha.html" class="text-blue-600 hover:text-blue-800 hover:underline">
+                <a href="/static/esqueci-senha.html" class="link-forgot text-blue-600 hover:text-blue-800 hover:underline">
                     <i class="fas fa-key mr-1"></i>Esqueci minha senha
                 </a>
             </div>
 
-            <!-- Ainda não é cliente -->
-            <div class="mt-6 pt-6 border-t border-gray-200 text-center">
+            <!-- Link de registro de parceiro (só no contexto parceiro) -->
+            <div id="parceiroRegisterLink" class="hidden mt-4 text-center text-xs sm:text-sm">
+                <a href="/static/parceiro/registro.html" class="text-green-400 hover:text-green-300">
+                    <i class="fas fa-user-plus mr-1"></i>Quero ser parceiro
+                </a>
+            </div>
+
+            <!-- Ainda não é cliente (só no contexto padrão) -->
+            <div id="clienteContactLink" class="mt-6 pt-6 border-t border-gray-200 text-center">
                 <p class="text-gray-600 text-sm">
                     Ainda não é cliente?
                     <a href="https://horariointeligente.com.br/#contato" class="text-blue-600 hover:text-blue-800 font-semibold hover:underline ml-1">
@@ -126,15 +201,77 @@
             </div>
         </form>
 
+        <!-- Footer segurança (admin/parceiro) -->
+        <div id="securityFooter" class="hidden mt-6 text-center">
+            <p class="text-xs text-gray-500">
+                <i class="fas fa-shield-alt mr-1"></i>
+                <span id="securityFooterText">Acesso restrito a usuários autorizados</span>
+            </p>
+        </div>
     </div>
 
     <script>
+        // ============================================================
+        // Detectar contexto (admin, parceiro, padrão)
+        // ============================================================
+        const urlParams = new URLSearchParams(window.location.search);
+        const context = urlParams.get('context') || 'default';
+
+        // Aplicar tema visual
+        document.body.classList.remove('context-default');
+        document.body.classList.add('context-' + (context === 'admin' || context === 'parceiro' ? context : 'default'));
+
+        // Ajustar textos e links conforme contexto
+        (function applyContext() {
+            const subtitle = document.getElementById('loginSubtitle');
+            const parceiroRegLink = document.getElementById('parceiroRegisterLink');
+            const clienteLink = document.getElementById('clienteContactLink');
+            const secFooter = document.getElementById('securityFooter');
+            const secFooterText = document.getElementById('securityFooterText');
+
+            if (context === 'admin') {
+                subtitle.textContent = 'Painel Administrativo - Gestão Interna';
+                document.title = 'Admin - Horário Inteligente';
+                clienteLink.classList.add('hidden');
+                secFooter.classList.remove('hidden');
+                secFooterText.textContent = 'Acesso restrito a administradores';
+            } else if (context === 'parceiro') {
+                subtitle.textContent = 'Portal do Parceiro';
+                document.title = 'Portal do Parceiro - Horário Inteligente';
+                clienteLink.classList.add('hidden');
+                parceiroRegLink.classList.remove('hidden');
+                secFooter.classList.remove('hidden');
+                secFooterText.textContent = 'Conexão segura';
+            }
+        })();
+
+        // ============================================================
         // Verificar se já está logado
+        // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
-            const token = localStorage.getItem('authToken');
-            if (token) {
-                // Verificar se o token é válido
-                verificarToken(token);
+            // Verificar tokens existentes e redirecionar
+            const authToken = localStorage.getItem('authToken');
+            const adminToken = localStorage.getItem('adminToken');
+            const parceiroToken = localStorage.getItem('parceiroToken');
+
+            if (context === 'admin' && adminToken) {
+                const adminData = JSON.parse(localStorage.getItem('adminData') || '{}');
+                const dashboards = {
+                    'admin': '/static/admin/dashboard.html',
+                    'financeiro': '/static/admin/dashboard-financeiro.html',
+                    'suporte': '/static/admin/dashboard-suporte.html'
+                };
+                window.location.href = dashboards[adminData.perfil] || '/static/admin/dashboard.html';
+                return;
+            }
+
+            if (context === 'parceiro' && parceiroToken) {
+                window.location.href = '/static/parceiro/dashboard.html';
+                return;
+            }
+
+            if (context === 'default' && authToken) {
+                verificarToken(authToken);
             }
         });
 
@@ -148,15 +285,9 @@
                 });
 
                 if (response.ok) {
-                    // Token válido, redirecionar baseado no tipo de usuário
-                    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-                    if (userData.is_secretaria) {
-                        window.location.href = '/static/conversas.html';
-                    } else {
-                        window.location.href = '/static/calendario-unificado.html';
-                    }
+                    const data = await response.json();
+                    redirectByUserType(data.user_type, JSON.parse(localStorage.getItem('userData') || '{}'));
                 } else {
-                    // Token inválido, limpar localStorage
                     localStorage.removeItem('authToken');
                     localStorage.removeItem('userData');
                 }
@@ -167,6 +298,40 @@
             }
         }
 
+        // ============================================================
+        // Redirect baseado no tipo de usuário
+        // ============================================================
+        function redirectByUserType(userType, userData) {
+            const redirectMap = {
+                'medico':      '/static/calendario-unificado.html',
+                'secretaria':  '/static/conversas.html',
+                'admin':       '/static/admin/dashboard.html',
+                'financeiro':  '/static/admin/dashboard-financeiro.html',
+                'suporte':     '/static/admin/dashboard-suporte.html',
+                'parceiro':    '/static/parceiro/dashboard.html',
+            };
+
+            // Para admin, checar perfil específico
+            if (userType === 'admin' && userData.perfil) {
+                const perfilDashboard = redirectMap[userData.perfil];
+                if (perfilDashboard) {
+                    window.location.href = perfilDashboard;
+                    return;
+                }
+            }
+
+            // Secretária: fallback via is_secretaria
+            if (userData.is_secretaria) {
+                window.location.href = redirectMap['secretaria'];
+                return;
+            }
+
+            window.location.href = redirectMap[userType] || '/static/calendario-unificado.html';
+        }
+
+        // ============================================================
+        // Toggle senha
+        // ============================================================
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const toggleIcon = document.getElementById('toggleIcon');
@@ -185,38 +350,60 @@
             }
         }
 
+        // ============================================================
+        // Mensagens de erro e status
+        // ============================================================
         let emailParaReenvio = '';
 
         function showError(message) {
             const emailNaoVerificado = document.getElementById('emailNaoVerificado');
-
-            // Esconder alerta de email não verificado
+            const parceiroPendente = document.getElementById('parceiroPendente');
             emailNaoVerificado.classList.add('hidden');
+            parceiroPendente.classList.add('hidden');
 
-            // Usa o sistema de toast do design system
             if (typeof HiToast !== 'undefined') {
                 HiToast.error('Erro', message);
             } else {
-                // Fallback para alert se o design system não estiver carregado
                 const errorDiv = document.getElementById('errorMessage');
                 const errorText = document.getElementById('errorText');
                 errorText.textContent = message;
                 errorDiv.classList.remove('hidden');
-                setTimeout(() => {
-                    errorDiv.classList.add('hidden');
-                }, 5000);
+                setTimeout(() => { errorDiv.classList.add('hidden'); }, 5000);
             }
         }
 
         function showEmailNaoVerificado() {
-            const errorDiv = document.getElementById('errorMessage');
-            const emailNaoVerificado = document.getElementById('emailNaoVerificado');
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('parceiroPendente').classList.add('hidden');
+            document.getElementById('emailNaoVerificado').classList.remove('hidden');
+        }
 
-            // Esconder erro comum
-            errorDiv.classList.add('hidden');
+        function showParceiroStatus(detail) {
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('emailNaoVerificado').classList.add('hidden');
 
-            // Mostrar alerta de email não verificado
-            emailNaoVerificado.classList.remove('hidden');
+            const statusDiv = document.getElementById('parceiroPendente');
+            const title = document.getElementById('parceiroStatusTitle');
+            const text = document.getElementById('parceiroStatusText');
+
+            if (detail === 'pendente_aprovacao') {
+                title.textContent = 'Cadastro em análise';
+                text.textContent = 'Seu cadastro está em análise. Você receberá um email quando sua parceria for aprovada.';
+            } else if (detail === 'pendente_ativacao') {
+                window.location.href = '/static/parceiro/pendente-ativacao.html';
+                return;
+            } else if (detail === 'conta_suspensa') {
+                title.textContent = 'Conta suspensa';
+                text.textContent = 'Sua conta está suspensa. Entre em contato com o administrador.';
+            } else if (detail === 'conta_inativa') {
+                title.textContent = 'Conta inativa';
+                text.textContent = 'Sua conta está inativa. Entre em contato com o administrador.';
+            } else {
+                title.textContent = 'Acesso negado';
+                text.textContent = detail || 'Conta do parceiro não está ativa';
+            }
+
+            statusDiv.classList.remove('hidden');
         }
 
         async function reenviarVerificacao() {
@@ -281,7 +468,55 @@
             }
         }
 
-        // Handler do formulário
+        // ============================================================
+        // Armazenar tokens (unificado + legado para compatibilidade)
+        // ============================================================
+        function storeTokens(data) {
+            const user = data.user;
+            const userType = user.user_type || user.tipo;
+
+            // Token unificado principal
+            localStorage.setItem('authToken', data.access_token);
+            localStorage.setItem('userData', JSON.stringify(user));
+
+            if (data.refresh_token) {
+                localStorage.setItem('refreshToken', data.refresh_token);
+            }
+
+            // Chaves legadas para compatibilidade com páginas existentes
+            if (userType === 'admin' || userType === 'financeiro' || userType === 'suporte') {
+                localStorage.setItem('adminToken', data.access_token);
+                localStorage.setItem('adminData', JSON.stringify({
+                    id: user.id,
+                    nome: user.nome,
+                    email: user.email,
+                    perfil: user.perfil || userType
+                }));
+                // Financeiro também usa financeiroToken (dashboard legado)
+                if (userType === 'financeiro') {
+                    localStorage.setItem('financeiroToken', data.access_token);
+                    localStorage.setItem('financeiroUser', JSON.stringify({
+                        id: user.id,
+                        nome: user.nome,
+                        email: user.email,
+                        perfil: user.perfil || userType
+                    }));
+                }
+            }
+
+            if (userType === 'parceiro') {
+                localStorage.setItem('parceiroToken', data.access_token);
+                localStorage.setItem('parceiroData', JSON.stringify({
+                    id: user.id,
+                    nome: user.nome,
+                    email: user.email
+                }));
+            }
+        }
+
+        // ============================================================
+        // Handler do formulário - Login unificado via JSON
+        // ============================================================
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -290,38 +525,46 @@
 
             setLoading(true);
 
-            try {
-                const formData = new FormData();
-                formData.append('username', email);
-                formData.append('password', password);
+            // Esconder mensagens anteriores
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('emailNaoVerificado').classList.add('hidden');
+            document.getElementById('parceiroPendente').classList.add('hidden');
 
+            try {
                 const response = await fetch('/api/auth/login', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        senha: password
+                    })
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
                     // Login bem-sucedido
-                    localStorage.setItem('authToken', data.access_token);
-                    localStorage.setItem('userData', JSON.stringify(data.user));
-
-                    // Redirecionar baseado no tipo de usuário
-                    if (data.user.is_secretaria) {
-                        // Secretária vai para o painel de conversas WhatsApp
-                        window.location.href = '/static/conversas.html';
-                    } else {
-                        // Médico vai para o calendário
-                        window.location.href = '/static/calendario-unificado.html';
-                    }
+                    storeTokens(data);
+                    redirectByUserType(data.user.user_type || data.user.tipo, data.user);
                 } else if (response.status === 403) {
-                    // Email não verificado
-                    emailParaReenvio = email;
-                    showEmailNaoVerificado();
+                    const detail = data.detail || '';
+
+                    // Parceiro com status pendente/suspenso
+                    if (['pendente_aprovacao', 'pendente_ativacao', 'conta_suspensa', 'conta_inativa'].includes(detail)) {
+                        showParceiroStatus(detail);
+                    }
+                    // Email não verificado (cliente)
+                    else if (detail.includes('Email não verificado') || detail.includes('email não verificado')) {
+                        emailParaReenvio = email;
+                        showEmailNaoVerificado();
+                    }
+                    else {
+                        showError(detail || 'Acesso negado');
+                    }
                     setLoading(false);
                 } else {
-                    // Erro no login
                     showError(data.detail || 'Email ou senha incorretos');
                     setLoading(false);
                 }

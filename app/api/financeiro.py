@@ -20,9 +20,11 @@ router = APIRouter(prefix="/api/financeiro", tags=["Financeiro"])
 logger = logging.getLogger(__name__)
 
 # Configurações JWT
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("ERRO CRITICO: SECRET_KEY nao configurada. Defina a variavel de ambiente SECRET_KEY no arquivo .env")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 horas
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hora
 
 
 # ==================== AUTENTICAÇÃO ====================
@@ -46,7 +48,7 @@ def create_financeiro_token(user_id: int, email: str, perfil: str) -> str:
 
 
 async def get_current_financeiro(request: Request, db: Session = Depends(get_db)):
-    """Dependency para obter usuário financeiro autenticado"""
+    """Dependency para obter usuário financeiro autenticado (legado e unificado)"""
     # Extrair token do header
     auth_header = request.headers.get('Authorization') or request.headers.get('authorization')
 
@@ -60,6 +62,59 @@ async def get_current_financeiro(request: Request, db: Session = Depends(get_db)
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        # Caminho 1: Token unificado (tem source_table)
+        source_table = payload.get('source_table')
+        if source_table:
+            user_type = payload.get('user_type')
+            user_id = payload.get('sub') or payload.get('user_id')
+            is_super_admin = payload.get('is_super_admin', False)
+
+            # Validar: financeiro ou super_admin
+            if user_type != 'financeiro' and not is_super_admin and user_type != 'admin':
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Perfil sem permissão para acesso financeiro"
+                )
+
+            # Buscar na tabela correta
+            if source_table == 'usuarios_internos':
+                result = db.execute(
+                    text("SELECT id, nome, email, perfil, ativo FROM usuarios_internos WHERE id = :id"),
+                    {"id": user_id}
+                ).fetchone()
+            elif source_table == 'super_admins':
+                result = db.execute(
+                    text("SELECT id, nome, email, 'admin' as perfil, ativo FROM super_admins WHERE id = :id"),
+                    {"id": user_id}
+                ).fetchone()
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Tipo de usuário sem permissão financeira"
+                )
+
+            if not result:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Usuário não encontrado"
+                )
+
+            if not result[4]:  # ativo
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Conta desativada"
+                )
+
+            return {
+                "id": result[0],
+                "nome": result[1],
+                "email": result[2],
+                "perfil": result[3],
+                "ativo": result[4]
+            }
+
+        # Caminho 2: Token legado (tipo=gestao_interna)
         user_id = payload.get('user_id')
         perfil = payload.get('perfil')
         tipo = payload.get('tipo')
@@ -118,60 +173,22 @@ async def get_current_financeiro(request: Request, db: Session = Depends(get_db)
 
 @router.post("/auth/login")
 async def financeiro_login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    """Login de usuário financeiro"""
+    """Login de usuário financeiro - DEPRECADO. Use /api/auth/login com JSON."""
+    from app.api.auth import _unified_login_logic
     try:
-        # Buscar usuário por email (com perfil financeiro ou super_admin)
-        result = db.execute(
-            text("""
-                SELECT id, nome, email, senha, perfil, ativo
-                FROM super_admins
-                WHERE email = :email
-                AND perfil IN ('financeiro', 'super_admin')
-            """),
-            {"email": form_data.username}
-        ).fetchone()
+        result = await _unified_login_logic(form_data.username, form_data.password, db, request)
 
-        if not result:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email ou senha incorretos"
-            )
-
-        user_id, nome, email, senha_hash, perfil, ativo = result
-
-        # Verificar se está ativo
-        if not ativo:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Conta desativada"
-            )
-
-        # Verificar senha
-        if not verify_password(form_data.password, senha_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email ou senha incorretos"
-            )
-
-        # Criar token
-        token = create_financeiro_token(user_id, email, perfil)
-
-        logger.info(f"Login financeiro bem-sucedido: {email} (perfil: {perfil})")
+        logger.info(f"Login financeiro (legado) bem-sucedido: {form_data.username}")
 
         return {
-            "access_token": token,
+            "access_token": result["access_token"],
             "token_type": "bearer",
-            "user": {
-                "id": user_id,
-                "nome": nome,
-                "email": email,
-                "perfil": perfil
-            }
+            "user": result["user"]
         }
-
     except HTTPException:
         raise
     except Exception as e:
