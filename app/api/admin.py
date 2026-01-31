@@ -120,7 +120,8 @@ async def get_current_admin(request: Request, db: Session = Depends(get_db)):
         source_table = payload.get('source_table')
         if source_table:
             user_type = payload.get('user_type')
-            user_id = payload.get('sub') or payload.get('user_id')
+            raw_sub = payload.get('sub') or payload.get('user_id')
+            user_id = int(raw_sub) if raw_sub is not None else None
 
             # Validar que é um tipo admin
             if user_type not in ('admin', 'financeiro', 'suporte'):

@@ -9,6 +9,8 @@ import tempfile
 import base64
 from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import PlainTextResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from app.database import get_db, SessionLocal
@@ -58,6 +60,9 @@ from app.services.button_handler_service import get_button_handler
 
 logger = logging.getLogger(__name__)
 
+# Rate Limiter para webhooks
+limiter = Limiter(key_func=get_remote_address)
+
 router = APIRouter()
 
 # Instância do serviço
@@ -101,6 +106,7 @@ async def verify_webhook(
 
 
 @router.post("/webhook/whatsapp-official")
+@limiter.limit("200/minute")
 async def receive_webhook(request: Request):
     """
     Recebe webhooks de mensagens da Meta.
@@ -149,6 +155,13 @@ async def process_message(message: WhatsAppMessage):
     try:
         # 1. Determina o cliente_id (tenant) baseado no phone_number_id
         cliente_id = get_cliente_id_from_phone_number_id(message.phone_number_id, db)
+
+        # 1.1 Definir contexto de billing para logging de mensagens WhatsApp
+        try:
+            from app.services.whatsapp_billing_service import set_billing_context
+            set_billing_context(cliente_id)
+        except Exception:
+            pass
 
         # 2. Criar ou recuperar conversa no PostgreSQL
         conversa, is_nova_conversa = ConversaService.criar_ou_recuperar_conversa(

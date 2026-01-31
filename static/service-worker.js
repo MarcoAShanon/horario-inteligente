@@ -1,7 +1,7 @@
 // Horário Inteligente PWA Service Worker
 // ==================== VERSIONAMENTO ====================
 // IMPORTANTE: Incrementar a cada deploy para forçar atualização
-const CACHE_VERSION = '1.1.0';
+const CACHE_VERSION = '1.2.0';
 const CACHE_PREFIX = 'horario-inteligente';
 const CACHE_NAME = `${CACHE_PREFIX}-v${CACHE_VERSION}`;
 const OFFLINE_URL = '/static/offline.html';

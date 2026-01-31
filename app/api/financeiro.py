@@ -67,7 +67,8 @@ async def get_current_financeiro(request: Request, db: Session = Depends(get_db)
         source_table = payload.get('source_table')
         if source_table:
             user_type = payload.get('user_type')
-            user_id = payload.get('sub') or payload.get('user_id')
+            raw_sub = payload.get('sub') or payload.get('user_id')
+            user_id = int(raw_sub) if raw_sub is not None else None
             is_super_admin = payload.get('is_super_admin', False)
 
             # Validar: financeiro ou super_admin

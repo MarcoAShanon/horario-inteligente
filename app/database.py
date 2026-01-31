@@ -10,7 +10,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # URL do banco de dados
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/agendamento_saas")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL nao configurada. Defina no arquivo .env")
 
 # Configurar engine do SQLAlchemy
 engine = create_engine(
@@ -67,7 +69,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # URL do banco de dados
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/agendamento_saas")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL nao configurada. Defina no arquivo .env")
 
 # Configurar engine do SQLAlchemy
 engine = create_engine(

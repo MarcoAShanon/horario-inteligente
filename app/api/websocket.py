@@ -16,7 +16,9 @@ import os
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["WebSocket"])
 
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("ERRO CRITICO: SECRET_KEY nao configurada. Defina a variavel de ambiente SECRET_KEY no arquivo .env")
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 

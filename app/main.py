@@ -517,8 +517,8 @@ async def root(request: Request):
         # Servir o site comercial (landing page)
         return FileResponse("static/index.html")
     elif is_admin or subdomain == 'admin':
-        # Redirecionar para login unificado com contexto admin
-        return RedirectResponse(url=f"/static/login.html?context=admin&v={STATIC_VERSION}", status_code=302)
+        # Redirecionar para login admin dedicado
+        return RedirectResponse(url=f"/static/admin/login.html?v={STATIC_VERSION}", status_code=302)
     elif subdomain == 'parceiro':
         # Redirecionar para login unificado com contexto parceiro
         return RedirectResponse(url=f"/static/login.html?context=parceiro&v={STATIC_VERSION}", status_code=302)

@@ -11,9 +11,16 @@ LOG_FILE="/var/log/certificado-ssl.log"
 ALERT_DAYS=30  # Dias antes da expiração para alertar
 CRITICAL_DAYS=7  # Dias críticos
 
-# Configurações do Telegram
-TELEGRAM_BOT_TOKEN="8276546106:AAH3ssg8G7InAUCI_Ixlc8g_m4FF7mPsH-0"
-TELEGRAM_CHAT_ID="8134518132"
+# Carregar tokens do .env (nunca hardcoded)
+if [ -f /root/sistema_agendamento/.env ]; then
+    TELEGRAM_BOT_TOKEN=$(grep '^TELEGRAM_BOT_TOKEN=' /root/sistema_agendamento/.env | cut -d'=' -f2-)
+    TELEGRAM_CHAT_ID=$(grep '^TELEGRAM_CHAT_ID=' /root/sistema_agendamento/.env | cut -d'=' -f2-)
+fi
+
+if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+    echo "ERRO: TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID nao encontrados no .env"
+    exit 1
+fi
 
 log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"

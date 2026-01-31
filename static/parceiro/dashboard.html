@@ -162,7 +162,7 @@
         const parceiroData = JSON.parse(localStorage.getItem('parceiroData') || '{}');
 
         if (!token) {
-            window.location.href = '/static/parceiro/login.html';
+            window.location.href = '/static/login.html?context=parceiro';
         }
 
         document.getElementById('parceiroNome').textContent = parceiroData.nome || 'Parceiro';
@@ -170,7 +170,7 @@
         function logout() {
             localStorage.removeItem('parceiroToken');
             localStorage.removeItem('parceiroData');
-            window.location.href = '/static/parceiro/login.html';
+            window.location.href = '/static/login.html?context=parceiro';
         }
 
         function formatarData(dataStr) {

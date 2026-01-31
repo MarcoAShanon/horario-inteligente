@@ -4,14 +4,18 @@ Envia alertas para administradores do sistema
 """
 import httpx
 import logging
+import os
 from typing import Optional
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-# Configurações do Bot
-TELEGRAM_BOT_TOKEN = "8276546106:AAH3ssg8G7InAUCI_Ixlc8g_m4FF7mPsH-0"
-TELEGRAM_ADMIN_CHAT_ID = "8134518132"
+# Configurações do Bot (via variáveis de ambiente)
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_ADMIN_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
+if not TELEGRAM_BOT_TOKEN:
+    logger.warning("TELEGRAM_BOT_TOKEN nao configurado. Alertas Telegram desabilitados.")
 
 # URL base da API do Telegram
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"

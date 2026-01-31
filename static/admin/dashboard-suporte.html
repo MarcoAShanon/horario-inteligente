@@ -572,8 +572,7 @@
         }
 
         function logout() {
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('adminData');
+            ['adminToken', 'adminData', 'authToken', 'userData', 'refreshToken', 'financeiroToken', 'financeiroUser'].forEach(k => localStorage.removeItem(k));
             window.location.href = '/static/admin/login.html';
         }
     </script>

@@ -58,7 +58,7 @@ def create_unified_token(user_data: dict, token_type: str = "access") -> str:
       - parceiro: parceiro_id
     """
     payload = {
-        "sub": user_data["id"],
+        "sub": str(user_data["id"]),  # RFC 7519: sub must be a string
         "email": user_data["email"],
         "nome": user_data["nome"],
         "user_type": user_data["user_type"],
@@ -114,7 +114,8 @@ async def get_current_user(
 
     if source_table:
         user_type = payload.get("user_type")
-        user_id = payload.get("sub") or payload.get("user_id")
+        raw_sub = payload.get("sub") or payload.get("user_id")
+        user_id = int(raw_sub) if raw_sub is not None else None
 
         # Parceiro não pode acessar endpoints de cliente
         if source_table == "parceiros_comerciais":
@@ -491,8 +492,9 @@ async def refresh_access_token(body: RefreshRequest):
 
         # Token unificado (tem source_table)
         if payload.get("source_table"):
+            raw_id = payload.get("sub") or payload.get("user_id")
             user_data = {
-                "id": payload.get("sub") or payload.get("user_id"),
+                "id": int(raw_id) if raw_id is not None else None,
                 "email": payload.get("email"),
                 "nome": payload.get("nome", ""),
                 "user_type": payload.get("user_type"),
@@ -584,7 +586,7 @@ async def verify_user_token(
 
     return {
         "valid": True,
-        "user_id": payload.get("sub") or payload.get("user_id"),
+        "user_id": int(raw_id) if (raw_id := payload.get("sub") or payload.get("user_id")) is not None else None,
         "user_type": payload.get("user_type"),
         "email": payload.get("email")
     }

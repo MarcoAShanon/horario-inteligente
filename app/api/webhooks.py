@@ -5,6 +5,8 @@ Sistema Pro-Saúde com Claude 3.5 Sonnet + OpenAI Whisper/TTS
 """
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 import logging
 import json
 import aiohttp
@@ -22,6 +24,9 @@ EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "http://localhost:8080")
 EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
 EVOLUTION_WEBHOOK_TOKEN = os.getenv("EVOLUTION_WEBHOOK_TOKEN", "")
 # INSTANCE_NAME será dinâmico baseado no cliente
+
+# Rate Limiter para webhooks
+limiter = Limiter(key_func=get_remote_address)
 
 # IPs confiáveis (localhost/internal)
 TRUSTED_IPS = {"127.0.0.1", "::1", "localhost"}
@@ -110,6 +115,7 @@ def verify_webhook_auth(request: Request) -> bool:
     return False
 
 @router.post("/whatsapp/{instance_name}")
+@limiter.limit("100/minute")
 async def webhook_whatsapp(instance_name: str, request: Request):
     """
     Webhook principal com IA Claude 3.5 Sonnet integrada

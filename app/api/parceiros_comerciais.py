@@ -445,17 +445,15 @@ async def aprovar_parceiro(
                 detail=f"Parceiro nao esta pendente de aprovacao (status atual: {parceiro[3]})"
             )
 
-        # Gerar senha provisoria: Parceiro@ + 8 chars alfanumericos
-        chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-        codigo = ''.join([chars[secrets.randbelow(len(chars))] for _ in range(8)])
-        senha_provisoria = f"Parceiro@{codigo}"
-        senha_hash = bcrypt.hashpw(senha_provisoria.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        # Gerar codigo de ativacao curto (8 chars alfanumericos maiusculos)
+        chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+        codigo_ativacao = ''.join([chars[secrets.randbelow(len(chars))] for _ in range(8)])
 
-        # Gerar token de ativacao
+        # Gerar token de ativacao (interno, para seguranca do lookup)
         token_ativacao = secrets.token_urlsafe(64)
         token_expira = datetime.now() + timedelta(days=7)
 
-        # Atualizar parceiro: comissao + senha + token + status
+        # Atualizar parceiro: comissao + token + status (sem senha)
         db.execute(
             text("""
                 UPDATE parceiros_comerciais SET
@@ -464,9 +462,9 @@ async def aprovar_parceiro(
                     valor_fixo_comissao = :valor_fixo_comissao,
                     recorrencia_comissao_meses = :recorrencia_comissao_meses,
                     recorrencia_renovavel = :recorrencia_renovavel,
-                    senha_hash = :senha_hash,
                     token_ativacao = :token_ativacao,
                     token_expira_em = :token_expira_em,
+                    codigo_ativacao = :codigo_ativacao,
                     status = 'pendente_aceite',
                     atualizado_em = NOW()
                 WHERE id = :id
@@ -478,25 +476,22 @@ async def aprovar_parceiro(
                 "valor_fixo_comissao": dados.valor_fixo_comissao,
                 "recorrencia_comissao_meses": dados.recorrencia_comissao_meses,
                 "recorrencia_renovavel": dados.recorrencia_renovavel,
-                "senha_hash": senha_hash,
                 "token_ativacao": token_ativacao,
-                "token_expira_em": token_expira
+                "token_expira_em": token_expira,
+                "codigo_ativacao": codigo_ativacao
             }
         )
         db.commit()
 
-        link_ativacao = f"https://horariointeligente.com.br/static/parceiro/ativar-conta.html?token={token_ativacao}"
+        link_ativacao = f"https://horariointeligente.com.br/static/parceiro/ativar-conta.html?code={codigo_ativacao}"
 
-        # Enviar email com senha provisoria
+        # Enviar email de ativacao (template limpo, sem senha)
         try:
             email_service = get_email_service()
             email_service.send_ativacao_parceiro_com_senha(
                 to_email=parceiro[2],
                 to_name=parceiro[1],
-                token=token_ativacao,
-                senha_provisoria=senha_provisoria,
-                percentual_comissao=dados.percentual_comissao,
-                recorrencia_meses=dados.recorrencia_comissao_meses
+                token=codigo_ativacao
             )
         except Exception as e:
             logger.warning(f"[AprovarParceiro] Erro ao enviar email: {e}")
@@ -522,7 +517,7 @@ async def aprovar_parceiro(
         return {
             "sucesso": True,
             "mensagem": "Parceiro aprovado com sucesso. Email de ativacao enviado.",
-            "senha_provisoria": senha_provisoria,
+            "codigo_ativacao": codigo_ativacao,
             "link_ativacao": link_ativacao
         }
 

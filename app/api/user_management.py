@@ -102,6 +102,7 @@ class UpdateProfileRequest(BaseModel):
     valor_consulta_particular: Optional[float] = None
     procedimentos: Optional[List[ProcedimentoItem]] = None
     biografia: Optional[str] = None
+    endereco: Optional[str] = None
 
 class ChangePasswordRequest(BaseModel):
     senha_atual: str
@@ -704,6 +705,14 @@ async def get_profile(
             if not result:
                 raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
+            # Buscar endereço da clínica
+            cliente_id = current_user.get("cliente_id")
+            endereco_clinica = None
+            if cliente_id:
+                end_result = db.execute(text("SELECT endereco FROM clientes WHERE id = :cid"), {"cid": cliente_id}).fetchone()
+                if end_result:
+                    endereco_clinica = end_result[0]
+
             return {
                 "id": result[0],
                 "nome": result[1],
@@ -718,7 +727,8 @@ async def get_profile(
                 "procedimentos": result[9],
                 "biografia": result[10],
                 "foto_perfil": result[11],
-                "ativo": result[12]
+                "ativo": result[12],
+                "endereco": endereco_clinica
             }
 
         else:  # secretaria
@@ -733,6 +743,14 @@ async def get_profile(
             if not result:
                 raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
+            # Buscar endereço da clínica
+            cliente_id = current_user.get("cliente_id")
+            endereco_clinica = None
+            if cliente_id:
+                end_result = db.execute(text("SELECT endereco FROM clientes WHERE id = :cid"), {"cid": cliente_id}).fetchone()
+                if end_result:
+                    endereco_clinica = end_result[0]
+
             return {
                 "id": result[0],
                 "nome": result[1],
@@ -741,7 +759,8 @@ async def get_profile(
                 "telefone_particular": result[4],
                 "foto_perfil": result[5],
                 "ativo": result[6],
-                "tipo": result[7]
+                "tipo": result[7],
+                "endereco": endereco_clinica
             }
 
     except HTTPException:
@@ -818,6 +837,14 @@ async def update_profile(
                 db.execute(text(query), params)
                 db.commit()
 
+            # Atualizar endereço na tabela clientes (se fornecido)
+            if dados.endereco is not None:
+                cliente_id = current_user.get("cliente_id")
+                if cliente_id:
+                    db.execute(text("UPDATE clientes SET endereco = :endereco, atualizado_em = NOW() WHERE id = :cid"),
+                               {"endereco": dados.endereco, "cid": cliente_id})
+                    db.commit()
+
         else:  # secretaria
             updates = []
             params = {"user_id": user_id}
@@ -839,6 +866,14 @@ async def update_profile(
                 query = f"UPDATE usuarios SET {', '.join(updates)} WHERE id = :user_id"
                 db.execute(text(query), params)
                 db.commit()
+
+            # Atualizar endereço na tabela clientes (se fornecido)
+            if dados.endereco is not None:
+                cliente_id = current_user.get("cliente_id")
+                if cliente_id:
+                    db.execute(text("UPDATE clientes SET endereco = :endereco, atualizado_em = NOW() WHERE id = :cid"),
+                               {"endereco": dados.endereco, "cid": cliente_id})
+                    db.commit()
 
         logger.info(f"✅ Perfil atualizado para user_id={user_id}")
 

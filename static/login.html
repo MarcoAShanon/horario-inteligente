@@ -302,13 +302,14 @@
         // Redirect baseado no tipo de usuário
         // ============================================================
         function redirectByUserType(userType, userData) {
+            const v = Date.now(); // cache-bust
             const redirectMap = {
-                'medico':      '/static/calendario-unificado.html',
-                'secretaria':  '/static/conversas.html',
-                'admin':       '/static/admin/dashboard.html',
-                'financeiro':  '/static/admin/dashboard-financeiro.html',
-                'suporte':     '/static/admin/dashboard-suporte.html',
-                'parceiro':    '/static/parceiro/dashboard.html',
+                'medico':      '/static/calendario-unificado.html?v=' + v,
+                'secretaria':  '/static/conversas.html?v=' + v,
+                'admin':       '/static/admin/dashboard.html?v=' + v,
+                'financeiro':  '/static/admin/dashboard-financeiro.html?v=' + v,
+                'suporte':     '/static/admin/dashboard-suporte.html?v=' + v,
+                'parceiro':    '/static/parceiro/dashboard.html?v=' + v,
             };
 
             // Para admin, checar perfil específico
@@ -326,7 +327,7 @@
                 return;
             }
 
-            window.location.href = redirectMap[userType] || '/static/calendario-unificado.html';
+            window.location.href = redirectMap[userType] || ('/static/calendario-unificado.html?v=' + v);
         }
 
         // ============================================================
@@ -544,12 +545,20 @@
 
                 const data = await response.json();
 
+                // Extrair mensagem de erro (detail pode ser string ou array de objetos)
+                function extractDetail(d) {
+                    if (!d) return '';
+                    if (typeof d === 'string') return d;
+                    if (Array.isArray(d)) return d.map(e => e.msg || e.message || JSON.stringify(e)).join('; ');
+                    return String(d);
+                }
+
                 if (response.ok) {
                     // Login bem-sucedido
                     storeTokens(data);
                     redirectByUserType(data.user.user_type || data.user.tipo, data.user);
                 } else if (response.status === 403) {
-                    const detail = data.detail || '';
+                    const detail = extractDetail(data.detail);
 
                     // Parceiro com status pendente/suspenso
                     if (['pendente_aprovacao', 'pendente_ativacao', 'conta_suspensa', 'conta_inativa'].includes(detail)) {
@@ -565,7 +574,7 @@
                     }
                     setLoading(false);
                 } else {
-                    showError(data.detail || 'Email ou senha incorretos');
+                    showError(extractDetail(data.detail) || 'Email ou senha incorretos');
                     setLoading(false);
                 }
             } catch (error) {

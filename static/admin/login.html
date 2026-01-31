@@ -2,11 +2,197 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Redirecionando...</title>
-    <script>window.location.href = '/static/login.html?context=admin';</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Horário Inteligente</title>
+    <meta name="theme-color" content="#7c3aed">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .login-card { background: #111827; border: 1px solid #374151; }
+        .login-card input {
+            background: #1f2937; border-color: #4b5563; color: #fff;
+        }
+        .login-card input::placeholder { color: #6b7280; }
+        .login-card input:focus {
+            outline: none; ring: 2px; border-color: #7c3aed;
+            box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.3);
+        }
+    </style>
 </head>
-<body>
-    <p>Redirecionando para o login unificado...</p>
-    <a href="/static/login.html?context=admin">Clique aqui se não for redirecionado</a>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="login-card rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md mx-auto">
+        <!-- Logo -->
+        <div class="text-center mb-6">
+            <div class="inline-flex items-center justify-center mb-3">
+                <img src="/static/images/logo.png" alt="Horário Inteligente" class="h-16 sm:h-20" style="filter: brightness(0) invert(1);">
+            </div>
+            <p class="text-sm text-gray-400">Painel Administrativo - Gestão Interna</p>
+        </div>
+
+        <!-- Erro -->
+        <div id="errorMessage" class="hidden bg-red-900/50 border border-red-500 text-red-300 px-4 py-3 rounded-lg mb-4">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span id="errorText"></span>
+            </div>
+        </div>
+
+        <!-- Form -->
+        <form id="loginForm" class="space-y-5">
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-300 mb-2">
+                    <i class="fas fa-envelope mr-2 text-gray-500"></i>Email
+                </label>
+                <input type="email" id="email" name="email" required autocomplete="email"
+                    class="w-full px-4 py-3 text-sm border rounded-lg"
+                    placeholder="seu@email.com">
+            </div>
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-300 mb-2">
+                    <i class="fas fa-lock mr-2 text-gray-500"></i>Senha
+                </label>
+                <div class="relative">
+                    <input type="password" id="password" name="password" required autocomplete="current-password"
+                        class="w-full px-4 py-3 text-sm border rounded-lg"
+                        placeholder="••••••••">
+                    <button type="button" onclick="togglePassword()"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 p-2">
+                        <i id="toggleIcon" class="fas fa-eye text-sm"></i>
+                    </button>
+                </div>
+            </div>
+            <button type="submit" id="submitBtn"
+                class="w-full py-3 text-base rounded-lg font-semibold transition duration-200 flex items-center justify-center text-white"
+                style="background: linear-gradient(to right, #7c3aed, #db2777);">
+                <i class="fas fa-sign-in-alt mr-2"></i>
+                <span id="submitText">Entrar</span>
+            </button>
+        </form>
+
+        <!-- Footer -->
+        <div class="mt-6 text-center">
+            <p class="text-xs text-gray-500">
+                <i class="fas fa-shield-alt mr-1"></i>
+                Acesso restrito a administradores
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const p = document.getElementById('password');
+            const i = document.getElementById('toggleIcon');
+            if (p.type === 'password') { p.type = 'text'; i.className = 'fas fa-eye-slash text-sm'; }
+            else { p.type = 'password'; i.className = 'fas fa-eye text-sm'; }
+        }
+
+        function showError(msg) {
+            const d = document.getElementById('errorMessage');
+            document.getElementById('errorText').textContent = msg;
+            d.classList.remove('hidden');
+            setTimeout(() => d.classList.add('hidden'), 5000);
+        }
+
+        function setLoading(on) {
+            const btn = document.getElementById('submitBtn');
+            const txt = document.getElementById('submitText');
+            btn.disabled = on;
+            if (on) {
+                btn.classList.add('opacity-75');
+                txt.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Entrando...';
+            } else {
+                btn.classList.remove('opacity-75');
+                txt.innerHTML = '<i class="fas fa-sign-in-alt mr-2"></i>Entrar';
+            }
+        }
+
+        function extractDetail(d) {
+            if (!d) return '';
+            if (typeof d === 'string') return d;
+            if (Array.isArray(d)) return d.map(e => e.msg || e.message || JSON.stringify(e)).join('; ');
+            return String(d);
+        }
+
+        // Auto-redirect se já logado
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('adminToken');
+            if (token) {
+                const data = JSON.parse(localStorage.getItem('adminData') || '{}');
+                const dashMap = {
+                    'admin': '/static/admin/dashboard.html',
+                    'financeiro': '/static/admin/dashboard-financeiro.html',
+                    'suporte': '/static/admin/dashboard-suporte.html'
+                };
+                window.location.href = dashMap[data.perfil] || '/static/admin/dashboard.html';
+            }
+        });
+
+        // Login submit
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            setLoading(true);
+            document.getElementById('errorMessage').classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, senha: password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const user = data.user;
+                    const userType = user.user_type || user.tipo;
+
+                    // Verificar se é tipo admin
+                    if (!['admin', 'financeiro', 'suporte'].includes(userType)) {
+                        showError('Este login não tem acesso ao painel administrativo.');
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Armazenar tokens
+                    localStorage.setItem('authToken', data.access_token);
+                    localStorage.setItem('userData', JSON.stringify(user));
+                    if (data.refresh_token) localStorage.setItem('refreshToken', data.refresh_token);
+                    localStorage.setItem('adminToken', data.access_token);
+                    localStorage.setItem('adminData', JSON.stringify({
+                        id: user.id, nome: user.nome, email: user.email,
+                        perfil: user.perfil || userType
+                    }));
+                    if (userType === 'financeiro') {
+                        localStorage.setItem('financeiroToken', data.access_token);
+                        localStorage.setItem('financeiroUser', JSON.stringify({
+                            id: user.id, nome: user.nome, email: user.email,
+                            perfil: user.perfil || userType
+                        }));
+                    }
+
+                    // Redirect por perfil
+                    const dashMap = {
+                        'admin': '/static/admin/dashboard.html',
+                        'financeiro': '/static/admin/dashboard-financeiro.html',
+                        'suporte': '/static/admin/dashboard-suporte.html'
+                    };
+                    window.location.href = dashMap[userType] || '/static/admin/dashboard.html';
+                } else {
+                    showError(extractDetail(data.detail) || 'Email ou senha incorretos');
+                    setLoading(false);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                showError('Erro ao conectar com o servidor. Tente novamente.');
+                setLoading(false);
+            }
+        });
+    </script>
 </body>
 </html>

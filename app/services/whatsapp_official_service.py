@@ -345,6 +345,21 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
 
                 if response.status_code == 200:
                     message_id = data.get("messages", [{}])[0].get("id")
+
+                    # Log billing (fire-and-forget)
+                    try:
+                        from app.services.whatsapp_billing_service import log_whatsapp_message
+                        template_name = payload.get("template", {}).get("name") if payload.get("type") == "template" else None
+                        log_whatsapp_message(
+                            template_name=template_name,
+                            message_type=payload.get("type", "text"),
+                            phone_to=payload.get("to", ""),
+                            success=True,
+                            message_id=message_id,
+                        )
+                    except Exception:
+                        pass
+
                     return SendResult(
                         success=True,
                         message_id=message_id,
@@ -353,6 +368,21 @@ class WhatsAppOfficialService(WhatsAppProviderInterface):
                 else:
                     error_msg = data.get("error", {}).get("message", "Erro desconhecido")
                     print(f"[WhatsApp Official] Erro: {error_msg}")
+
+                    # Log billing para falhas também
+                    try:
+                        from app.services.whatsapp_billing_service import log_whatsapp_message
+                        template_name = payload.get("template", {}).get("name") if payload.get("type") == "template" else None
+                        log_whatsapp_message(
+                            template_name=template_name,
+                            message_type=payload.get("type", "text"),
+                            phone_to=payload.get("to", ""),
+                            success=False,
+                            message_id=None,
+                        )
+                    except Exception:
+                        pass
+
                     return SendResult(
                         success=False,
                         error=error_msg,

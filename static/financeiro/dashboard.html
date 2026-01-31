@@ -766,7 +766,7 @@
             const user = localStorage.getItem('financeiroUser');
 
             if (!token || !user) {
-                window.location.href = '/static/financeiro/login.html';
+                window.location.href = '/static/admin/login.html';
                 return false;
             }
 
@@ -781,7 +781,7 @@
         function logout() {
             localStorage.removeItem('financeiroToken');
             localStorage.removeItem('financeiroUser');
-            window.location.href = '/static/financeiro/login.html';
+            window.location.href = '/static/admin/login.html';
         }
 
         // Fazer requisição com token

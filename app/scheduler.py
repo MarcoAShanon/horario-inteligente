@@ -7,7 +7,6 @@ from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
 
 from app.services.reminder_service import reminder_service
-from app.services.whatsapp_monitor import whatsapp_monitor
 from app.services.status_update_service import status_update_service
 from app.services.lembrete_service import lembrete_service
 from app.services.billing_service import billing_service
@@ -45,16 +44,8 @@ class ReminderScheduler:
                 misfire_grace_time=300  # 5 minutos de tolerância
             )
 
-            # Adicionar job para monitorar WhatsApp a cada 5 minutos
-            self.scheduler.add_job(
-                self._run_whatsapp_monitoring,
-                trigger=IntervalTrigger(minutes=5),
-                id='monitor_whatsapp',
-                name='Monitorar conexão WhatsApp',
-                replace_existing=True,
-                max_instances=1,
-                misfire_grace_time=180  # 3 minutos de tolerância
-            )
+            # Monitor Evolution API removido — sistema usa apenas API Oficial Meta
+            # (WHATSAPP_PROVIDER=official)
 
             # Adicionar job para atualizar status de consultas passadas a cada 15 minutos
             self.scheduler.add_job(
@@ -95,14 +86,12 @@ class ReminderScheduler:
 
             logger.info("✅ Scheduler de lembretes iniciado com sucesso")
             logger.info("📅 Lembretes serão verificados a cada 10 minutos")
-            logger.info("📱 Monitoramento WhatsApp a cada 5 minutos")
             logger.info("🔄 Atualização de status a cada 15 minutos")
             logger.info("🔔 Lembretes inteligentes a cada 10 minutos")
             logger.info("💰 Billing sync diário às 06:00")
 
             # Executar imediatamente no startup (opcional)
             asyncio.create_task(self._run_reminder_processing())
-            asyncio.create_task(self._run_whatsapp_monitoring())
             asyncio.create_task(self._run_status_update())
             asyncio.create_task(self._run_lembretes_inteligentes())
 
@@ -151,29 +140,6 @@ class ReminderScheduler:
 
         except Exception as e:
             logger.error(f"❌ Erro ao executar processamento de lembretes: {str(e)}")
-
-    async def _run_whatsapp_monitoring(self):
-        """
-        Executa o monitoramento de conexão do WhatsApp
-        Chamado automaticamente pelo scheduler a cada 5 minutos
-        """
-        try:
-            logger.info(f"📱 Verificando status da conexão WhatsApp...")
-
-            # Verificar todas as instâncias
-            stats = await whatsapp_monitor.verificar_todas_instancias()
-
-            # Enviar alertas se houver desconexões
-            for instance in stats.get("alertas", []):
-                await whatsapp_monitor.enviar_alerta_desconexao(instance)
-
-            logger.info(
-                f"✅ Monitoramento WhatsApp concluído - "
-                f"Conectadas: {stats['conectadas']}/{stats['total']}"
-            )
-
-        except Exception as e:
-            logger.error(f"❌ Erro ao executar monitoramento WhatsApp: {str(e)}")
 
     async def _run_status_update(self):
         """

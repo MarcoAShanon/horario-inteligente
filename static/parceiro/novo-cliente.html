@@ -228,7 +228,7 @@
         // Verificar autenticacao
         const token = localStorage.getItem('parceiroToken');
         if (!token) {
-            window.location.href = '/static/parceiro/login.html';
+            window.location.href = '/static/login.html?context=parceiro';
         }
 
         let linkAtivacaoCriado = '';

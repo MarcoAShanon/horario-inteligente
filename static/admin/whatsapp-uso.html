@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uso WhatsApp - Admin</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .loader { border: 3px solid #374151; border-top: 3px solid #22c55e; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/admin/dashboard.html" class="text-gray-400 hover:text-white transition" title="Voltar">
+                    <i class="fas fa-arrow-left text-lg"></i>
+                </a>
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500">
+                    <i class="fab fa-whatsapp text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Uso WhatsApp</h1>
+                    <p class="text-sm text-gray-400">Mensagens e custos por cliente</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-gray-300 hidden sm:inline" id="adminName">
+                    <i class="fas fa-user-circle mr-2"></i>Carregando...
+                </span>
+                <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center gap-2">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="hidden sm:inline">Sair</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Filtros -->
+        <div class="flex flex-wrap items-end gap-4 mb-6">
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Data Inicio</label>
+                <input type="date" id="dataInicio" class="bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 focus:border-green-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-gray-400 text-sm mb-1">Data Fim</label>
+                <input type="date" id="dataFim" class="bg-gray-800 text-white border border-gray-700 rounded-lg px-3 py-2 focus:border-green-500 focus:outline-none">
+            </div>
+            <button onclick="carregarDados()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition flex items-center gap-2">
+                <i class="fas fa-search"></i> Filtrar
+            </button>
+        </div>
+
+        <!-- Cards de Estatisticas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-paper-plane text-3xl text-green-500"></i>
+                    <span class="text-2xl font-bold text-white" id="statTotal">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Total Mensagens</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-dollar-sign text-3xl text-blue-500"></i>
+                    <span class="text-2xl font-bold text-white" id="statUSD">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Custo USD</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-coins text-3xl text-yellow-500"></i>
+                    <span class="text-2xl font-bold text-white" id="statBRL">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">Custo BRL</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-exchange-alt text-3xl text-purple-500"></i>
+                    <span class="text-2xl font-bold text-white" id="statTaxa">-</span>
+                </div>
+                <p class="text-gray-400 text-sm">USD/BRL</p>
+            </div>
+        </div>
+
+        <!-- Breakdown por Categoria -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <p class="text-gray-400 text-xs mb-1">Marketing</p>
+                <span class="text-lg font-bold text-orange-400" id="statMarketing">-</span>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <p class="text-gray-400 text-xs mb-1">Utility</p>
+                <span class="text-lg font-bold text-cyan-400" id="statUtility">-</span>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <p class="text-gray-400 text-xs mb-1">Authentication</p>
+                <span class="text-lg font-bold text-pink-400" id="statAuth">-</span>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <p class="text-gray-400 text-xs mb-1">Service (gratis)</p>
+                <span class="text-lg font-bold text-green-400" id="statService">-</span>
+            </div>
+        </div>
+
+        <!-- Tabela por Cliente -->
+        <div class="bg-gray-900 rounded-lg border border-gray-800 p-6">
+            <h2 class="text-lg font-bold text-white mb-4">
+                <i class="fas fa-building mr-2 text-green-500"></i>Uso por Cliente
+            </h2>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-800">
+                            <th class="text-left py-3 px-4 text-gray-400 font-medium text-sm">Cliente</th>
+                            <th class="text-right py-3 px-4 text-gray-400 font-medium text-sm">Total</th>
+                            <th class="text-right py-3 px-4 text-gray-400 font-medium text-sm">Marketing</th>
+                            <th class="text-right py-3 px-4 text-gray-400 font-medium text-sm">Utility</th>
+                            <th class="text-right py-3 px-4 text-gray-400 font-medium text-sm">Service</th>
+                            <th class="text-right py-3 px-4 text-gray-400 font-medium text-sm">USD</th>
+                            <th class="text-right py-3 px-4 text-gray-400 font-medium text-sm">BRL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientesTable">
+                        <tr>
+                            <td colspan="7" class="text-center py-8 text-gray-500">
+                                <div class="loader mx-auto mb-2"></div>
+                                <p>Carregando dados...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalhe do Cliente -->
+    <div id="modalDetalhe" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4" style="display:none;">
+        <div class="bg-gray-900 border border-gray-700 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b border-gray-800">
+                <h3 class="text-lg font-bold text-white" id="modalTitle">Detalhe</h3>
+                <button onclick="fecharModal()" class="text-gray-400 hover:text-white text-xl"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 flex gap-4 text-sm">
+                <div class="bg-gray-800 rounded-lg px-4 py-2">
+                    <span class="text-gray-400">Mensagens:</span>
+                    <span class="text-white font-bold ml-1" id="modalTotal">0</span>
+                </div>
+                <div class="bg-gray-800 rounded-lg px-4 py-2">
+                    <span class="text-gray-400">USD:</span>
+                    <span class="text-blue-400 font-bold ml-1" id="modalUSD">$0.00</span>
+                </div>
+                <div class="bg-gray-800 rounded-lg px-4 py-2">
+                    <span class="text-gray-400">BRL:</span>
+                    <span class="text-yellow-400 font-bold ml-1" id="modalBRL">R$0,00</span>
+                </div>
+            </div>
+            <div class="overflow-auto flex-1 px-6 pb-6">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-800">
+                            <th class="text-left py-2 px-3 text-gray-400 font-medium">Data</th>
+                            <th class="text-left py-2 px-3 text-gray-400 font-medium">Template</th>
+                            <th class="text-left py-2 px-3 text-gray-400 font-medium">Tipo</th>
+                            <th class="text-left py-2 px-3 text-gray-400 font-medium">Categoria</th>
+                            <th class="text-left py-2 px-3 text-gray-400 font-medium">Telefone</th>
+                            <th class="text-right py-2 px-3 text-gray-400 font-medium">USD</th>
+                            <th class="text-center py-2 px-3 text-gray-400 font-medium">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalTable">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        let adminToken = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            adminToken = localStorage.getItem('adminToken');
+            if (!adminToken) {
+                window.location.href = '/static/admin/login.html';
+                return;
+            }
+
+            const adminDataStr = localStorage.getItem('adminData');
+            if (adminDataStr) {
+                const ad = JSON.parse(adminDataStr);
+                document.getElementById('adminName').innerHTML =
+                    `<i class="fas fa-user-circle mr-2"></i>${escapeHtml(ad.nome)}`;
+            }
+
+            // Default: mes corrente
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('dataInicio').value = `${y}-${m}-01`;
+            document.getElementById('dataFim').value = today.toISOString().split('T')[0];
+
+            carregarDados();
+        });
+
+        async function apiFetch(url) {
+            const resp = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${adminToken}` }
+            });
+            if (resp.status === 401) { logout(); return null; }
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            return resp.json();
+        }
+
+        async function carregarDados() {
+            const inicio = document.getElementById('dataInicio').value;
+            const fim = document.getElementById('dataFim').value;
+            if (!inicio || !fim) return;
+
+            try {
+                // Carregar stats e uso por cliente em paralelo
+                const [stats, uso] = await Promise.all([
+                    apiFetch(`/api/admin/whatsapp/stats?data_inicio=${inicio}&data_fim=${fim}`),
+                    apiFetch(`/api/admin/whatsapp/uso-por-cliente?data_inicio=${inicio}&data_fim=${fim}&per_page=200`)
+                ]);
+
+                if (!stats || !uso) return;
+
+                // Atualizar cards
+                document.getElementById('statTotal').textContent = stats.total_mensagens.toLocaleString('pt-BR');
+                document.getElementById('statUSD').textContent = `$${stats.custo_usd.toFixed(2)}`;
+                document.getElementById('statBRL').textContent = `R$${stats.custo_brl.toFixed(2)}`;
+                document.getElementById('statTaxa').textContent = stats.taxa_cambio.toFixed(4);
+
+                document.getElementById('statMarketing').textContent = stats.por_categoria.marketing.toLocaleString('pt-BR');
+                document.getElementById('statUtility').textContent = stats.por_categoria.utility.toLocaleString('pt-BR');
+                document.getElementById('statAuth').textContent = stats.por_categoria.authentication.toLocaleString('pt-BR');
+                document.getElementById('statService').textContent = stats.por_categoria.service.toLocaleString('pt-BR');
+
+                // Atualizar tabela
+                const tbody = document.getElementById('clientesTable');
+                if (uso.clientes.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-500">Nenhuma mensagem no periodo</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = uso.clientes.map(c => `
+                    <tr class="border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer transition"
+                        onclick="verDetalhe(${c.cliente_id})">
+                        <td class="py-3 px-4">
+                            <div class="text-white font-medium">${escapeHtml(c.cliente_nome)}</div>
+                            <div class="text-gray-500 text-xs">${escapeHtml(c.subdomain || '')}</div>
+                        </td>
+                        <td class="py-3 px-4 text-right text-white">${c.total.toLocaleString('pt-BR')}</td>
+                        <td class="py-3 px-4 text-right text-orange-400">${c.marketing}</td>
+                        <td class="py-3 px-4 text-right text-cyan-400">${c.utility}</td>
+                        <td class="py-3 px-4 text-right text-green-400">${c.service}</td>
+                        <td class="py-3 px-4 text-right text-blue-400">$${c.custo_usd.toFixed(4)}</td>
+                        <td class="py-3 px-4 text-right text-yellow-400">R$${c.custo_brl.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+
+            } catch (err) {
+                console.error('Erro ao carregar dados:', err);
+                document.getElementById('clientesTable').innerHTML =
+                    `<tr><td colspan="7" class="text-center py-8 text-red-400"><i class="fas fa-exclamation-triangle mr-2"></i>Erro ao carregar dados</td></tr>`;
+            }
+        }
+
+        async function verDetalhe(clienteId) {
+            const inicio = document.getElementById('dataInicio').value;
+            const fim = document.getElementById('dataFim').value;
+
+            try {
+                const data = await apiFetch(`/api/admin/whatsapp/cliente/${clienteId}?data_inicio=${inicio}&data_fim=${fim}`);
+                if (!data) return;
+
+                document.getElementById('modalTitle').textContent = data.cliente_nome;
+                document.getElementById('modalTotal').textContent = data.total_mensagens;
+                document.getElementById('modalUSD').textContent = `$${data.custo_usd.toFixed(4)}`;
+                document.getElementById('modalBRL').textContent = `R$${data.custo_brl.toFixed(2)}`;
+
+                const catColors = {
+                    marketing: 'text-orange-400',
+                    utility: 'text-cyan-400',
+                    authentication: 'text-pink-400',
+                    service: 'text-green-400'
+                };
+
+                document.getElementById('modalTable').innerHTML = data.mensagens.map(m => {
+                    const dt = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR') : '-';
+                    const catColor = catColors[m.category] || 'text-gray-400';
+                    const statusIcon = m.success
+                        ? '<span class="text-green-400"><i class="fas fa-check-circle"></i></span>'
+                        : '<span class="text-red-400"><i class="fas fa-times-circle"></i></span>';
+                    return `
+                        <tr class="border-b border-gray-800/50">
+                            <td class="py-2 px-3 text-gray-300 whitespace-nowrap">${escapeHtml(dt)}</td>
+                            <td class="py-2 px-3 text-white">${escapeHtml(m.template_name || '-')}</td>
+                            <td class="py-2 px-3 text-gray-300">${escapeHtml(m.message_type)}</td>
+                            <td class="py-2 px-3 ${catColor}">${escapeHtml(m.category)}</td>
+                            <td class="py-2 px-3 text-gray-400">${escapeHtml(m.phone_to || '-')}</td>
+                            <td class="py-2 px-3 text-right text-blue-400">$${m.cost_usd.toFixed(6)}</td>
+                            <td class="py-2 px-3 text-center">${statusIcon}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                // Mostrar modal
+                const modal = document.getElementById('modalDetalhe');
+                modal.style.display = 'flex';
+                modal.classList.remove('hidden');
+
+            } catch (err) {
+                console.error('Erro ao carregar detalhe:', err);
+            }
+        }
+
+        function fecharModal() {
+            const modal = document.getElementById('modalDetalhe');
+            modal.style.display = 'none';
+            modal.classList.add('hidden');
+        }
+
+        // Fechar modal com ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') fecharModal();
+        });
+
+        function logout() {
+            ['adminToken', 'adminData', 'authToken', 'userData', 'refreshToken', 'financeiroToken', 'financeiroUser'].forEach(k => localStorage.removeItem(k));
+            window.location.href = '/static/admin/login.html';
+        }
+    </script>
+</body>
+</html>

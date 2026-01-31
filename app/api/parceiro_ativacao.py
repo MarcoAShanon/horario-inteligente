@@ -64,14 +64,17 @@ async def reenviar_ativacao_parceiro(
         if status != 'pendente_aceite':
             return {"sucesso": True, "mensagem": "Se o email estiver cadastrado, um novo link sera enviado."}
 
-        # Gerar novo token
+        # Gerar novo token e codigo de ativacao curto
         novo_token = secrets.token_urlsafe(64)
+        chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+        novo_codigo = ''.join([chars[secrets.randbelow(len(chars))] for _ in range(8)])
         expira_em = datetime.now() + timedelta(days=7)
 
         db.execute(
             text("""
                 UPDATE parceiros_comerciais SET
                     token_ativacao = :token,
+                    codigo_ativacao = :codigo,
                     token_expira_em = :expira_em,
                     atualizado_em = NOW()
                 WHERE id = :id
@@ -79,16 +82,17 @@ async def reenviar_ativacao_parceiro(
             {
                 "id": parceiro_id,
                 "token": novo_token,
+                "codigo": novo_codigo,
                 "expira_em": expira_em
             }
         )
         db.commit()
 
-        # Enviar email
+        # Enviar email com template limpo
         try:
             email_service = get_email_service()
             email_service.send_ativacao_parceiro(
-                email, nome, novo_token,
+                email, nome, novo_codigo,
                 percentual_comissao=float(percentual) if percentual else 0,
                 recorrencia_meses=recorrencia
             )
@@ -125,7 +129,7 @@ async def obter_dados_ativacao_parceiro(
                        recorrencia_comissao_meses, recorrencia_renovavel,
                        senha_hash
                 FROM parceiros_comerciais
-                WHERE token_ativacao = :token
+                WHERE codigo_ativacao = :token OR token_ativacao = :token
             """),
             {"token": token}
         ).fetchone()
@@ -197,12 +201,12 @@ async def processar_ativacao_parceiro(
                 detail="E necessario aceitar o Termo de Parceria Comercial"
             )
 
-        # Buscar parceiro pelo token
+        # Buscar parceiro pelo codigo_ativacao ou token_ativacao (compatibilidade)
         result = db.execute(
             text("""
                 SELECT id, nome, email, status, token_expira_em, senha_hash
                 FROM parceiros_comerciais
-                WHERE token_ativacao = :token
+                WHERE codigo_ativacao = :token OR token_ativacao = :token
             """),
             {"token": token}
         ).fetchone()
@@ -247,6 +251,7 @@ async def processar_ativacao_parceiro(
                     status = 'ativo',
                     token_ativacao = NULL,
                     token_expira_em = NULL,
+                    codigo_ativacao = NULL,
                     aceite_termo_em = :aceite_em,
                     aceite_termo_ip = :ip,
                     aceite_termo_user_agent = :user_agent,

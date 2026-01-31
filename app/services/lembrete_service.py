@@ -172,6 +172,13 @@ class LembreteService:
             data_formatada = agendamento.data_hora.strftime("%d/%m/%Y")
             hora_formatada = agendamento.data_hora.strftime("%H:%M")
 
+            # Definir contexto de billing para logging de mensagens WhatsApp
+            try:
+                from app.services.whatsapp_billing_service import set_billing_context
+                set_billing_context(medico.cliente_id)
+            except Exception:
+                pass
+
             # Enviar baseado no tipo de lembrete
             if lembrete.tipo == TipoLembrete.LEMBRETE_24H.value:
                 # Template lembrete_24h: 4 variáveis (paciente, medico, data, hora)

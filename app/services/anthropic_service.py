@@ -387,9 +387,13 @@ IMPORTANTE: Quando o usuário mencionar "próxima segunda", "quinta que vem", et
 ATENÇÃO: Você pode agendar consultas para qualquer data dentro dos próximos 90 dias, desde que o horário esteja disponível na agenda do médico.
 
 INFORMAÇÕES DA CLÍNICA:
-Médicos disponíveis:
 """
-        
+        endereco_clinica = contexto_clinica.get('endereco_clinica')
+        if endereco_clinica:
+            prompt += f"Endereço: {endereco_clinica}\n"
+
+        prompt += "Médicos disponíveis:\n"
+
         for medico in contexto_clinica.get('medicos', []):
             prompt += f"- [ID: {medico['id']}] {medico['nome']} ({medico['especialidade']}) - CRM: {medico['crm']}\n"
             prompt += f"  Convênios: {', '.join(medico['convenios'])}\n"
@@ -897,6 +901,7 @@ IMPORTANTE SOBRE medico_id:
 
         return {
             "nome_clinica": cliente.nome,
+            "endereco_clinica": cliente.endereco,
             "medicos": medicos_com_config,
             "convenios": [c.nome for c in convenios],
             "medico_unico": medico_unico,

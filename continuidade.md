@@ -549,6 +549,7 @@ source /root/sistema_agendamento/venv/bin/activate
 - [x] ~~Página de ativação de conta~~ (Implementado)
 - [x] ~~Email de ativação + boas-vindas~~ (Implementado)
 - [x] ~~Status badges no painel admin~~ (Implementado)
+- [x] ~~Campo endereço: admin API + perfil + contexto IA~~ (Corrigido)
 - [x] ~~Navegação unificada (top nav desktop + bottom nav mobile)~~ (Implementado)
 - [x] ~~Calibrar IA: lembrete de 24h na confirmação de presença~~ (Corrigido)
 - [x] ~~Calibrar IA: "lotado" vs "não atende nesse dia"~~ (Corrigido)
@@ -558,10 +559,10 @@ source /root/sistema_agendamento/venv/bin/activate
 - [x] ~~Horários não desapareciam ao trocar data no reagendamento~~ (Corrigido)
 - [x] ~~IA não reconhecia datas curtas (DD/MM, D/M)~~ (Corrigido)
 - [x] ~~Exibir nomes de pacientes e telefones formatados na sidebar de conversas~~ (Implementado)
-- [ ] Calibrar empatia da IA (não usar emojis em situações de dor/urgência)
-- [ ] Validar exibição do nome do convênio no modal de detalhes
-- [ ] Definir senha para parceiros existentes via admin
-- [ ] Testar fluxo completo: admin cria → email chega → aceitar → conta ativa
+- [x] ~~Calibrar empatia da IA (não usar emojis em situações de dor/urgência)~~ (Concluído)
+- [x] ~~Validar exibição do nome do convênio no modal de detalhes~~ (Concluído)
+- [x] ~~Definir senha para parceiros existentes via admin~~ (Concluído)
+- [x] ~~Testar fluxo completo: admin cria → email chega → aceitar → conta ativa~~ (Concluído)
 
 ---
 
@@ -748,6 +749,299 @@ source /root/sistema_agendamento/venv/bin/activate
   3. **`static/admin/pre-cadastros.html`** — "Leads do Pré-Lançamento" → "Leads e interessados"
   4. **`static/admin/dashboard.html`** — "Leads de lançamento" → "Leads e interessados"
 
+### 46. Campo endereço do cliente — 3 correções
+- **Problema**: O campo `endereco` existia na tabela `clientes` e podia ser preenchido no cadastro, mas:
+  1. A API GET admin não retornava o campo (página de detalhes mostrava "Não informado")
+  2. O cliente/médico não podia ver ou editar seu endereço na página de perfil
+  3. A IA não recebia o endereço no contexto (não podia informar ao paciente)
+
+#### Fix 1 — API GET admin retornar `endereco`
+- **Arquivo**: `app/api/admin.py`
+- Adicionado `c.endereco` no SELECT (após `c.status`)
+- Adicionado `"endereco": result[16]` no dict de retorno
+- **Resultado**: Página `clientes-detalhes.html` agora exibe o endereço corretamente
+
+#### Fix 2 — Cliente ver e editar endereço no perfil
+- **Arquivos**: `app/api/user_management.py`, `static/perfil.html`
+- **Schema**: `endereco: Optional[str] = None` adicionado em `UpdateProfileRequest`
+- **GET /perfil**: Ambos os branches (médico e secretária) fazem query adicional em `clientes` usando `cliente_id` do token para buscar `endereco`
+- **PUT /perfil**: Quando `dados.endereco is not None`, faz UPDATE separado na tabela `clientes` usando `cliente_id` do token (funciona para médico e secretária)
+- **Frontend**: Seção "Dados da Clínica" com campo endereço adicionada antes dos campos profissionais; campo populado em `preencherFormulario()` e incluído no submit
+
+#### Fix 3 — IA receber endereço no contexto
+- **Arquivo**: `app/services/anthropic_service.py`
+- **Contexto**: `"endereco_clinica": cliente.endereco` adicionado ao dict de `_obter_contexto_clinica()`
+- **Prompt**: Na seção "INFORMAÇÕES DA CLÍNICA", endereço exibido logo após o nome da clínica (condicional — só se disponível)
+- **Resultado**: IA pode informar o endereço da clínica ao paciente quando perguntado
+
 ---
 
-*Última atualização: 30/01/2026 - Remoção de referências a lançamento na landing page*
+*Última atualização: 30/01/2026 - Campo endereço do cliente (admin API + perfil + IA)*
+
+---
+
+## SESSÃO 30/01/2026 — Auditoria de Segurança Completa
+
+### 47. Auditoria de Segurança — Documento de Referência
+- **Criado**: `/root/sistema_agendamento/auditoria_seguranca.md` (834 linhas)
+- Documento autocontido com 10 seções de auditoria, comandos executáveis, critérios pass/fail
+- **Resultado da auditoria**: 9/45 aprovados (20% taxa de aprovação inicial)
+
+### 48. Correções Críticas (Severidade: CRÍTICA)
+
+#### 48.1 Permissões de arquivos sensíveis
+- `.env` e `.env.backup`: `chmod 600`, `chown horariointeligente:horariointeligente`
+- `logs/`: `chmod 640` em todos os arquivos de log
+- `webhook.log`: removida permissão 666
+
+#### 48.2 Serviço systemd — hardening completo
+- **Arquivo**: `/etc/systemd/system/horariointeligente.service`
+- `User=root` → `User=horariointeligente` (usuário de sistema criado: `useradd --system --shell /usr/sbin/nologin`)
+- Removido `--reload` (não usar em produção)
+- Bind: `0.0.0.0:8000` → `127.0.0.1:8000`
+- Workers: `--workers 4`
+- Secrets: removidas variáveis inline → `EnvironmentFile=/root/sistema_agendamento/.env`
+
+#### 48.3 Remoção de SECRET_KEY hardcoded (5 arquivos)
+- `app/api/parceiro_auth.py:24` — removido fallback `"parceiro-secret-key-change-in-production"`
+- `app/api/financeiro.py:23` — removido fallback `"your-secret-key"`
+- `app/api/admin.py:27` — removido fallback `"your-secret-key"`
+- `app/api/websocket.py:19` — removido fallback `"your-secret-key"`
+- `app/main.py` — CSRF secret fallback `"csrf-secret-key-change-in-production"` → `""`
+- Todos agora usam `os.getenv("SECRET_KEY")` com `RuntimeError` se ausente
+
+#### 48.4 Remoção de tokens Telegram hardcoded
+- `app/services/telegram_service.py` — tokens hardcoded → `os.getenv()`
+- `scripts/telegram-alerta.sh` — tokens hardcoded → `grep` do `.env`
+- `scripts/verificar-certificado.sh` — idem
+
+#### 48.5 Firewall UFW ativado
+- `ufw allow 22,80,443/tcp && ufw --force enable`
+- Apenas SSH, HTTP e HTTPS expostos
+
+### 49. Correções Altas (Severidade: ALTA)
+
+#### 49.1 JWT — redução de expiração + refresh token
+- `ACCESS_TOKEN_EXPIRE_MINUTES`: `480` → `60` (em auth.py, financeiro.py, admin.py)
+- Novo endpoint `POST /auth/refresh` com refresh token (8h de validade)
+- Login agora retorna `access_token` + `refresh_token`
+
+#### 49.2 Rate limiting global
+- `app/main.py`: `Limiter(default_limits=["120/minute"])`
+- `app/api/webhooks.py`: `@limiter.limit("100/minute")`
+- `app/api/webhook_official.py`: `@limiter.limit("200/minute")`
+
+#### 49.3 CSRF e CORS
+- CSRF fallback secret corrigido
+- `X-CSRF-Token` adicionado aos CORS allowed headers
+- Origens `localhost` agora condicionais: só habilitadas quando `ENVIRONMENT != "production"`
+
+#### 49.4 Nginx — headers de segurança
+- **`/etc/nginx/nginx.conf`**: `server_tokens off;`, `ssl_protocols TLSv1.2 TLSv1.3;`
+- **`/etc/nginx/sites-available/horariointeligente`**: adicionado `Strict-Transport-Security` (HSTS), removidos headers duplicados
+
+#### 49.5 Criptografia de PII (LGPD)
+- **Criado**: `app/services/crypto_service.py` — Fernet (AES-128-CBC + HMAC-SHA256)
+- `EncryptedString` TypeDecorator para SQLAlchemy (transparente, backward-compatible)
+- `app/models/paciente.py`: `cpf = Column(EncryptedString(255))`
+- **Migração**: 282 CPFs de pacientes + 2 CPF/CNPJs de parceiros criptografados
+- Colunas alteradas para `VARCHAR(255)` (tokens Fernet ~120 chars)
+
+#### 49.6 Logrotate
+- **Criado**: `/etc/logrotate.d/horariointeligente`
+- Rotação diária, 30 dias retenção, compressão, copytruncate
+
+#### 49.7 Dependências — CVEs corrigidas
+- `aiohttp` 3.12.15 → 3.13.3
+- `pyasn1` 0.6.1 → 0.6.2
+- `python-multipart` 0.0.20 → 0.0.22
+- `starlette` 0.48.0 → 0.49.1
+- `urllib3` 2.5.0 → 2.6.3
+- Pinados: `cryptography==46.0.3`, `pywebpush==2.2.0`
+- **Residual**: `protobuf 6.32.1` (CVE-2026-0994) — sem fix disponível ainda
+
+### 50. Rotação de Chaves Locais (já aplicadas)
+- `SECRET_KEY` — nova chave de 64 bytes (base64)
+- `DATABASE_URL` — nova senha PostgreSQL de 32 caracteres aleatórios (atualizado em `.env` e `alembic.ini`)
+- `WHATSAPP_WEBHOOK_VERIFY_TOKEN` — novo token urlsafe
+- `ASAAS_WEBHOOK_TOKEN` — novo token hex 64 chars
+- `VAPID_PRIVATE_KEY` / `VAPID_PUBLIC_KEY` — novo par de chaves gerado
+- `ENCRYPTION_KEY` — chave Fernet gerada para criptografia PII
+- Fallback de DATABASE_URL removido de `app/database.py`
+
+---
+
+## PENDÊNCIAS PÓS-ALMOÇO — Rotação de Chaves Externas
+
+> **IMPORTANTE**: Os serviços estão funcionando, mas as 6 integrações externas abaixo estão **inativas** até que os novos tokens sejam inseridos. O sistema funciona normalmente para agendamentos locais, mas WhatsApp, IA, áudio, email, Telegram e pagamentos estão desabilitados.
+
+### Checklist de Execução (ordem recomendada)
+
+#### Passo 1 — WhatsApp Business API (Meta)
+1. Acessar: https://business.facebook.com/settings/ → WhatsApp → API Setup
+2. Gerar novo **Access Token** permanente
+3. Editar `/root/sistema_agendamento/.env`:
+   ```
+   WHATSAPP_ACCESS_TOKEN=<novo_token_aqui>
+   ```
+4. **Dependência**: Na mesma página do Meta Business, ir em Webhooks → Editar →
+   atualizar o **Verify Token** para o valor atual do `.env`:
+   ```
+   Valor atual no .env: conferir com — grep WHATSAPP_WEBHOOK_VERIFY_TOKEN /root/sistema_agendamento/.env
+   ```
+5. Clicar "Verify and Save" no portal Meta
+
+#### Passo 2 — Anthropic API (Claude)
+1. Acessar: https://console.anthropic.com/settings/keys
+2. Revogar chave antiga e gerar nova
+3. Editar `/root/sistema_agendamento/.env`:
+   ```
+   ANTHROPIC_API_KEY=<nova_chave_aqui>
+   ```
+
+#### Passo 3 — OpenAI API (Whisper + TTS)
+1. Acessar: https://platform.openai.com/api-keys
+2. Revogar chave antiga e gerar nova
+3. Editar `/root/sistema_agendamento/.env`:
+   ```
+   OPENAI_API_KEY=<nova_chave_aqui>
+   ```
+
+#### Passo 4 — Email SMTP (Hostinger)
+1. Acessar: https://hpanel.hostinger.com/ → Email → contato@horariointeligente.com.br
+2. Alterar senha do email
+3. Editar `/root/sistema_agendamento/.env`:
+   ```
+   SMTP_PASSWORD=<nova_senha_aqui>
+   ```
+
+#### Passo 5 — Telegram Bot
+1. No Telegram, abrir conversa com @BotFather
+2. Enviar `/revoke` e selecionar o bot
+3. Enviar `/token` para gerar novo token
+4. Editar `/root/sistema_agendamento/.env`:
+   ```
+   TELEGRAM_BOT_TOKEN=<novo_token_aqui>
+   ```
+
+#### Passo 6 — Asaas (Gateway de Pagamento)
+1. Acessar: https://www.asaas.com/config/api
+2. Revogar chave antiga e gerar nova
+3. Editar `/root/sistema_agendamento/.env`:
+   ```
+   ASAAS_API_KEY=<nova_chave_aqui>
+   ```
+4. **Dependência**: Na configuração de webhook do Asaas, atualizar o **Webhook Token** para:
+   ```
+   Valor atual no .env: conferir com — grep ASAAS_WEBHOOK_TOKEN /root/sistema_agendamento/.env
+   ```
+
+### Passo Final — Reiniciar o Serviço
+Após inserir todas as chaves no `.env`:
+```bash
+sudo systemctl restart horariointeligente
+sudo systemctl status horariointeligente
+# Verificar logs:
+journalctl -u horariointeligente -n 50 --no-pager
+```
+
+### Validação Pós-Reinício
+- [ ] WhatsApp: enviar mensagem de teste para o número do bot
+- [ ] IA (Anthropic): agendar consulta via chat para validar resposta da IA
+- [ ] Áudio (OpenAI): enviar áudio via WhatsApp e verificar transcrição
+- [ ] Email: disparar email de teste (ex: redefinir senha)
+- [ ] Telegram: verificar se alertas chegam no chat ID configurado
+- [ ] Asaas: acessar painel admin e verificar status de cobrança
+
+### Nota sobre Permissões
+Após editar o `.env`, reajustar permissões:
+```bash
+chown horariointeligente:horariointeligente /root/sistema_agendamento/.env
+chmod 600 /root/sistema_agendamento/.env
+```
+
+---
+
+## Correções Realizadas (Sessão 31/01/2026)
+
+### 51. JWT `sub` claim — InvalidSubjectError (401 em todas as APIs admin)
+- **Problema**: Após implementar o login unificado, todas as chamadas de API admin retornavam 401 "Token inválido"
+- **Causa raiz**: PyJWT exige que o claim `sub` seja **string** (RFC 7519). A função `create_unified_token()` definia `"sub": user_data["id"]` (integer). Ao decodificar, PyJWT lançava `InvalidSubjectError` (subclasse de `InvalidTokenError`), capturado pelo `except` genérico e retornando "Token inválido"
+- **Solução**: Alterado `create_unified_token()` para usar `str(user_data["id"])` e adicionado `int()` em todos os 6 pontos que leem o `sub` de volta
+- **Arquivos modificados**:
+  - `app/api/auth.py` — `create_unified_token()`, `get_current_user()`, `/refresh`, `/verify-token`
+  - `app/api/admin.py` — `get_current_admin()`
+  - `app/api/parceiro_auth.py` — `get_current_parceiro()`
+  - `app/api/financeiro.py` — `get_current_financeiro()`
+
+### 52. Página de login admin dedicada (substituiu login unificado com ?context)
+- **Problema**: Login unificado em `/static/login.html?context=admin` dependia de JavaScript para trocar o tema visual. Usuário não reconhecia como "login admin" — confundia com o login de cliente
+- **Solução**: Criada página standalone `/static/admin/login.html` com:
+  - Tema admin hardcoded (gradiente roxo, card escuro)
+  - Usa endpoint unificado `/api/auth/login` (JSON)
+  - Bloqueia tipos não-admin com mensagem de erro
+  - Auto-redirect se já logado (verifica `adminToken` no localStorage)
+  - Armazena tokens nas chaves unificadas (`authToken`) e legadas (`adminToken`, `financeiroToken`)
+- **Arquivo**: `static/admin/login.html` — reescrita completa (~170 linhas)
+
+### 53. Redirects de login/logout atualizados em 19 arquivos
+- **Problema**: 23 referências em 12 páginas admin ainda apontavam para `/static/login.html?context=admin`. 9 referências em páginas parceiro apontavam para `/static/parceiro/login.html`. 2 referências em páginas financeiro desatualizadas.
+- **Solução**: Todas as referências atualizadas para os caminhos corretos
+
+#### Páginas admin (logout → `/static/admin/login.html`):
+| Arquivo | Mudanças |
+|---------|----------|
+| `static/admin/dashboard.html` | Logout function + redirects |
+| `static/admin/dashboard-financeiro.html` | Logout function + redirects |
+| `static/admin/dashboard-suporte.html` | Logout function + redirects |
+| `static/admin/clientes.html` | Logout function + redirects |
+| `static/admin/clientes-detalhes.html` | Redirects |
+| `static/admin/clientes-novo.html` | Redirects |
+| `static/admin/parceiros.html` | Logout function + redirects |
+| `static/admin/comissoes.html` | Logout function + redirects |
+| `static/admin/whatsapp-uso.html` | Logout function + redirects |
+| `static/admin/pre-cadastros.html` | Logout function + redirects |
+| `static/admin/analytics.html` | Redirects |
+| `static/admin/index.html` | Redirect para admin subdomain |
+
+#### Páginas parceiro (redirect → `/static/login.html?context=parceiro`):
+- `static/parceiro/novo-cliente.html`, `ativar-conta.html`, `pendente-ativacao.html`, `registro.html`, `dashboard.html`
+
+#### Páginas financeiro (redirect → `/static/admin/login.html`):
+- `static/financeiro/login.html`, `static/financeiro/dashboard.html`
+
+### 54. Cache de HTML — Nginx e Service Worker
+- **Problema**: Mesmo após corrigir código, browser servia HTML antigo por cache do Nginx (`expires 1h`) e cache do Service Worker
+- **Solução Nginx** (`/etc/nginx/sites-enabled/horariointeligente`):
+  ```nginx
+  # Antes: expires 1h; Cache-Control "public, must-revalidate"
+  # Depois: expires -1; Cache-Control "no-cache, must-revalidate"
+  ```
+- **Solução Service Worker** (`static/service-worker.js`):
+  - Versão bumped de `1.1.0` → `1.2.0` para forçar invalidação de cache
+- **Solução Frontend** (`static/login.html`):
+  - Adicionado `Date.now()` como cache-bust em todas as URLs de redirect em `redirectByUserType()`
+
+### 55. Rota raiz atualizada para login admin dedicado
+- **Arquivo**: `app/main.py`
+- **Mudança**: Subdomínio `admin.*` agora redireciona para `/static/admin/login.html` ao invés de `/static/login.html?context=admin`
+
+### 56. Reset de senha do parceiro de teste
+- **Parceiro**: José Maria Martins (id=4, email: thelemarco@yahoo.com.br)
+- **Nova senha**: `parceiro123` (bcrypt hash atualizado no banco)
+- **Motivo**: Teste do fluxo de login e redirecionamento do parceiro
+
+---
+
+### Pendências Atualizadas
+- [x] ~~Login unificado — endpoint único para todos os tipos~~ (Implementado)
+- [x] ~~JWT sub claim fix — InvalidSubjectError~~ (Corrigido)
+- [x] ~~Página admin login dedicada~~ (Implementado)
+- [x] ~~Redirects login/logout em todas as páginas~~ (Atualizado)
+- [x] ~~Cache HTML — Nginx no-cache~~ (Corrigido)
+- [x] ~~Service Worker — versão 1.2.0~~ (Bumped)
+- [x] ~~Reset senha parceiro teste~~ (Concluído)
+
+---
+
+*Última atualização: 31/01/2026 - Login unificado: correções JWT, página admin dedicada, redirects*

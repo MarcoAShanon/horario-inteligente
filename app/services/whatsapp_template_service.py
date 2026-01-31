@@ -79,6 +79,55 @@ class WhatsAppTemplateService:
             }
         ]
 
+    # ==================== RENDERIZAÇÃO DE TEMPLATES ====================
+
+    @staticmethod
+    def renderizar_template(template_name: str, **kwargs) -> str:
+        """
+        Retorna o texto aproximado de um template WhatsApp com os parâmetros preenchidos.
+
+        Usado para salvar o conteúdo real da mensagem nas conversas do painel,
+        em vez de descrições genéricas.
+
+        Args:
+            template_name: Nome do template (ex: "boas_vindas_clinica")
+            **kwargs: Parâmetros do template (ex: paciente="João", clinica="Clínica X")
+
+        Returns:
+            Texto legível do template com variáveis preenchidas.
+        """
+        templates = {
+            "boas_vindas_clinica": (
+                "Olá {paciente}! Bem-vindo(a) à {clinica}! "
+                "Estamos muito felizes em ter você como nosso paciente. "
+                "Qualquer dúvida, estamos à disposição."
+            ),
+            "paciente_inativo": (
+                "Olá {paciente}! Sentimos sua falta na {clinica}. "
+                "Sua última consulta foi em {ultima_consulta}. "
+                "Que tal agendar uma nova consulta? Estamos à disposição!"
+            ),
+            "consulta_cancelada_clinica": (
+                "Olá {paciente}, sua consulta com {medico} no dia {data} às {hora} "
+                "foi cancelada. Motivo: {motivo}. "
+                "Pedimos desculpas pelo inconveniente. Deseja reagendar?"
+            ),
+            "consulta_reagendada_clinica": (
+                "Olá {paciente}, sua consulta com {medico} foi reagendada "
+                "de {data_antiga} às {hora_antiga} para {data_nova} às {hora_nova}. "
+                "Contamos com a sua presença!"
+            ),
+        }
+
+        template_text = templates.get(template_name)
+        if not template_text:
+            return f"[Template: {template_name}]"
+
+        try:
+            return template_text.format(**kwargs)
+        except KeyError:
+            return template_text
+
     # ==================== TEMPLATE DE TESTE ====================
 
     async def enviar_hello_world(self, telefone: str) -> SendResult:

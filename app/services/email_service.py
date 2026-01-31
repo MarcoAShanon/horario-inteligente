@@ -4,8 +4,7 @@ Para recuperação de senha, notificações, formulário de contato e Telegram
 """
 import smtplib
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+from email.message import EmailMessage
 from typing import Optional
 import os
 import urllib.request
@@ -153,7 +152,7 @@ class EmailService:
         </div>
         <div class="footer">
             <p>Este é um email automático, por favor não responda.</p>
-            <p>&copy; 2025 Horário Inteligente. Todos os direitos reservados.</p>
+            <p>&copy; 2026 Horário Inteligente. Todos os direitos reservados.</p>
         </div>
     </div>
 </body>
@@ -181,16 +180,13 @@ Equipe Horário Inteligente
             """
 
             # Criar mensagem
-            message = MIMEMultipart("alternative")
+            message = EmailMessage()
             message["Subject"] = "🔒 Recuperação de Senha - Horário Inteligente"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = to_email
 
-            # Anexar versões texto e HTML
-            part1 = MIMEText(text_body, "plain", "utf-8")
-            part2 = MIMEText(html_body, "html", "utf-8")
-            message.attach(part1)
-            message.attach(part2)
+            message.set_content(text_body)
+            message.add_alternative(html_body, subtype='html', cte='base64')
 
             # Enviar email
             if self.smtp_password:
@@ -367,16 +363,13 @@ Equipe Horário Inteligente
             """
 
             # Criar mensagem
-            message = MIMEMultipart("alternative")
+            message = EmailMessage()
             message["Subject"] = "Confirme seu email - Horário Inteligente"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = to_email
 
-            # Anexar versões texto e HTML
-            part1 = MIMEText(text_body, "plain", "utf-8")
-            part2 = MIMEText(html_body, "html", "utf-8")
-            message.attach(part1)
-            message.attach(part2)
+            message.set_content(text_body)
+            message.add_alternative(html_body, subtype='html', cte='base64')
 
             # Enviar email
             if self.smtp_password:
@@ -445,12 +438,12 @@ Equipe Horário Inteligente
 </html>
             """
 
-            message = MIMEMultipart("alternative")
+            message = EmailMessage()
             message["Subject"] = "🎉 Bem-vindo ao Horário Inteligente!"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = to_email
 
-            message.attach(MIMEText(html_body, "html", "utf-8"))
+            message.set_content(html_body, subtype='html', cte='base64')
 
             if self.smtp_password:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
@@ -598,7 +591,7 @@ Equipe Horário Inteligente
         <div class="footer">
             <p>Voce recebeu este email porque se cadastrou em horariointeligente.com.br</p>
             <p>Para cancelar, responda este email com "CANCELAR"</p>
-            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+            <p>&copy; 2026 Horario Inteligente. Todos os direitos reservados.</p>
         </div>
     </div>
 </body>
@@ -632,15 +625,13 @@ Voce recebeu este email porque se cadastrou em horariointeligente.com.br
 Para cancelar, responda este email com "CANCELAR"
             """
 
-            message = MIMEMultipart("alternative")
+            message = EmailMessage()
             message["Subject"] = "Voce esta na lista VIP do Horario Inteligente!"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = to_email
 
-            part1 = MIMEText(text_body, "plain", "utf-8")
-            part2 = MIMEText(html_body, "html", "utf-8")
-            message.attach(part1)
-            message.attach(part2)
+            message.set_content(text_body)
+            message.add_alternative(html_body, subtype='html', cte='base64')
 
             if self.smtp_password:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
@@ -691,12 +682,12 @@ Data: {lead_data.get('data_cadastro', 'N/A')}
 Total de pre-cadastros: {total_cadastros}
 """
 
-            message = MIMEMultipart()
+            message = EmailMessage()
             message["Subject"] = f"Novo pre-cadastro - {lead_data.get('nome', 'Lead')}"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = self.contact_email
 
-            message.attach(MIMEText(text_body, "plain", "utf-8"))
+            message.set_content(text_body)
 
             if self.smtp_password:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
@@ -848,7 +839,7 @@ Total de pre-cadastros: {total_cadastros}
                 <div style="margin-top: 10px;">
                     <div class="step">
                         <span class="step-number">1</span>
-                        <span>Clique no botao acima para acessar a pagina de ativacao</span>
+                        <span>Acesse a pagina de ativacao pelo link acima</span>
                     </div>
                     <div class="step">
                         <span class="step-number">2</span>
@@ -864,7 +855,7 @@ Total de pre-cadastros: {total_cadastros}
             <div class="warning">
                 <strong>Importante:</strong>
                 <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-                    <li>Este link expira em <strong>7 dias</strong></li>
+                    <li>Este link e valido por <strong>7 dias</strong></li>
                     <li>Se voce nao solicitou este cadastro, ignore este email</li>
                 </ul>
             </div>
@@ -878,8 +869,8 @@ Total de pre-cadastros: {total_cadastros}
             <strong>Equipe Horario Inteligente</strong></p>
         </div>
         <div class="footer">
-            <p>Este e um email automatico, por favor nao responda.</p>
-            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+            <p>Duvidas? Responda este email ou acesse horariointeligente.com.br</p>
+            <p>&copy; 2026 Horario Inteligente. Todos os direitos reservados.</p>
         </div>
     </div>
 </body>
@@ -895,27 +886,26 @@ Para ativar sua conta, acesse o link abaixo:
 {activation_link}
 
 Proximos passos:
-1. Clique no link acima
+1. Acesse o link acima
 2. Aceite os termos de uso e politica de privacidade
 3. Sua conta sera ativada
 
 IMPORTANTE:
-- Este link expira em 7 dias
+- Este link e valido por 7 dias
 - Se voce nao solicitou este cadastro, ignore este email
 
 Atenciosamente,
 Equipe Horario Inteligente
             """
 
-            message = MIMEMultipart("alternative")
+            message = EmailMessage()
             message["Subject"] = "Ative sua conta - Horario Inteligente"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = to_email
+            message["Reply-To"] = "contato@horariointeligente.com.br"
 
-            part1 = MIMEText(text_body, "plain", "utf-8")
-            part2 = MIMEText(html_body, "html", "utf-8")
-            message.attach(part1)
-            message.attach(part2)
+            message.set_content(text_body)
+            message.add_alternative(html_body, subtype='html', cte='base64')
 
             if self.smtp_password:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
@@ -980,7 +970,7 @@ Equipe Horario Inteligente
                 <strong>Seu acesso:</strong>
                 <p style="margin: 10px 0 0 0;">
                     URL: <strong>{login_url}</strong><br>
-                    Use o email e senha que foram enviados previamente para fazer login.
+                    Use seu email cadastrado e a senha que voce criou durante a ativacao para fazer login.
                 </p>
             </div>
 
@@ -990,20 +980,37 @@ Equipe Horario Inteligente
             <strong>Equipe Horario Inteligente</strong></p>
         </div>
         <div class="footer">
-            <p>Este e um email automatico, por favor nao responda.</p>
-            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+            <p>Duvidas? Responda este email ou acesse horariointeligente.com.br</p>
+            <p>&copy; 2026 Horario Inteligente. Todos os direitos reservados.</p>
         </div>
     </div>
 </body>
 </html>
             """
 
-            message = MIMEMultipart("alternative")
-            message["Subject"] = "Conta ativada - Horario Inteligente"
+            message = EmailMessage()
+            message["Subject"] = "Sua conta esta pronta - Horario Inteligente"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = to_email
+            message["Reply-To"] = "contato@horariointeligente.com.br"
 
-            message.attach(MIMEText(html_body, "html", "utf-8"))
+            text_body = f"""
+Ola, {to_name}!
+
+Sua conta no Horario Inteligente foi ativada com sucesso! Agora voce pode acessar o sistema e comecar a gerenciar sua agenda de forma inteligente.
+
+Seu acesso:
+URL: {login_url}
+Use seu email cadastrado e a senha que voce criou durante a ativacao para fazer login.
+
+Se tiver alguma duvida, entre em contato conosco.
+
+Atenciosamente,
+Equipe Horario Inteligente
+            """
+
+            message.set_content(text_body)
+            message.add_alternative(html_body, subtype='html', cte='base64')
 
             if self.smtp_password:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
@@ -1058,12 +1065,12 @@ Equipe Horario Inteligente
 </html>
             """
 
-            message = MIMEMultipart("alternative")
+            message = EmailMessage()
             message["Subject"] = f"Cliente {cliente_nome} ativou a conta - Horario Inteligente"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = parceiro_email
 
-            message.attach(MIMEText(html_body, "html", "utf-8"))
+            message.set_content(html_body, subtype='html', cte='base64')
 
             if self.smtp_password:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
@@ -1166,7 +1173,7 @@ Equipe Horario Inteligente
         </div>
         <div class="footer">
             <p>Este e um email automatico, por favor nao responda.</p>
-            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+            <p>&copy; 2026 Horario Inteligente. Todos os direitos reservados.</p>
         </div>
     </div>
 </body>
@@ -1190,15 +1197,13 @@ Atenciosamente,
 Equipe Horario Inteligente
             """
 
-            message = MIMEMultipart("alternative")
+            message = EmailMessage()
             message["Subject"] = "Suas credenciais de acesso - Horario Inteligente"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = to_email
 
-            part1 = MIMEText(text_body, "plain", "utf-8")
-            part2 = MIMEText(html_body, "html", "utf-8")
-            message.attach(part1)
-            message.attach(part2)
+            message.set_content(text_body)
+            message.add_alternative(html_body, subtype='html', cte='base64')
 
             if self.smtp_password:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
@@ -1226,16 +1231,11 @@ Equipe Horario Inteligente
     ) -> bool:
         """
         Envia email com link de ativacao de conta para parceiro comercial.
-        O link expira em 7 dias.
+        Template limpo (anti-spam). O token aqui e o codigo_ativacao curto.
+        O link e valido por 7 dias.
         """
         try:
-            activation_link = f"{base_url}/static/parceiro/ativar-conta.html?token={token}"
-
-            # Descrição da recorrência
-            if recorrencia_meses is None:
-                desc_recorrencia = "Permanente (enquanto o cliente estiver ativo)"
-            else:
-                desc_recorrencia = f"{recorrencia_meses} meses por cliente"
+            activation_link = f"{base_url}/static/parceiro/ativar-conta.html?code={token}"
 
             html_body = f"""
 <!DOCTYPE html>
@@ -1251,49 +1251,44 @@ Equipe Horario Inteligente
         .button {{ display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }}
         .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
         .info-box {{ background: #ecfdf5; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0; border-radius: 5px; }}
-        .warning {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }}
-        .conditions {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0; }}
-        .conditions h3 {{ margin: 0 0 10px 0; color: #059669; }}
-        .conditions ul {{ margin: 5px 0; padding-left: 20px; }}
+        .step {{ display: flex; align-items: flex-start; margin: 10px 0; }}
+        .step-number {{ background: #10B981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 10px; flex-shrink: 0; }}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Convite de Parceria Comercial</h1>
+            <h1>Convite de Parceria</h1>
         </div>
         <div class="content">
             <p>Ola, <strong>{to_name}</strong>!</p>
 
-            <p>Voce foi convidado(a) para ser <strong>Parceiro Comercial</strong> do <strong>Horario Inteligente</strong>!</p>
+            <p>Voce foi convidado(a) para ser Parceiro Comercial do <strong>Horario Inteligente</strong>.</p>
 
-            <div class="conditions">
-                <h3>Suas Condicoes Comerciais</h3>
-                <ul>
-                    <li><strong>Comissao:</strong> {percentual_comissao}%</li>
-                    <li><strong>Recorrencia:</strong> {desc_recorrencia}</li>
-                </ul>
-            </div>
-
-            <p>Para ativar sua conta de parceiro, voce precisa:</p>
-            <ol>
-                <li>Clicar no botao abaixo</li>
-                <li>Definir sua senha de acesso</li>
-                <li>Aceitar o Termo de Parceria Comercial</li>
-            </ol>
+            <p>Acesse o Portal do Parceiro e configure sua conta:</p>
 
             <p style="text-align: center;">
                 <a href="{activation_link}" class="button">
-                    Ativar Minha Conta de Parceiro
+                    Acessar Portal do Parceiro
                 </a>
             </p>
 
-            <div class="warning">
-                <strong>Importante:</strong>
-                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-                    <li>Este link expira em <strong>7 dias</strong></li>
-                    <li>Apos ativar, voce tera acesso ao Portal do Parceiro</li>
-                </ul>
+            <div class="info-box">
+                <strong>Proximos passos:</strong>
+                <div style="margin-top: 10px;">
+                    <div class="step">
+                        <span class="step-number">1</span>
+                        <span>Crie sua senha de acesso</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">2</span>
+                        <span>Aceite o Termo de Parceria</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">3</span>
+                        <span>Acesse o Portal do Parceiro</span>
+                    </div>
+                </div>
             </div>
 
             <p>Ou copie e cole o link abaixo no navegador:</p>
@@ -1301,12 +1296,14 @@ Equipe Horario Inteligente
                 {activation_link}
             </p>
 
+            <p style="font-size: 13px; color: #666;">Este link e valido por 7 dias.</p>
+
             <p>Atenciosamente,<br>
             <strong>Equipe Horario Inteligente</strong></p>
         </div>
         <div class="footer">
-            <p>Este e um email automatico, por favor nao responda.</p>
-            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+            <p>Duvidas? Responda este email ou acesse horariointeligente.com.br</p>
+            <p>&copy; 2026 Horario Inteligente. Todos os direitos reservados.</p>
         </div>
     </div>
 </body>
@@ -1316,37 +1313,32 @@ Equipe Horario Inteligente
             text_body = f"""
 Ola, {to_name}!
 
-Voce foi convidado(a) para ser Parceiro Comercial do Horario Inteligente!
+Voce foi convidado(a) para ser Parceiro Comercial do Horario Inteligente.
 
-Suas Condicoes Comerciais:
-- Comissao: {percentual_comissao}%
-- Recorrencia: {desc_recorrencia}
-
-Para ativar sua conta de parceiro, acesse o link abaixo:
+Acesse o Portal do Parceiro e configure sua conta:
 {activation_link}
 
-Passos:
-1. Acesse o link
-2. Defina sua senha de acesso
-3. Aceite o Termo de Parceria Comercial
+Proximos passos:
+1. Crie sua senha de acesso
+2. Aceite o Termo de Parceria
+3. Acesse o Portal do Parceiro
 
-IMPORTANTE:
-- Este link expira em 7 dias
-- Apos ativar, voce tera acesso ao Portal do Parceiro
+Este link e valido por 7 dias.
 
 Atenciosamente,
 Equipe Horario Inteligente
+
+Duvidas? Responda este email ou acesse horariointeligente.com.br
             """
 
-            message = MIMEMultipart("alternative")
+            message = EmailMessage()
             message["Subject"] = "Convite de Parceria - Horario Inteligente"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = to_email
+            message["Reply-To"] = "contato@horariointeligente.com.br"
 
-            part1 = MIMEText(text_body, "plain", "utf-8")
-            part2 = MIMEText(html_body, "html", "utf-8")
-            message.attach(part1)
-            message.attach(part2)
+            message.set_content(text_body)
+            message.add_alternative(html_body, subtype='html', cte='base64')
 
             if self.smtp_password:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
@@ -1368,22 +1360,18 @@ Equipe Horario Inteligente
         to_email: str,
         to_name: str,
         token: str,
-        senha_provisoria: str,
+        senha_provisoria: str = None,
         percentual_comissao: float = 0,
         recorrencia_meses: int = None,
         base_url: str = "https://horariointeligente.com.br"
     ) -> bool:
         """
-        Envia email de ativacao para parceiro aprovado via pre-cadastro.
-        Inclui senha provisoria no corpo do email.
+        Envia email de ativacao para parceiro aprovado.
+        Template limpo (anti-spam). senha_provisoria e mantido por compatibilidade mas nao e incluido.
+        O token aqui e o codigo_ativacao curto (8 chars).
         """
         try:
-            activation_link = f"{base_url}/static/parceiro/ativar-conta.html?token={token}"
-
-            if recorrencia_meses is None:
-                desc_recorrencia = "Permanente (enquanto o cliente estiver ativo)"
-            else:
-                desc_recorrencia = f"{recorrencia_meses} meses por cliente"
+            activation_link = f"{base_url}/static/parceiro/ativar-conta.html?code={token}"
 
             html_body = f"""
 <!DOCTYPE html>
@@ -1399,58 +1387,44 @@ Equipe Horario Inteligente
         .button {{ display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }}
         .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
         .info-box {{ background: #ecfdf5; border-left: 4px solid #10B981; padding: 15px; margin: 20px 0; border-radius: 5px; }}
-        .warning {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px; }}
-        .conditions {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0; }}
-        .conditions h3 {{ margin: 0 0 10px 0; color: #059669; }}
-        .conditions ul {{ margin: 5px 0; padding-left: 20px; }}
-        .senha-box {{ background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center; }}
-        .senha-box .senha {{ font-size: 24px; font-weight: bold; color: #92400e; letter-spacing: 2px; font-family: monospace; }}
+        .step {{ display: flex; align-items: flex-start; margin: 10px 0; }}
+        .step-number {{ background: #10B981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 10px; flex-shrink: 0; }}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Parceria Aprovada!</h1>
+            <h1>Bem-vindo a Parceria!</h1>
         </div>
         <div class="content">
             <p>Ola, <strong>{to_name}</strong>!</p>
 
-            <p>Sua solicitacao de parceria com o <strong>Horario Inteligente</strong> foi <strong>aprovada</strong>!</p>
+            <p>Sua solicitacao de parceria com o <strong>Horario Inteligente</strong> foi aprovada.</p>
 
-            <div class="conditions">
-                <h3>Suas Condicoes Comerciais</h3>
-                <ul>
-                    <li><strong>Comissao:</strong> {percentual_comissao}%</li>
-                    <li><strong>Recorrencia:</strong> {desc_recorrencia}</li>
-                </ul>
-            </div>
-
-            <div class="senha-box">
-                <p style="margin: 0 0 8px 0; color: #92400e; font-weight: bold;">Sua Senha Provisoria</p>
-                <p class="senha">{senha_provisoria}</p>
-                <p style="margin: 8px 0 0 0; font-size: 12px; color: #a16207;">Guarde esta senha. Voce usara para acessar o portal.</p>
-            </div>
-
-            <p>Para ativar sua conta, siga os passos:</p>
-            <ol>
-                <li>Clique no botao abaixo</li>
-                <li>Aceite o Termo de Parceria Comercial</li>
-                <li>Acesse o portal com seu email e a senha provisoria acima</li>
-            </ol>
+            <p>Acesse o Portal do Parceiro e configure sua conta:</p>
 
             <p style="text-align: center;">
                 <a href="{activation_link}" class="button">
-                    Ativar Minha Conta de Parceiro
+                    Acessar Portal do Parceiro
                 </a>
             </p>
 
-            <div class="warning">
-                <strong>Importante:</strong>
-                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-                    <li>Este link expira em <strong>7 dias</strong></li>
-                    <li>Recomendamos alterar sua senha apos o primeiro acesso</li>
-                    <li>Apos ativar, voce tera acesso ao Portal do Parceiro</li>
-                </ul>
+            <div class="info-box">
+                <strong>Proximos passos:</strong>
+                <div style="margin-top: 10px;">
+                    <div class="step">
+                        <span class="step-number">1</span>
+                        <span>Crie sua senha de acesso</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">2</span>
+                        <span>Aceite o Termo de Parceria</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">3</span>
+                        <span>Acesse o Portal do Parceiro</span>
+                    </div>
+                </div>
             </div>
 
             <p>Ou copie e cole o link abaixo no navegador:</p>
@@ -1458,12 +1432,14 @@ Equipe Horario Inteligente
                 {activation_link}
             </p>
 
+            <p style="font-size: 13px; color: #666;">Este link e valido por 7 dias.</p>
+
             <p>Atenciosamente,<br>
             <strong>Equipe Horario Inteligente</strong></p>
         </div>
         <div class="footer">
-            <p>Este e um email automatico, por favor nao responda.</p>
-            <p>&copy; 2025 Horario Inteligente. Todos os direitos reservados.</p>
+            <p>Duvidas? Responda este email ou acesse horariointeligente.com.br</p>
+            <p>&copy; 2026 Horario Inteligente. Todos os direitos reservados.</p>
         </div>
     </div>
 </body>
@@ -1473,54 +1449,46 @@ Equipe Horario Inteligente
             text_body = f"""
 Ola, {to_name}!
 
-Sua solicitacao de parceria com o Horario Inteligente foi APROVADA!
+Sua solicitacao de parceria com o Horario Inteligente foi aprovada.
 
-Suas Condicoes Comerciais:
-- Comissao: {percentual_comissao}%
-- Recorrencia: {desc_recorrencia}
+Acesse o Portal do Parceiro e configure sua conta:
+{activation_link}
 
-SUA SENHA PROVISORIA: {senha_provisoria}
-Guarde esta senha. Voce usara para acessar o portal.
+Proximos passos:
+1. Crie sua senha de acesso
+2. Aceite o Termo de Parceria
+3. Acesse o Portal do Parceiro
 
-Para ativar sua conta, siga os passos:
-1. Acesse o link abaixo
-2. Aceite o Termo de Parceria Comercial
-3. Acesse o portal com seu email e a senha provisoria
-
-Link de ativacao: {activation_link}
-
-IMPORTANTE:
-- Este link expira em 7 dias
-- Recomendamos alterar sua senha apos o primeiro acesso
-- Apos ativar, voce tera acesso ao Portal do Parceiro
+Este link e valido por 7 dias.
 
 Atenciosamente,
 Equipe Horario Inteligente
+
+Duvidas? Responda este email ou acesse horariointeligente.com.br
             """
 
-            message = MIMEMultipart("alternative")
-            message["Subject"] = "Parceria Aprovada - Horario Inteligente"
+            message = EmailMessage()
+            message["Subject"] = "Bem-vindo a Parceria - Horario Inteligente"
             message["From"] = f"{self.from_name} <{self.from_email}>"
             message["To"] = to_email
+            message["Reply-To"] = "contato@horariointeligente.com.br"
 
-            part1 = MIMEText(text_body, "plain", "utf-8")
-            part2 = MIMEText(html_body, "html", "utf-8")
-            message.attach(part1)
-            message.attach(part2)
+            message.set_content(text_body)
+            message.add_alternative(html_body, subtype='html', cte='base64')
 
             if self.smtp_password:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
                     server.login(self.smtp_user, self.smtp_password)
                     server.send_message(message)
 
-                logger.info(f"Email de ativacao parceiro (com senha) enviado para {to_email}")
+                logger.info(f"Email de ativacao parceiro enviado para {to_email}")
                 return True
             else:
-                logger.warning(f"SMTP nao configurado. Link de ativacao parceiro: {activation_link} | Senha: {senha_provisoria}")
+                logger.warning(f"SMTP nao configurado. Link de ativacao parceiro: {activation_link}")
                 return True
 
         except Exception as e:
-            logger.error(f"Erro ao enviar email de ativacao parceiro com senha: {e}", exc_info=True)
+            logger.error(f"Erro ao enviar email de ativacao parceiro: {e}", exc_info=True)
             return False
 
     def send_contact_form(
@@ -1558,12 +1526,12 @@ Especialidade: {especialidade or 'Nao informada'}
 Mensagem:
 {mensagem or 'Sem mensagem'}"""
 
-            message = MIMEMultipart()
+            message = EmailMessage()
             message["Subject"] = f"Site - {nome}"
             message["From"] = f"Horario Inteligente <{self.from_email}>"
             message["To"] = self.contact_email
 
-            message.attach(MIMEText(text_body, "plain", "utf-8"))
+            message.set_content(text_body)
 
             if self.smtp_password:
                 with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:

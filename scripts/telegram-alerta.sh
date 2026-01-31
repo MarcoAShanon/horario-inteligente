@@ -6,8 +6,16 @@
 # Ou:  ./telegram-alerta.sh --tipo erro "Descrição do erro"
 # =============================================================================
 
-TELEGRAM_BOT_TOKEN="8276546106:AAH3ssg8G7InAUCI_Ixlc8g_m4FF7mPsH-0"
-TELEGRAM_CHAT_ID="8134518132"
+# Carregar tokens do .env (nunca hardcoded)
+if [ -f /root/sistema_agendamento/.env ]; then
+    TELEGRAM_BOT_TOKEN=$(grep '^TELEGRAM_BOT_TOKEN=' /root/sistema_agendamento/.env | cut -d'=' -f2-)
+    TELEGRAM_CHAT_ID=$(grep '^TELEGRAM_CHAT_ID=' /root/sistema_agendamento/.env | cut -d'=' -f2-)
+fi
+
+if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+    echo "ERRO: TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID nao encontrados no .env"
+    exit 1
+fi
 
 send_telegram() {
     local message="$1"

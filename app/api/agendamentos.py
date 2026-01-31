@@ -680,6 +680,13 @@ async def atualizar_agendamento(
                         data_nova_fmt = data_nova_br.strftime('%d/%m/%Y')
                         hora_nova_fmt = data_nova_br.strftime('%H:%M')
 
+                        # Definir contexto de billing
+                        try:
+                            from app.services.whatsapp_billing_service import set_billing_context
+                            set_billing_context(current_user["cliente_id"])
+                        except Exception:
+                            pass
+
                         result_whatsapp = await template_service.enviar_consulta_reagendada(
                             telefone=paciente_info.telefone,
                             paciente=paciente_info.nome,
@@ -704,11 +711,15 @@ async def atualizar_agendamento(
                                 ).first()
 
                                 if conversa:
-                                    primeiro_nome = paciente_info.nome.split()[0] if paciente_info.nome else "Paciente"
-                                    texto_msg = (
-                                        f"📅 Reagendamento: Olá {primeiro_nome}! Sua consulta com {paciente_info.medico_nome} "
-                                        f"foi reagendada de {data_antiga_fmt} às {hora_antiga_fmt} "
-                                        f"para {data_nova_fmt} às {hora_nova_fmt}."
+                                    from app.services.whatsapp_template_service import WhatsAppTemplateService
+                                    texto_msg = WhatsAppTemplateService.renderizar_template(
+                                        "consulta_reagendada_clinica",
+                                        paciente=paciente_info.nome or "Paciente",
+                                        medico=paciente_info.medico_nome,
+                                        data_antiga=data_antiga_fmt,
+                                        hora_antiga=hora_antiga_fmt,
+                                        data_nova=data_nova_fmt,
+                                        hora_nova=hora_nova_fmt
                                     )
                                     ConversaService.adicionar_mensagem(
                                         db=db,
@@ -841,6 +852,13 @@ async def cancelar_agendamento(
                         data_fmt = data_hora_consulta.strftime('%d/%m/%Y')
                         hora_fmt = data_hora_consulta.strftime('%H:%M')
 
+                        # Definir contexto de billing
+                        try:
+                            from app.services.whatsapp_billing_service import set_billing_context
+                            set_billing_context(current_user["cliente_id"])
+                        except Exception:
+                            pass
+
                         result_whatsapp = await template_service.enviar_consulta_cancelada(
                             telefone=agendamento_info.telefone,
                             paciente=agendamento_info.nome,
@@ -864,12 +882,14 @@ async def cancelar_agendamento(
                                 ).first()
 
                                 if conversa:
-                                    primeiro_nome = agendamento_info.nome.split()[0] if agendamento_info.nome else "Paciente"
-                                    motivo_display = motivo or "Cancelado pela clínica"
-                                    texto_msg = (
-                                        f"❌ Cancelamento: Olá {primeiro_nome}! Sua consulta com {agendamento_info.medico_nome} "
-                                        f"do dia {data_fmt} às {hora_fmt} foi cancelada. "
-                                        f"Motivo: {motivo_display}."
+                                    from app.services.whatsapp_template_service import WhatsAppTemplateService
+                                    texto_msg = WhatsAppTemplateService.renderizar_template(
+                                        "consulta_cancelada_clinica",
+                                        paciente=agendamento_info.nome or "Paciente",
+                                        medico=agendamento_info.medico_nome,
+                                        data=data_fmt,
+                                        hora=hora_fmt,
+                                        motivo=motivo or "Cancelado pela clínica"
                                     )
                                     ConversaService.adicionar_mensagem(
                                         db=db,

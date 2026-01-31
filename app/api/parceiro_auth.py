@@ -84,7 +84,8 @@ def get_current_parceiro(request: Request):
             if payload.get("user_type") != "parceiro":
                 raise HTTPException(status_code=401, detail="Token inválido")
             # Garantir que parceiro_id esteja presente
-            payload["parceiro_id"] = payload.get("parceiro_id") or payload.get("sub")
+            raw_id = payload.get("parceiro_id") or payload.get("sub")
+            payload["parceiro_id"] = int(raw_id) if raw_id is not None else None
             payload["tipo"] = "parceiro"
             payload["nome"] = payload.get("nome", "")
             return payload

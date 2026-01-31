@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Date, ForeignKey, Integer, Text, Enum
 from sqlalchemy.orm import relationship
 from .base import BaseModel
+from app.services.crypto_service import EncryptedString
 import enum
 
 class PreferenciaAudio(str, enum.Enum):
@@ -20,7 +21,7 @@ class Paciente(BaseModel):
     telefone = Column(String(20), nullable=False, unique=True)
     email = Column(String(100), nullable=True)
     data_nascimento = Column(Date, nullable=True)
-    cpf = Column(String(14), nullable=True)
+    cpf = Column(EncryptedString(255), nullable=True)  # Criptografado em repouso (LGPD)
 
     # Convênio
     convenio = Column(String(50), nullable=False, default="particular")  # unimed, amil, particular

@@ -532,8 +532,7 @@
         let parceiroAtual = null;
 
         function logout() {
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('adminData');
+            ['adminToken', 'adminData', 'authToken', 'userData', 'refreshToken', 'financeiroToken', 'financeiroUser'].forEach(k => localStorage.removeItem(k));
             window.location.href = '/static/admin/login.html';
         }
 
@@ -952,8 +951,9 @@
 
         function editarParceiro() {
             if (!parceiroAtual) return;
+            const id = parceiroAtual.id;
             fecharModalDetalhes();
-            editarParceiroById(parceiroAtual.id);
+            editarParceiroById(id);
         }
 
         async function editarParceiroById(id) {
