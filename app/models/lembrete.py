@@ -5,7 +5,7 @@ Horário Inteligente - WhatsApp Business API Oficial
 Rastreia lembretes enviados e respostas dos pacientes.
 """
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Text, Boolean, Enum
+from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Text, Boolean, Enum, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -39,6 +39,9 @@ class Lembrete(BaseModel):
     Cada lembrete rastreia seu status e resposta do paciente.
     """
     __tablename__ = "lembretes"
+    __table_args__ = (
+        UniqueConstraint('agendamento_id', 'tipo', name='uq_lembrete_agendamento_tipo'),
+    )
 
     # Relacionamento com agendamento
     agendamento_id = Column(Integer, ForeignKey("agendamentos.id"), nullable=False)

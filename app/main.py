@@ -617,11 +617,20 @@ async def startup_event():
     logger.info("🚀 Sistema Horário Inteligente SaaS iniciando...")
     logger.info("=" * 50)
 
-    # Iniciar scheduler de lembretes
+    # Iniciar scheduler de lembretes em APENAS UM worker
+    # Com --workers 4 (Uvicorn), cada worker executa startup_event().
+    # Sem lock, teríamos 4 schedulers enviando o mesmo lembrete 4 vezes.
+    import fcntl
     try:
+        lock_file = open("/tmp/horariointeligente_scheduler.lock", "w")
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # Obteve o lock — este worker é o dono do scheduler
         from app.scheduler import reminder_scheduler
         reminder_scheduler.start()
-        logger.info("✅ Scheduler de lembretes iniciado")
+        app.state.scheduler_lock = lock_file  # Manter referência para não liberar via GC
+        logger.info("✅ Scheduler de lembretes iniciado (este worker é o scheduler owner)")
+    except (IOError, OSError):
+        logger.info("ℹ️ Scheduler já rodando em outro worker — este worker apenas serve requests")
     except Exception as e:
         logger.error(f"❌ Erro ao iniciar scheduler de lembretes: {e}")
     
@@ -663,11 +672,15 @@ async def shutdown_event():
     """Evento executado ao desligar o servidor"""
     logger.info("🔴 Sistema Horário Inteligente SaaS encerrando...")
 
-    # Parar scheduler de lembretes
+    # Parar scheduler de lembretes (só o worker que possui o lock)
+    import fcntl
     try:
-        from app.scheduler import reminder_scheduler
-        reminder_scheduler.stop()
-        logger.info("✅ Scheduler de lembretes parado")
+        if hasattr(app.state, 'scheduler_lock') and app.state.scheduler_lock:
+            from app.scheduler import reminder_scheduler
+            reminder_scheduler.stop()
+            fcntl.flock(app.state.scheduler_lock, fcntl.LOCK_UN)
+            app.state.scheduler_lock.close()
+            logger.info("✅ Scheduler de lembretes parado e lock liberado")
     except Exception as e:
         logger.error(f"❌ Erro ao parar scheduler de lembretes: {e}")
 

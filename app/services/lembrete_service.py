@@ -165,8 +165,13 @@ class LembreteService:
             # Extrair primeiro nome do paciente
             primeiro_nome = paciente.nome.split()[0] if paciente.nome else "Paciente"
 
-            # Formatar nome do médico
-            nome_medico = f"Dr(a). {medico.nome}" if medico.nome else "Médico"
+            # Formatar nome do médico (não duplicar prefixo se já tiver Dr/Dra no nome)
+            if medico.nome and medico.nome.lower().startswith(("dr.", "dr ", "dra.", "dra ")):
+                nome_medico = medico.nome
+            elif medico.nome:
+                nome_medico = f"Dr(a). {medico.nome}"
+            else:
+                nome_medico = "Médico"
 
             # Formatar data e hora SEPARADAMENTE (nossos templates usam variáveis separadas)
             data_formatada = agendamento.data_hora.strftime("%d/%m/%Y")
@@ -494,9 +499,17 @@ Exemplo: confirmar,0.95"""
         data_hora = format_brazil(agendamento.data_hora)
         primeiro_nome = paciente.nome.split()[0]
 
+        # Evitar duplicação de prefixo (ex: "Dr(a). Dr. João")
+        if medico.nome and medico.nome.lower().startswith(("dr.", "dr ", "dra.", "dra ")):
+            nome_medico = medico.nome
+        elif medico.nome:
+            nome_medico = f"Dr(a). {medico.nome}"
+        else:
+            nome_medico = "Médico"
+
         if intencao == "confirmar":
             resposta = (
-                f"Perfeito, {primeiro_nome}! Sua consulta com Dr(a). {medico.nome} "
+                f"Perfeito, {primeiro_nome}! Sua consulta com {nome_medico} "
                 f"está confirmada para {data_hora}. "
                 f"Qualquer coisa, é só me chamar aqui. Até lá!"
             )
@@ -511,7 +524,7 @@ Exemplo: confirmar,0.95"""
 
         elif intencao == "cancelar":
             resposta = (
-                f"Tudo bem, {primeiro_nome}. Sua consulta com Dr(a). {medico.nome} "
+                f"Tudo bem, {primeiro_nome}. Sua consulta com {nome_medico} "
                 f"do dia {data_hora} foi cancelada. "
                 f"Se precisar agendar novamente no futuro, é só me chamar!"
             )
@@ -519,7 +532,7 @@ Exemplo: confirmar,0.95"""
 
         else:  # duvida ou outro
             # Usar IA para responder a dúvida de forma conversacional
-            prompt = f"""Você é a assistente virtual de uma clínica médica. O paciente {primeiro_nome} tem uma consulta marcada com Dr(a). {medico.nome} para {data_hora}.
+            prompt = f"""Você é a assistente virtual de uma clínica médica. O paciente {primeiro_nome} tem uma consulta marcada com {nome_medico} para {data_hora}.
 
 O paciente enviou a seguinte mensagem em resposta ao lembrete: "{texto_original}"
 
@@ -642,6 +655,7 @@ Sempre termine perguntando se confirma a presença na consulta."""
     ) -> Dict[str, int]:
         """
         Processa lembretes de um tipo específico.
+        Usa SELECT FOR UPDATE para evitar envios duplicados em caso de race condition.
         """
         enviados = 0
         erros = 0
@@ -656,29 +670,37 @@ Sempre termine perguntando se confirma a presença na consulta."""
         ).all()
 
         for agendamento in agendamentos:
-            # Verificar se já tem lembrete deste tipo
-            lembrete = db.query(Lembrete).filter(
-                Lembrete.agendamento_id == agendamento.id,
-                Lembrete.tipo == tipo
-            ).first()
+            try:
+                # Usar with_for_update para lock de linha — evita race condition
+                lembrete = db.query(Lembrete).filter(
+                    Lembrete.agendamento_id == agendamento.id,
+                    Lembrete.tipo == tipo
+                ).with_for_update(skip_locked=True).first()
 
-            # Criar lembrete se não existir
-            if not lembrete:
-                lembrete = Lembrete(
-                    agendamento_id=agendamento.id,
-                    tipo=tipo,
-                    status=StatusLembrete.PENDENTE.value
-                )
-                db.add(lembrete)
+                # Criar lembrete se não existir
+                if not lembrete:
+                    lembrete = Lembrete(
+                        agendamento_id=agendamento.id,
+                        tipo=tipo,
+                        status=StatusLembrete.PENDENTE.value
+                    )
+                    db.add(lembrete)
+                    db.flush()  # flush para obter o ID sem commit
+
+                # Enviar apenas se pendente (double-check após lock)
+                if lembrete.status == StatusLembrete.PENDENTE.value:
+                    sucesso, _ = await self.enviar_lembrete(db, lembrete)
+                    if sucesso:
+                        enviados += 1
+                    else:
+                        erros += 1
+
                 db.commit()
 
-            # Enviar se pendente
-            if lembrete.status == StatusLembrete.PENDENTE.value:
-                sucesso, _ = await self.enviar_lembrete(db, lembrete)
-                if sucesso:
-                    enviados += 1
-                else:
-                    erros += 1
+            except Exception as e:
+                db.rollback()
+                logger.error(f"❌ Erro ao processar lembrete {tipo} para agendamento {agendamento.id}: {e}")
+                erros += 1
 
         return {"enviados": enviados, "erros": erros}
 

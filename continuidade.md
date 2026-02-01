@@ -1044,4 +1044,103 @@ chmod 600 /root/sistema_agendamento/.env
 
 ---
 
-*Última atualização: 31/01/2026 - Login unificado: correções JWT, página admin dedicada, redirects*
+## Correções Realizadas (Sessão 01/02/2026)
+
+### 57. Lembretes enviados 4x (quadruplicados)
+- **Problema**: Cada lembrete de consulta era enviado 4 vezes via WhatsApp ao mesmo tempo
+- **Causa raiz**: O serviço roda com `--workers 4` (Uvicorn). Cada worker executava `startup_event()` e iniciava seu próprio `ReminderScheduler` com APScheduler. Resultado: 4 schedulers processando os mesmos lembretes simultaneamente
+- **Agravante 1**: Existiam 2 jobs duplicados — `process_reminders` (Evolution API, legado/descontinuado) e `lembretes_inteligentes` (API Oficial Meta) — ambos rodando a cada 10 minutos
+- **Agravante 2**: Ambos os jobs eram executados imediatamente no startup (`asyncio.create_task()`), além do ciclo agendado
+- **Agravante 3**: Tabela `lembretes` não tinha UNIQUE constraint em `(agendamento_id, tipo)`, permitindo criação de registros duplicados por race condition
+- **Evidência no banco**: 3 registros duplicados para agendamento 760 (tipo=24h), todos enviados no mesmo segundo (13:50:49)
+
+#### Correções aplicadas:
+
+##### 57.1 File lock para scheduler único
+- **Arquivo**: `app/main.py`
+- No `startup_event()`, usa `fcntl.flock()` com `LOCK_EX | LOCK_NB` no arquivo `/tmp/horariointeligente_scheduler.lock`
+- Apenas o worker que obtém o lock inicia o scheduler
+- Os outros 3 workers logam "Scheduler já rodando em outro worker" e servem apenas requests
+- No `shutdown_event()`, o lock é liberado com `LOCK_UN`
+
+##### 57.2 Remoção do job legado e execução imediata
+- **Arquivo**: `app/scheduler.py`
+- Removido job `process_reminders` (usava `reminder_service` via Evolution API — descontinuado)
+- Removido import de `reminder_service`
+- Removido `asyncio.create_task(self._run_reminder_processing())` do startup
+- Removido `asyncio.create_task(self._run_lembretes_inteligentes())` do startup (evita envio duplicado em restart rápido)
+- Mantido apenas `asyncio.create_task(self._run_status_update())` (idempotente, sem risco)
+- Removido método `_run_reminder_processing()` (não mais referenciado)
+- `run_now()` agora chama `_run_lembretes_inteligentes()` ao invés do método removido
+
+##### 57.3 Locking no processamento de lembretes
+- **Arquivo**: `app/services/lembrete_service.py`
+- `_processar_tipo_lembrete()`: query de Lembrete agora usa `.with_for_update(skip_locked=True)`
+- Cada agendamento processado em bloco try/except com rollback individual
+- `db.flush()` ao criar novo lembrete (ao invés de commit imediato), commit apenas após envio
+
+##### 57.4 UNIQUE constraint na tabela lembretes
+- **Arquivo**: `app/models/lembrete.py`
+- Adicionado `UniqueConstraint('agendamento_id', 'tipo', name='uq_lembrete_agendamento_tipo')` no `__table_args__`
+- Adicionado import de `UniqueConstraint`
+- **Banco**: `ALTER TABLE lembretes ADD CONSTRAINT uq_lembrete_agendamento_tipo UNIQUE (agendamento_id, tipo)`
+- **Limpeza**: 2 registros duplicados removidos (IDs 34 e 35, mantido ID 33)
+
+---
+
+### 58. Lembretes e notificações não apareciam no painel de conversas
+- **Problema**: Mensagens de lembrete enviadas via WhatsApp, notificações de cancelamento e reagendamento não apareciam na tela de conversas (`/static/conversas.html`)
+- **Causa raiz**: O código usava `RemetenteMensagem.SISTEMA` em 3 lugares, mas o valor `SISTEMA` nunca foi adicionado ao enum Python nem ao enum PostgreSQL
+- **Efeito**: `AttributeError` ao tentar salvar a mensagem, capturado silenciosamente pelo `except Exception` — a mensagem WhatsApp era enviada com sucesso mas nunca persistida no banco
+- **Pontos afetados**:
+  - `app/services/lembrete_service.py:250` — lembretes enviados (24h, 2h)
+  - `app/api/agendamentos.py:728` — notificação de reagendamento via WhatsApp
+  - `app/api/agendamentos.py:898` — notificação de cancelamento via WhatsApp
+
+#### Correções aplicadas:
+
+##### 58.1 Enum Python
+- **Arquivo**: `app/models/mensagem.py`
+- Adicionado `SISTEMA = "sistema"` ao `RemetenteMensagem`
+
+##### 58.2 Enum PostgreSQL
+- `ALTER TYPE remetentemensagem ADD VALUE 'SISTEMA'`
+- Enum atualizado: `{PACIENTE, IA, ATENDENTE, SISTEMA}`
+
+##### 58.3 Frontend — label e estilo
+- **Arquivo**: `static/conversas.html`
+- `remetenteLabel`: adicionado `'sistema': 'Sistema'`
+- CSS: `.mensagem .remetente.sistema { color: #7c3aed; }` (roxo)
+- CSS: `.mensagem.saida.sistema { background: #f3e8ff; }` (fundo lilás)
+- Classe CSS `sistema` adicionada ao div da mensagem (junto com `atendente`)
+
+---
+
+### 59. Nome do médico duplicado — "Dr(a). Dr. João da Silva"
+- **Problema**: Nas mensagens de lembrete e respostas conversacionais, o nome aparecia como "Dr(a). Dr. João da Silva"
+- **Causa**: O nome no banco já inclui "Dr." (`medicos.nome = 'Dr. João da Silva'`), e o código adicionava "Dr(a)." por cima
+- **Arquivo**: `app/services/lembrete_service.py`
+- **Correção**: Verificação de prefixo antes de adicionar — se `medico.nome` já começa com "Dr.", "Dra.", "Dr " ou "Dra ", usa o nome como está
+- **Locais corrigidos**:
+  - `enviar_lembrete()` (linha ~169) — envio do template WhatsApp
+  - `_gerar_resposta_ia()` (linha ~500) — respostas de confirmação, cancelamento e dúvidas
+
+---
+
+### 60. Template lembrete_24h — texto redundante com botões
+- **Problema**: O body do template contém "Responda 'OK' para confirmar ou 'REMARCAR' se precisar alterar", mas o template já possui botões interativos "Confirmar presença" e "Preciso remarcar"
+- **Tipo**: Ajuste no Meta Business Manager (não no código)
+- **Ação necessária**: Editar o body do template `lembrete_24h` no WhatsApp Manager removendo a instrução de resposta por texto
+- **Status**: Pendente — requer edição manual no painel da Meta e re-aprovação do template
+
+---
+
+### Pendências Atualizadas
+- [x] ~~Lembretes quadruplicados — 4 workers com 4 schedulers~~ (Corrigido)
+- [x] ~~Lembretes não apareciam no painel de conversas~~ (Corrigido)
+- [x] ~~Nome duplicado "Dr(a). Dr."~~ (Corrigido)
+- [ ] Template `lembrete_24h` — remover texto "Responda OK..." redundante com botões (editar no Meta Business Manager)
+
+---
+
+*Última atualização: 01/02/2026 - Scheduler único (file lock), enum SISTEMA, duplicação Dr(a)*

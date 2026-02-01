@@ -24,6 +24,7 @@ class RemetenteMensagem(str, enum.Enum):
     PACIENTE = "paciente"
     IA = "ia"
     ATENDENTE = "atendente"
+    SISTEMA = "sistema"
 
 
 class TipoMensagem(str, enum.Enum):

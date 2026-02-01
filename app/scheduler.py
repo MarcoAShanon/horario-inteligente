@@ -6,7 +6,6 @@ from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
 
-from app.services.reminder_service import reminder_service
 from app.services.status_update_service import status_update_service
 from app.services.lembrete_service import lembrete_service
 from app.services.billing_service import billing_service
@@ -16,7 +15,10 @@ logger = logging.getLogger(__name__)
 
 class ReminderScheduler:
     """
-    Gerenciador de tarefas agendadas para lembretes de consultas
+    Gerenciador de tarefas agendadas para lembretes de consultas.
+
+    IMPORTANTE: Este scheduler deve rodar em apenas UM worker/processo.
+    O main.py usa file lock para garantir instância única.
     """
 
     def __init__(self):
@@ -33,21 +35,7 @@ class ReminderScheduler:
             return
 
         try:
-            # Adicionar job para processar lembretes a cada 10 minutos
-            self.scheduler.add_job(
-                self._run_reminder_processing,
-                trigger=IntervalTrigger(minutes=10),
-                id='process_reminders',
-                name='Processar lembretes de consultas',
-                replace_existing=True,
-                max_instances=1,  # Não permitir execuções simultâneas
-                misfire_grace_time=300  # 5 minutos de tolerância
-            )
-
-            # Monitor Evolution API removido — sistema usa apenas API Oficial Meta
-            # (WHATSAPP_PROVIDER=official)
-
-            # Adicionar job para atualizar status de consultas passadas a cada 15 minutos
+            # Job para atualizar status de consultas passadas a cada 15 minutos
             self.scheduler.add_job(
                 self._run_status_update,
                 trigger=IntervalTrigger(minutes=15),
@@ -55,10 +43,11 @@ class ReminderScheduler:
                 name='Atualizar status de consultas passadas',
                 replace_existing=True,
                 max_instances=1,
-                misfire_grace_time=300  # 5 minutos de tolerância
+                misfire_grace_time=300
             )
 
-            # Adicionar job para processar lembretes inteligentes (API oficial Meta)
+            # Job único para processar lembretes via API oficial Meta
+            # (job legado 'process_reminders' removido — usava Evolution API descontinuada)
             self.scheduler.add_job(
                 self._run_lembretes_inteligentes,
                 trigger=IntervalTrigger(minutes=10),
@@ -66,10 +55,10 @@ class ReminderScheduler:
                 name='Processar lembretes inteligentes (API oficial)',
                 replace_existing=True,
                 max_instances=1,
-                misfire_grace_time=300  # 5 minutos de tolerância
+                misfire_grace_time=300
             )
 
-            # Adicionar job de billing: verificar descontos expirados diariamente às 06:00
+            # Job de billing: verificar descontos expirados diariamente às 06:00
             self.scheduler.add_job(
                 self._run_billing_sync,
                 trigger=CronTrigger(hour=6, minute=0),
@@ -77,7 +66,7 @@ class ReminderScheduler:
                 name='Sincronizar billing e verificar descontos expirados',
                 replace_existing=True,
                 max_instances=1,
-                misfire_grace_time=3600  # 1 hora de tolerância
+                misfire_grace_time=3600
             )
 
             # Iniciar o scheduler
@@ -85,15 +74,14 @@ class ReminderScheduler:
             self.is_running = True
 
             logger.info("✅ Scheduler de lembretes iniciado com sucesso")
-            logger.info("📅 Lembretes serão verificados a cada 10 minutos")
             logger.info("🔄 Atualização de status a cada 15 minutos")
             logger.info("🔔 Lembretes inteligentes a cada 10 minutos")
             logger.info("💰 Billing sync diário às 06:00")
 
-            # Executar imediatamente no startup (opcional)
-            asyncio.create_task(self._run_reminder_processing())
+            # Executar atualização de status imediatamente (idempotente, sem risco de duplicação)
             asyncio.create_task(self._run_status_update())
-            asyncio.create_task(self._run_lembretes_inteligentes())
+            # NÃO executar lembretes no startup — aguardar o primeiro ciclo do scheduler
+            # para evitar envios duplicados se o serviço reiniciar rapidamente
 
         except Exception as e:
             logger.error(f"❌ Erro ao iniciar scheduler: {str(e)}")
@@ -114,32 +102,6 @@ class ReminderScheduler:
 
         except Exception as e:
             logger.error(f"❌ Erro ao parar scheduler: {str(e)}")
-
-    async def _run_reminder_processing(self):
-        """
-        Executa o processamento de todos os lembretes
-        Chamado automaticamente pelo scheduler
-        """
-        try:
-            start_time = datetime.now()
-            logger.info(f"🔄 Iniciando verificação de lembretes - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-
-            # Processar todos os lembretes
-            stats = await reminder_service.process_all_reminders()
-
-            end_time = datetime.now()
-            duration = (end_time - start_time).total_seconds()
-
-            logger.info(
-                f"✅ Verificação concluída em {duration:.2f}s - "
-                f"24h: {stats['lembretes_24h']}, "
-                f"3h: {stats['lembretes_3h']}, "
-                f"1h: {stats['lembretes_1h']}, "
-                f"Erros: {stats['erros']}"
-            )
-
-        except Exception as e:
-            logger.error(f"❌ Erro ao executar processamento de lembretes: {str(e)}")
 
     async def _run_status_update(self):
         """
@@ -303,7 +265,7 @@ class ReminderScheduler:
         Útil para testes
         """
         logger.info("🔄 Execução manual de processamento de lembretes")
-        await self._run_reminder_processing()
+        await self._run_lembretes_inteligentes()
 
 
 # Instância global do scheduler

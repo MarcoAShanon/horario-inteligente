@@ -77,6 +77,8 @@
         .mensagem .remetente.paciente { color: #6b7280; }
         .mensagem .remetente.ia { color: #059669; }
         .mensagem .remetente.atendente { color: #2563eb; }
+        .mensagem .remetente.sistema { color: #7c3aed; }
+        .mensagem.saida.sistema { background: #f3e8ff; }
         .mensagem .timestamp {
             font-size: 0.65rem;
             color: #9ca3af;
@@ -1091,11 +1093,14 @@
             const remetenteLabel = {
                 'paciente': 'Paciente',
                 'ia': 'IA',
-                'atendente': 'Atendente'
+                'atendente': 'Atendente',
+                'sistema': 'Sistema'
             };
 
+            const extraClass = (m.remetente === 'atendente' || m.remetente === 'sistema') ? m.remetente : '';
+
             return `
-                <div class="mensagem ${isEntrada ? 'entrada' : 'saida'} ${m.remetente === 'atendente' ? 'atendente' : ''}" data-msg-id="${m.id}">
+                <div class="mensagem ${isEntrada ? 'entrada' : 'saida'} ${extraClass}" data-msg-id="${m.id}">
                     <div class="remetente ${m.remetente}">${remetenteLabel[m.remetente] || m.remetente}</div>
                     <div class="conteudo">${escapeHtml(m.conteudo)}</div>
                     <div class="timestamp">${formatarHora(m.timestamp)}</div>
