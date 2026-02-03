@@ -126,7 +126,7 @@ class EmailService:
             <p>Para criar uma nova senha, clique no botão abaixo:</p>
 
             <p style="text-align: center;">
-                <a href="{recovery_link}" class="button">
+                <a href="{recovery_link}" style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold;">
                     Redefinir Minha Senha
                 </a>
             </p>
@@ -310,7 +310,7 @@ Equipe Horário Inteligente
             <p>Para ativar sua conta e começar a usar o sistema, confirme seu email clicando no botão abaixo:</p>
 
             <p style="text-align: center;">
-                <a href="{verification_link}" class="button">
+                <a href="{verification_link}" style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold;">
                     Confirmar Meu Email
                 </a>
             </p>
@@ -578,7 +578,7 @@ Equipe Horário Inteligente
             <p>Enquanto isso, voce pode explorar nosso ambiente de demonstracao:</p>
 
             <p style="text-align: center;">
-                <a href="https://demo.horariointeligente.com.br" class="button">
+                <a href="https://demo.horariointeligente.com.br" style="display: inline-block; padding: 15px 30px; background-color: #10B981; color: #ffffff !important; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold;">
                     Acessar Demonstracao
                 </a>
             </p>
@@ -829,7 +829,7 @@ Total de pre-cadastros: {total_cadastros}
             <p>Sua conta no <strong>Horario Inteligente</strong> foi criada com sucesso! Para comecar a usar o sistema, voce precisa aceitar nossos termos de uso e politica de privacidade.</p>
 
             <p style="text-align: center;">
-                <a href="{activation_link}" class="button">
+                <a href="{activation_link}" style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold;">
                     Ativar Minha Conta
                 </a>
             </p>
@@ -961,7 +961,7 @@ Equipe Horario Inteligente
             <p>Sua conta no <strong>Horario Inteligente</strong> foi ativada com sucesso! Agora voce pode acessar o sistema e comecar a gerenciar sua agenda de forma inteligente.</p>
 
             <p style="text-align: center;">
-                <a href="{login_url}" class="button">
+                <a href="{login_url}" style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); background-color: #10B981; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold;">
                     Acessar o Sistema
                 </a>
             </p>
@@ -1153,7 +1153,7 @@ Equipe Horario Inteligente
             </div>
 
             <p style="text-align: center;">
-                <a href="{login_url}" class="button">
+                <a href="{login_url}" style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); background-color: #667eea; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold;">
                     Acessar o Sistema
                 </a>
             </p>
@@ -1268,7 +1268,7 @@ Equipe Horario Inteligente
             <p>Acesse o Portal do Parceiro e configure sua conta:</p>
 
             <p style="text-align: center;">
-                <a href="{activation_link}" class="button">
+                <a href="{activation_link}" style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); background-color: #10B981; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold;">
                     Acessar Portal do Parceiro
                 </a>
             </p>
@@ -1404,7 +1404,7 @@ Duvidas? Responda este email ou acesse horariointeligente.com.br
             <p>Acesse o Portal do Parceiro e configure sua conta:</p>
 
             <p style="text-align: center;">
-                <a href="{activation_link}" class="button">
+                <a href="{activation_link}" style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); background-color: #10B981; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold;">
                     Acessar Portal do Parceiro
                 </a>
             </p>
