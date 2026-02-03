@@ -174,10 +174,16 @@
             </div>
             <h1 class="text-2xl font-bold text-gray-800 mb-2">Termos Aceitos com Sucesso!</h1>
             <p class="text-gray-600 mb-2" id="msgSucesso">Seus termos foram aceitos e sua conta esta sendo configurada.</p>
-            <p class="text-gray-500 text-sm mb-6">Sua conta sera ativada em ate <strong>72 horas uteis</strong>. Voce recebera um e-mail de confirmacao quando tudo estiver pronto.</p>
-            <a href="#" id="linkLogin" class="inline-block w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition text-center">
-                <i class="fas fa-sign-in-alt mr-2"></i>Fazer Login
-            </a>
+            <p class="text-gray-500 text-sm mb-4">Sua conta sera ativada em ate <strong>72 horas uteis</strong>. Voce recebera um e-mail de confirmacao quando tudo estiver pronto.</p>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+                <div class="flex items-start">
+                    <i class="fas fa-envelope text-blue-500 mt-1 mr-3"></i>
+                    <div>
+                        <p class="text-blue-800 font-medium text-sm">Fique atento ao seu e-mail!</p>
+                        <p class="text-blue-600 text-xs mt-1">Enviaremos suas credenciais de acesso assim que sua conta estiver pronta.</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Estado: Token Expirado -->
@@ -403,9 +409,6 @@
                 if (response.ok && data.sucesso) {
                     document.getElementById('msgSucesso').textContent =
                         `Ola ${data.nome}! Sua conta foi ativada com sucesso.`;
-
-                    const loginUrl = data.url_acesso ? data.url_acesso + '/static/login.html' : '/static/login.html';
-                    document.getElementById('linkLogin').href = loginUrl;
 
                     mostrarEstado('sucesso');
                 } else if (response.status === 410) {
