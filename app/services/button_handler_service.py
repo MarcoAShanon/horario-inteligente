@@ -6,11 +6,13 @@ Cada botão tem uma ação específica associada.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from app.models.agendamento import Agendamento
+from app.models.cliente import Cliente
+from app.utils.timezone_helper import now_brazil
 from app.models.paciente import Paciente
 from app.models.lembrete import Lembrete, StatusLembrete
 from app.services.whatsapp_official_service import WhatsAppOfficialService
@@ -143,14 +145,61 @@ class ButtonHandlerService:
     def _buscar_agendamento_pendente(
         self,
         db: Session,
-        paciente_id: int
+        paciente_id: int,
+        incluir_recentes: bool = False
     ) -> Optional[Agendamento]:
-        """Busca agendamento pendente mais próximo do paciente."""
+        """
+        Busca agendamento pendente mais próximo do paciente.
+
+        Args:
+            paciente_id: ID do paciente
+            incluir_recentes: Se True, inclui consultas das últimas 2h (para cancelar/remarcar)
+        """
+        agora = now_brazil()
+
+        if incluir_recentes:
+            # Para cancelar/remarcar, incluir consultas que começaram há até 2h
+            # Isso cobre casos onde o paciente clica no botão pouco após o horário
+            limite_inferior = agora - timedelta(hours=2)
+        else:
+            # Para confirmar presença, só consultas futuras
+            limite_inferior = agora
+
         return db.query(Agendamento).filter(
             Agendamento.paciente_id == paciente_id,
             Agendamento.status.in_(["agendado", "confirmado"]),
-            Agendamento.data_hora >= datetime.now()
+            Agendamento.data_hora >= limite_inferior
         ).order_by(Agendamento.data_hora).first()
+
+    def _buscar_endereco_clinica(self, db: Session, cliente_id: int) -> Optional[str]:
+        """Busca o endereço da clínica pelo cliente_id."""
+        cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+        return cliente.endereco if cliente else None
+
+    def _montar_orientacoes_consulta(
+        self,
+        endereco: Optional[str],
+        eh_convenio: bool = False
+    ) -> str:
+        """
+        Monta as orientações padrão para a consulta.
+
+        Inclui: endereço, documento com foto, exames recentes.
+        """
+        orientacoes = []
+
+        if endereco:
+            orientacoes.append(f"📍 Nosso endereço: {endereco}")
+
+        # Documento com foto - mais enfático para convênio
+        if eh_convenio:
+            orientacoes.append("🪪 Traga documento com foto e carteirinha do convênio")
+        else:
+            orientacoes.append("🪪 Traga documento com foto")
+
+        orientacoes.append("📎 Se tiver exames recentes, traga no dia da consulta!")
+
+        return "\n".join(orientacoes)
 
     # ==================== HANDLERS DE AÇÕES ====================
 
@@ -184,13 +233,23 @@ class ButtonHandlerService:
         if lembrete:
             lembrete.status = StatusLembrete.CONFIRMADO.value
             lembrete.resposta_paciente = "Confirmar presença"
-            lembrete.respondido_em = datetime.now()
+            lembrete.respondido_em = now_brazil()
 
         db.commit()
 
         # Formatar data/hora
         data_formatada = agendamento.data_hora.strftime("%d/%m/%Y")
         hora_formatada = agendamento.data_hora.strftime("%H:%M")
+        medico_nome = agendamento.medico.nome if agendamento.medico else "médico"
+
+        # Verificar se é convênio
+        eh_convenio = agendamento.forma_pagamento and agendamento.forma_pagamento.startswith("convenio")
+
+        # Buscar endereço da clínica
+        endereco = self._buscar_endereco_clinica(db, cliente_id)
+
+        # Montar orientações
+        orientacoes = self._montar_orientacoes_consulta(endereco, eh_convenio)
 
         logger.info(
             f"[ButtonHandler] ✅ Consulta confirmada: "
@@ -216,7 +275,9 @@ class ButtonHandlerService:
             "response": (
                 f"Perfeito, {paciente.nome.split()[0]}! ✅\n\n"
                 f"Sua consulta está confirmada para:\n"
-                f"📅 {data_formatada} às {hora_formatada}\n\n"
+                f"📅 {data_formatada} às {hora_formatada}\n"
+                f"👨‍⚕️ {medico_nome}\n\n"
+                f"{orientacoes}\n\n"
                 f"Aguardamos você!"
             ),
             "notify_clinic": True,
@@ -230,7 +291,8 @@ class ButtonHandlerService:
         cliente_id: int
     ) -> Dict[str, Any]:
         """Inicia fluxo de remarcação."""
-        agendamento = self._buscar_agendamento_pendente(db, paciente.id)
+        # incluir_recentes=True para encontrar consultas que acabaram de passar
+        agendamento = self._buscar_agendamento_pendente(db, paciente.id, incluir_recentes=True)
 
         if not agendamento:
             return {
@@ -249,7 +311,7 @@ class ButtonHandlerService:
         if lembrete:
             lembrete.status = StatusLembrete.REMARCAR.value
             lembrete.resposta_paciente = "Preciso remarcar"
-            lembrete.respondido_em = datetime.now()
+            lembrete.respondido_em = now_brazil()
             db.commit()
 
         # Formatar data/hora atual
@@ -294,45 +356,50 @@ class ButtonHandlerService:
         paciente: Paciente,
         cliente_id: int
     ) -> Dict[str, Any]:
-        """Cancela a consulta."""
-        agendamento = self._buscar_agendamento_pendente(db, paciente.id)
+        """
+        Processa "Não vou conseguir ir" - oferece remarcar ao invés de cancelar direto.
+
+        IMPORTANTE: Não cancela automaticamente! Pergunta se quer remarcar.
+        O cancelamento efetivo só acontece se o paciente confirmar ou a IA processar.
+        """
+        # incluir_recentes=True para encontrar consultas que acabaram de passar
+        agendamento = self._buscar_agendamento_pendente(db, paciente.id, incluir_recentes=True)
 
         if not agendamento:
             return {
                 "handled": True,
                 "action": "cancelar",
-                "response": f"Olá {paciente.nome.split()[0]}! Não encontrei nenhuma consulta para cancelar.",
-                "notify_clinic": False
+                "response": (
+                    f"Olá {paciente.nome.split()[0]}! Não encontrei nenhuma consulta agendada.\n\n"
+                    f"Se precisar agendar uma consulta, é só me dizer!"
+                ),
+                "notify_clinic": False,
+                "forward_to_ai": True  # Deixa a IA continuar a conversa
             }
 
-        # Guardar dados antes de cancelar
+        # Guardar dados da consulta
         data_formatada = agendamento.data_hora.strftime("%d/%m/%Y")
         hora_formatada = agendamento.data_hora.strftime("%H:%M")
         medico_nome = agendamento.medico.nome if agendamento.medico else "médico"
 
-        # Atualizar status
-        agendamento.status = "cancelado"
-        agendamento.observacoes = (agendamento.observacoes or "") + f"\n[{datetime.now().strftime('%d/%m/%Y %H:%M')}] Cancelado pelo paciente via WhatsApp"
-
-        # Atualizar lembrete se existir
+        # Atualizar lembrete para registrar a resposta (mas NÃO cancela ainda)
         lembrete = db.query(Lembrete).filter(
             Lembrete.agendamento_id == agendamento.id,
             Lembrete.status == StatusLembrete.ENVIADO.value
         ).first()
 
         if lembrete:
-            lembrete.status = StatusLembrete.CANCELAR.value
+            lembrete.status = StatusLembrete.REMARCAR.value  # Marca como remarcar, não cancelar
             lembrete.resposta_paciente = "Não vou conseguir ir"
-            lembrete.respondido_em = datetime.now()
-
-        db.commit()
+            lembrete.respondido_em = now_brazil()
+            db.commit()
 
         logger.info(
-            f"[ButtonHandler] ❌ Consulta cancelada: "
+            f"[ButtonHandler] 🔄 'Não vou conseguir ir' - oferecendo remarcar: "
             f"Paciente={paciente.nome}, Agendamento={agendamento.id}"
         )
 
-        # Notificar via WebSocket (urgente!)
+        # Notificar via WebSocket
         await websocket_manager.send_agendamento_atualizado(
             cliente_id=cliente_id,
             agendamento={
@@ -340,25 +407,28 @@ class ButtonHandlerService:
                 "paciente_nome": paciente.nome,
                 "paciente_telefone": paciente.telefone,
                 "medico_nome": medico_nome,
-                "status": "cancelado",
+                "status": agendamento.status,  # Mantém status atual
                 "data_hora": agendamento.data_hora.isoformat(),
-                "evento": "cancelado_pelo_paciente",
+                "evento": "paciente_nao_pode_ir",
                 "urgente": True
             }
         )
 
+        # Resposta oferecendo remarcar (NÃO cancela automaticamente)
         return {
             "handled": True,
-            "action": "cancelar",
+            "action": "oferecer_remarcar",
             "response": (
-                f"Tudo bem, {paciente.nome.split()[0]}. 😊\n\n"
-                f"Sua consulta do dia {data_formatada} às {hora_formatada} "
-                f"com {medico_nome} foi cancelada.\n\n"
-                f"Se precisar agendar novamente no futuro, é só me chamar!"
+                f"Entendi, {paciente.nome.split()[0]}! 😊\n\n"
+                f"Sua consulta está marcada para:\n"
+                f"📅 {data_formatada} às {hora_formatada}\n"
+                f"👨‍⚕️ {medico_nome}\n\n"
+                f"Você gostaria de *remarcar* para outra data ou prefere *cancelar* completamente?"
             ),
             "notify_clinic": True,
             "agendamento_id": agendamento.id,
-            "urgente": True
+            "urgente": True,
+            "await_remarcar_ou_cancelar": True  # Sinaliza que espera decisão
         }
 
     async def _handle_entendido(

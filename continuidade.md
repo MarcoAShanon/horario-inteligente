@@ -1144,3 +1144,482 @@ chmod 600 /root/sistema_agendamento/.env
 ---
 
 *Última atualização: 01/02/2026 - Scheduler único (file lock), enum SISTEMA, duplicação Dr(a)*
+
+---
+
+## Cadastro Self-Service de Clientes via Convite (Sessão 02/02/2026)
+
+### 61. Feature completa: Cadastro Self-Service de Clientes (Convite Personalizado)
+- **Objetivo**: Admin gera link personalizado → prospect preenche dados basicos → status=pendente_aprovacao → admin configura billing e aprova → status=pendente_aceite → email de ativacao enviado → cliente aceita termos (fluxo existente) → status=ativo
+- **Status**: Implementado e testado. Convite gerado com sucesso em producao.
+
+#### Fluxo Completo:
+```
+Admin gera convite → Prospect preenche dados → status=pendente_aprovacao
+→ Admin configura billing e aprova → status=pendente_aceite → Email ativacao enviado
+→ Cliente aceita termos (fluxo existente) → status=ativo
+```
+
+#### 61.1 Migracao de Banco de Dados
+- **Arquivo**: `alembic/versions/l01_create_convites_clientes.py`
+- **Revisao**: `k06_add_codigo_ativacao` → `l01_create_convites_clientes`
+- **Tabela criada**: `convites_clientes` (id, token UNIQUE, email_destino, nome_destino, telefone_destino, observacoes, criado_por_id, criado_por_tipo, parceiro_id, usado, usado_em, cliente_id FK, expira_em, criado_em)
+- **Colunas adicionadas em `clientes`**: `tipo_consultorio` (VARCHAR(30) default 'individual'), `qtd_medicos_adicionais` (INTEGER default 0), `necessita_secretaria` (BOOLEAN default false), `convite_id` (FK to convites_clientes)
+- **Status**: Migrado com sucesso
+
+#### 61.2 Model
+- **Arquivo criado**: `app/models/convite_cliente.py` — SQLAlchemy model com `to_dict()` e status computado (pendente/usado/expirado)
+- **Arquivo modificado**: `app/models/__init__.py` — adicionado `ConviteCliente` ao `__all__`
+
+#### 61.3 Service de Onboarding (refatoracao)
+- **Arquivo criado**: `app/services/onboarding_service.py`
+- **Funcoes extraidas de `admin_clientes.py`**: `gerar_subdomain()`, `gerar_senha_temporaria()`, `hash_senha()`, `verificar_subdomain_disponivel()`, `verificar_email_disponivel()`, `TABELAS_EMAIL_VALIDAS`
+- **Funcoes novas**: `gerar_subdomain_unico(db, nome)` (gera subdomain com sufixo numerico se ja existe), `calcular_billing()` (calculo de assinatura reutilizavel)
+- **Arquivo modificado**: `app/api/admin_clientes.py` — funcoes locais removidas, agora importadas de `onboarding_service`
+
+#### 61.4 API Publica de Registro (sem auth)
+- **Arquivo criado**: `app/api/cliente_registro.py`
+- **Router prefix**: `/api/registro-cliente`
+- **Endpoints**:
+  - `GET /{token}` — valida convite, retorna `{ valido: true, dados_preenchidos: { email, nome, telefone } }`
+  - `POST /{token}` — registra cliente (rate limit: 5/min por IP)
+- **POST faz**: valida token → sanitiza inputs → verifica unicidade (documento, email clinica, email medico) → gera subdomain unico → INSERT clientes (status=pendente_aprovacao, ativo=false, plano=NULL) → INSERT medicos (pode_fazer_login=false, senha=NULL) → marca convite como usado → vincula parceiro se houver → notifica admin via Telegram
+- **Schema**: `RegistroClienteCreate` com validadores para documento (CPF/CNPJ), telefone, tipo_consultorio, registro_profissional
+
+#### 61.5 API Admin de Convites (auth obrigatoria)
+- **Arquivo criado**: `app/api/admin_convites.py`
+- **Router prefix**: `/api/admin/convites`
+- **Endpoints**:
+  - `POST ""` — gera convite (token_urlsafe(48), 30 dias expiracao), opcionalmente envia email
+  - `GET ""` — lista convites paginados com filtro por status (pendente/usado/expirado)
+  - `DELETE "/{convite_id}"` — revoga convite nao-usado
+- **POST retorna**: `{ success, convite: { id, token, url, expira_em, email_enviado } }`
+- **URL do convite**: `https://horariointeligente.com.br/static/registro-cliente.html?token=XXX`
+
+#### 61.6 Endpoints de Aprovacao/Rejeicao
+- **Arquivo modificado**: `app/api/admin_clientes.py` (adicionado no final)
+- **Schemas**: `AprovacaoClienteRequest`, `RejeicaoClienteRequest`
+- `POST /api/admin/clientes/{id}/aprovar` — valida pendente_aprovacao → cria assinatura (calcular_billing) → gera senhas → cria medicos adicionais/secretaria → configura medico principal (pode_fazer_login=true, is_admin=true) → gera token_ativacao → status=pendente_aceite → envia email de ativacao
+- `POST /api/admin/clientes/{id}/rejeitar` — atualiza status='rejeitado'
+
+#### 61.7 Middlewares
+- **`app/middleware/tenant_middleware.py`**: adicionado `/api/registro-cliente/` ao bypass de tenant resolution
+- **`app/middleware/billing_middleware.py`**: adicionado `/api/registro-cliente/` e `/static/registro-cliente.html` a `ROTAS_LIBERADAS`
+
+#### 61.8 Routers registrados
+- **`app/main.py`**: `cliente_registro_router` e `admin_convites_router` registrados apos `parceiro_registro_router`
+
+#### 61.9 Notificacoes
+- **`app/services/email_service.py`**: novo metodo `send_convite_registro(to_email, to_name, url_convite)` — template blue/teal
+- **`app/services/telegram_service.py`**: nova funcao `alerta_novo_registro_cliente()` — notifica admin quando prospect preenche cadastro
+- **`app/api/cliente_registro.py`**: usa `email_service.send_telegram_notification()` (sync) para notificar
+
+#### 61.10 API admin atualizada
+- **`app/api/admin.py`**:
+  - `listar_clientes()`: novo parametro `status_filter: Optional[str]` com filtro SQL `AND status = :status_filter`
+  - `obter_cliente()`: SELECT agora inclui `c.cnpj`, `c.tipo_consultorio`, `c.qtd_medicos_adicionais`, `c.necessita_secretaria` — necessarios para a pagina de aprovacao
+
+#### 61.11 Frontend — Paginas Criadas
+
+##### `static/registro-cliente.html` (868 linhas)
+- Formulario publico para prospects preencherem dados
+- Tema escuro com gradiente blue/teal (#3b82f6 → #06b6d4)
+- 4 estados: loading, erro (expirado/usado/nao_encontrado/sem_token/rede), formulario, sucesso
+- 3 secoes: Dados do Consultorio, Tipo de Atendimento (individual/multi_consultorio), Medico Principal
+- Mascaras JS para CPF/CNPJ (auto-detecta) e telefone
+- Pre-preenche email/nome/telefone do convite via `data.dados_preenchidos`
+- Rate limit visual no submit
+
+##### `static/admin/convites.html` (684 linhas)
+- Gestao de convites (padrao visual de `clientes.html`)
+- Stats row: Total, Pendentes, Usados
+- Tabela: Destino, Status (badges coloridos), Data, Acoes (copiar link, revogar)
+- Modal "Gerar Convite": nome, email, telefone, observacoes, checkbox enviar email
+- Modal "Link Gerado": exibe URL com botao copiar, nome/email do destino
+- Filtro client-side por status (todos/pendentes/usados/expirados)
+
+##### `static/admin/clientes-aprovar.html` (1685 linhas)
+- Pagina de aprovacao de clientes pendentes
+- Secao 1 (read-only): dados do prospect + medico principal (carregados via `Promise.all` de GET `/api/admin/clientes/{id}` + GET `/api/admin/clientes/{id}/medicos`)
+- Secao 2 (editavel): selecao de plano (Individual R$150 / Consultorio R$200), periodo cobranca, dia vencimento, linha WhatsApp dedicada, parceiro comercial, desconto promocional, cortesia ativacao
+- Resumo de precos dinamico (atualiza em tempo real)
+- Medicos adicionais (dinamico, add/remove)
+- Secretaria (toggle)
+- Auto-selecao de plano baseado em `tipo_consultorio` e `qtd_medicos_adicionais`
+- Botao "Aprovar e Enviar Ativacao" → POST `/api/admin/clientes/{id}/aprovar`
+- Botao "Rejeitar" → modal com motivo → POST `/api/admin/clientes/{id}/rejeitar`
+- Modal sucesso: link ativacao, credenciais, botao copiar tudo, botao WhatsApp
+
+#### 61.12 Frontend — Paginas Modificadas
+
+##### `static/admin/clientes.html`
+- Novo filtro "Pendente Aprovacao" no dropdown de status
+- Badge amarelo para `pendente_aprovacao`, badge vermelho para `rejeitado`
+- Botao "Aprovar" (fa-check-double) para clientes pendentes → redireciona para `clientes-aprovar.html?id=X`
+- Link "Convites" (botao) ao lado de "Novo Cliente"
+
+##### `static/admin/dashboard.html`
+- Grid de stats expandido de 5 para 6 colunas
+- Novo card "Pendentes Aprovacao" (amber) com contagem via `GET /api/admin/clientes?status_filter=pendente_aprovacao`
+- Novo atalho "Convites" (gradiente blue/cyan) no grid de navegacao
+
+#### 61.13 Bugs corrigidos durante implementacao
+
+##### Permissao de arquivo (causa raiz do 404 inicial)
+- **Problema**: `email_service.py` ficou com permissao `600` (somente root) apos edicao. O servico roda como usuario `horariointeligente` (nao-root), causando `Permission denied` na importacao. O `try/except` em `main.py` capturava e fazia fallback para routers minimos — TODAS as rotas admin/convites/registro ficavam indisponiveis (404)
+- **Solucao**: `chmod 644` em todos os arquivos `.py` e `.html` com permissoes restritivas
+- **Prevencao**: Sempre verificar permissoes apos editar arquivos
+
+##### Campo `tipo_atendimento` vs `tipo_consultorio` em registro-cliente.html
+- **Problema**: Frontend usava `tipo_atendimento` como nome do radio e campo no payload, mas API espera `tipo_consultorio`
+- **Solucao**: Replace-all de `tipo_atendimento` → `tipo_consultorio` (7 ocorrencias)
+
+##### Pre-fill data path em registro-cliente.html
+- **Problema**: API retorna `{ valido, dados_preenchidos: { email, nome, telefone } }` mas frontend lia `data.email` direto
+- **Solucao**: Alterado para `data.dados_preenchidos.email`, etc.
+
+##### Campos faltando em `obter_cliente()` (admin.py)
+- **Problema**: Endpoint GET `/api/admin/clientes/{id}` nao retornava `cnpj`, `tipo_consultorio`, `qtd_medicos_adicionais`, `necessita_secretaria` — necessarios pela pagina de aprovacao
+- **Solucao**: Adicionados ao SELECT e ao dict de retorno
+
+##### Auto-selecao de plano em clientes-aprovar.html
+- **Problema**: Condicao verificava `'consultorio'` e `'clinica'` mas valor real e `'multi_consultorio'`
+- **Solucao**: Adicionado `'multi_consultorio'` a condicao
+
+##### URL do convite gerado em convites.html
+- **Problema**: API retorna `{ success, convite: { url } }` mas frontend lia `resultado.url` (nivel errado)
+- **Solucao**: Alterado para extrair de `resultado.convite.url`
+
+#### Novo status de cliente: `pendente_aprovacao`
+| Status | Cor Badge | Descricao |
+|--------|-----------|-----------|
+| `pendente_aprovacao` | Amarelo escuro | Aguardando aprovacao do admin |
+| `pendente_aceite` | Amarelo | Aguardando aceite de termos |
+| `ativo` | Verde | Conta ativa e funcional |
+| `rejeitado` | Vermelho escuro | Cadastro rejeitado pelo admin |
+| `aguardando_pagamento` | Laranja | Aguardando primeiro pagamento |
+| `suspenso` | Vermelho | Suspenso por inadimplencia |
+| `cancelado` | Cinza | Conta cancelada |
+
+---
+
+### Pendencias Atualizadas
+- [x] ~~Cadastro Self-Service de Clientes (convite personalizado)~~ (Implementado)
+- [x] ~~Migracao l01_create_convites_clientes~~ (Executada com sucesso)
+- [x] ~~Convite gerado com sucesso em producao~~ (Testado)
+- [ ] Template `lembrete_24h` — remover texto "Responda OK..." redundante com botoes (editar no Meta Business Manager)
+- [ ] Testar fluxo completo: prospect preenche formulario → admin aprova → cliente aceita termos
+- [ ] Testar envio de email ao gerar convite (checkbox "enviar por email")
+- [ ] Testar rejeicao de prospect
+
+---
+
+### Arquivos Criados nesta Sessao
+| Arquivo | Descricao | Linhas |
+|---------|-----------|--------|
+| `alembic/versions/l01_create_convites_clientes.py` | Migracao: tabela convites + colunas clientes | ~80 |
+| `app/models/convite_cliente.py` | Model SQLAlchemy ConviteCliente | ~50 |
+| `app/services/onboarding_service.py` | Funcoes auxiliares extraidas (subdomain, senha, billing) | ~200 |
+| `app/api/cliente_registro.py` | API publica de registro via convite | ~370 |
+| `app/api/admin_convites.py` | API admin de gestao de convites | ~250 |
+| `static/registro-cliente.html` | Formulario publico para prospects | 868 |
+| `static/admin/convites.html` | Gestao de convites (admin) | 684 |
+| `static/admin/clientes-aprovar.html` | Aprovacao de clientes pendentes | 1685 |
+
+### Arquivos Modificados nesta Sessao
+| Arquivo | Mudancas |
+|---------|----------|
+| `app/models/__init__.py` | +ConviteCliente |
+| `app/api/admin_clientes.py` | Refactor imports + endpoints aprovar/rejeitar |
+| `app/api/admin.py` | +status_filter em listar_clientes, +campos em obter_cliente |
+| `app/main.py` | +2 routers (cliente_registro, admin_convites) |
+| `app/middleware/tenant_middleware.py` | +bypass /api/registro-cliente/ |
+| `app/middleware/billing_middleware.py` | +ROTAS_LIBERADAS |
+| `app/services/email_service.py` | +send_convite_registro() |
+| `app/services/telegram_service.py` | +alerta_novo_registro_cliente() |
+| `static/admin/clientes.html` | +filtro, +badge, +botao aprovar, +link convites |
+| `static/admin/dashboard.html` | +card pendentes, +atalho convites |
+
+---
+
+## Correções Realizadas (Sessão 03/02/2026)
+
+### 62. Botão "Não vou conseguir ir" não oferecia remarcar
+- **Problema**: Paciente clicou em "Não vou conseguir ir" no lembrete de 2h e sistema respondeu "Não encontrei nenhuma consulta para cancelar". Mesmo quando encontrava, cancelava automaticamente sem oferecer remarcar.
+- **Causa raiz tripla**:
+  1. **Timezone incorreto**: `_buscar_agendamento_pendente()` usava `datetime.now()` sem timezone. Banco usa BRT mas código comparava com hora do sistema (potencialmente UTC)
+  2. **Busca muito restritiva**: Query `data_hora >= datetime.now()` não encontrava consultas que acabaram de passar (paciente clicou às 14:05, consulta era 14:00)
+  3. **UX inadequada**: Botão "Não vou conseguir ir" cancelava automaticamente sem perguntar se queria remarcar
+
+#### Correções aplicadas:
+
+##### 62.1 Import de timezone helper
+- **Arquivo**: `app/services/button_handler_service.py`
+- Adicionado `from datetime import timedelta`
+- Adicionado `from app.utils.timezone_helper import now_brazil`
+
+##### 62.2 Busca com margem de tempo e timezone correto
+- **Função**: `_buscar_agendamento_pendente()`
+- Novo parâmetro `incluir_recentes: bool = False`
+- Quando `incluir_recentes=True`: busca consultas das últimas 2h (para cancelar/remarcar)
+- Usa `now_brazil()` ao invés de `datetime.now()`
+
+##### 62.3 Handler de remarcar usa margem
+- `_handle_remarcar()` agora chama `_buscar_agendamento_pendente(db, paciente.id, incluir_recentes=True)`
+
+##### 62.4 Handler de "cancelar" agora oferece remarcar
+- `_handle_cancelar()` completamente reescrito:
+  - Usa `incluir_recentes=True` para encontrar consultas recentes
+  - **NÃO cancela automaticamente** - apenas pergunta
+  - Resposta: "Você gostaria de *remarcar* para outra data ou prefere *cancelar* completamente?"
+  - Status do lembrete muda para `REMARCAR` (não `CANCELAR`)
+  - Evento WebSocket: `paciente_nao_pode_ir`
+  - Flag `await_remarcar_ou_cancelar: True` sinaliza que espera decisão
+
+##### 62.5 Todos os `datetime.now()` substituídos por `now_brazil()`
+- `lembrete.respondido_em = now_brazil()` em todos os handlers
+
+#### Fluxo após correção:
+1. Paciente clica "Não vou conseguir ir"
+2. Sistema encontra consulta (mesmo se passou até 2h)
+3. Sistema pergunta: "Você gostaria de remarcar ou cancelar?"
+4. Paciente responde "remarcar" ou "cancelar"
+5. IA processa a próxima mensagem e executa a ação
+
+#### Arquivo modificado:
+- `app/services/button_handler_service.py` — reescrito `_handle_cancelar()`, `_buscar_agendamento_pendente()`, imports e timezone
+
+---
+
+### 63. Orientações padrão em todas as confirmações (endereço, documento, exames)
+- **Problema**: Mensagens de confirmação não incluíam informações essenciais: endereço da clínica, documento com foto (especialmente para convênio) e exames recentes
+- **Requisito**: Incluir essas informações em 3 pontos:
+  1. Confirmação de agendamento (IA)
+  2. Resposta ao confirmar presença via lembrete 24h (button handler)
+  3. Resposta ao confirmar presença via lembrete 2h (button handler)
+
+#### Correções aplicadas:
+
+##### 63.1 Regras de confirmação da IA atualizadas
+- **Arquivo**: `app/services/anthropic_service.py`
+- Seção "REGRAS DE CONFIRMAÇÃO DO AGENDAMENTO" atualizada
+- IA deve incluir no final de toda confirmação:
+  - 📍 Nosso endereço: [endereço da clínica]
+  - 🪪 Traga documento com foto (obrigatório para convênio)
+  - 📎 Se tiver exames recentes, traga no dia da consulta!
+
+##### 63.2 Funções helper no button_handler_service.py
+- **Arquivo**: `app/services/button_handler_service.py`
+- Import de `Cliente` adicionado
+- Nova função `_buscar_endereco_clinica(db, cliente_id)` - busca endereço do cliente
+- Nova função `_montar_orientacoes_consulta(endereco, eh_convenio)` - monta texto padronizado de orientações
+  - Se convênio: "🪪 Traga documento com foto e carteirinha do convênio"
+  - Se particular: "🪪 Traga documento com foto"
+
+##### 63.3 Handler `_handle_confirmar` atualizado
+- **Arquivo**: `app/services/button_handler_service.py`
+- Verifica se agendamento é convênio (`forma_pagamento.startswith("convenio")`)
+- Busca endereço da clínica
+- Inclui nome do médico na resposta
+- Inclui orientações completas na mensagem
+
+##### 63.4 Função `_gerar_resposta_ia` atualizada (lembrete_service)
+- **Arquivo**: `app/services/lembrete_service.py`
+- Intenção "confirmar" agora inclui:
+  - Busca de endereço da clínica via Cliente
+  - Verificação se é convênio
+  - Montagem de orientações personalizadas
+
+#### Novo formato de confirmação (exemplo com convênio):
+```
+Perfeito, Nylza! ✅
+
+Sua consulta está confirmada para:
+📅 13/02/2026 às 09:30
+👨‍⚕️ Dr. João da Silva
+
+📍 Nosso endereço: Rua das Flores, 123 - Centro
+🪪 Traga documento com foto e carteirinha do convênio
+📎 Se tiver exames recentes, traga no dia da consulta!
+
+Aguardamos você!
+```
+
+#### Arquivos modificados:
+- `app/services/anthropic_service.py` — regras de confirmação da IA
+- `app/services/button_handler_service.py` — helpers + `_handle_confirmar`
+- `app/services/lembrete_service.py` — `_gerar_resposta_ia`
+
+---
+
+### 64. Máscara de telefone no formulário de convites (admin) + texto do email
+- **Problema 1**: Campo de telefone no modal de gerar convite (`admin/convites.html`) não tinha máscara
+- **Problema 2**: Texto do email de convite dizia "sistema de agendamento médico mais completo" - pode sugerir funcionalidades clínicas (prontuário, receituário)
+
+#### Correções aplicadas:
+
+##### 64.1 Máscara de telefone em admin/convites.html
+- **Arquivo**: `static/admin/convites.html`
+- Adicionada função `maskPhone()` (mesmo padrão dos outros formulários)
+- Adicionado event listener no campo `campo_telefone_destino`
+- Formato: `(XX) XXXXX-XXXX`
+
+##### 64.2 Texto do email de convite atualizado
+- **Arquivo**: `app/services/email_service.py`
+- **Antes**: "o sistema de agendamento médico mais completo do mercado"
+- **Depois**: "o sistema de agendamento automatizado mais humanizado do mercado!"
+- **Motivo**: Transmite o diferencial da IA conversacional sem criar expectativa de funcionalidades clínicas
+
+#### Nota: Máscaras de telefone já existentes
+- `static/registro-cliente.html` — campos `telefone` e `medico_telefone` ✓
+- `static/parceiro/novo-cliente.html` — função `formatarTelefone()` ✓
+
+---
+
+### 65. Erro "plano NOT NULL" ao registrar cliente via convite
+- **Problema**: Ao finalizar cadastro via convite, erro: `NotNullViolation: null value in column "plano" of relation "clientes" violates not-null constraint`
+- **Causa**: Coluna `plano` tinha constraint NOT NULL, mas no fluxo de convite o plano é definido apenas na aprovação pelo admin (não no registro inicial)
+- **Solução**: Alterar coluna para aceitar NULL
+- **Comando**: `ALTER TABLE clientes ALTER COLUMN plano DROP NOT NULL;`
+- **Lógica de negócio**: Cliente com `status='pendente_aprovacao'` não tem plano ainda - será definido pelo admin ao aprovar
+
+---
+
+### 66. Tela de sucesso do registro via convite - remover botão "Acessar Painel"
+- **Problema**: Após finalizar o cadastro via convite, a tela de sucesso mostrava botão "Acessar o Painel" e mensagem sugerindo que a conta já estava ativa
+- **Fluxo correto**: Registro → Análise do admin → Aprovação → Email de ativação → Aceite de termos → Acesso ao painel
+- **Arquivo**: `static/registro-cliente.html`
+
+#### Alterações:
+- **Título**: "Registro Concluído!" → "Cadastro Enviado!"
+- **Subtítulo**: "Sua conta foi criada com sucesso" → "Seus dados foram recebidos com sucesso"
+- **Passos atualizados**:
+  1. "Nossa equipe vai analisar seu cadastro em até 24 horas úteis"
+  2. "Após a aprovação, você receberá um e-mail para ativar sua conta e aceitar os termos de uso"
+  3. "Com a conta ativada, você poderá acessar o painel e começar a usar o sistema"
+- **Removido**: Botão "Acessar o Painel"
+- **Adicionado**: Aviso "Fique atento ao seu e-mail para as próximas instruções"
+
+---
+
+### 67. Correção do Cálculo de Comissões de Parceiros
+
+**Problema**: O sistema calculava a comissão do parceiro sobre o valor total da assinatura, incluindo a linha dedicada (R$40). Além disso, não havia comissão separada sobre a taxa de ativação.
+
+**Regra de negócio correta**:
+1. **Comissão mensal** = Percentual aplicado apenas sobre (Plano base + Profissionais extras) — **SEM** linha dedicada
+2. **Comissão de ativação** = Percentual aplicado sobre a taxa de ativação (única vez, no ato da contratação)
+3. **Se ativação é cortesia** = Não gera comissão de ativação (valor não foi cobrado)
+
+#### Arquivos modificados:
+
+##### 67.1 Frontend - clientes-aprovar.html
+- **Arquivo**: `static/admin/clientes-aprovar.html`
+- Adicionado campo `taxaAtivacao: 150` aos objetos de plano
+- Nova função `calcularValorComissionavel()` — retorna plano + extras (sem linha dedicada)
+- Função `atualizarPreviewComissao()` atualizada para mostrar:
+  - Base mensal (sem linha dedicada)
+  - Comissão mensal
+  - Comissão de ativação (ou "isenta" se cortesia)
+  - Total da primeira comissão
+- HTML do preview expandido com novos campos
+
+##### 67.2 Backend - admin_clientes.py
+- **Arquivo**: `app/api/admin_clientes.py`
+- **Endpoint `criar_cliente()`**:
+  - Cálculo corrigido: `valor_comissionavel = valor_base_plano + valor_extras_profissionais`
+  - Cria 2 registros de comissão: `mes_referencia=1` (mensal) e `mes_referencia=0` (ativação)
+  - Resposta inclui `comissao_mensal`, `comissao_ativacao`, `total_primeira_comissao`
+- **Endpoint `aprovar_cliente()`**:
+  - Adicionado `RETURNING id` na criação da assinatura
+  - Busca dados do parceiro quando informado
+  - Cria comissões (mensal + ativação) com mesma lógica do `criar_cliente()`
+  - Resposta inclui objeto `comissao` com detalhes
+
+#### Estrutura de comissões na tabela:
+| mes_referencia | Tipo |
+|----------------|------|
+| 0 | Comissão sobre taxa de ativação (única vez) |
+| 1 | Primeira mensalidade |
+| 2+ | Mensalidades subsequentes |
+
+#### Exemplo de cálculo:
+- Plano Consultório: R$200
+- 1 profissional extra: R$50
+- Linha dedicada: R$40 (NÃO entra no cálculo)
+- Taxa de ativação: R$150
+- Percentual parceiro: 40%
+
+**Resultado**:
+- Valor comissionável mensal: R$250 (200 + 50)
+- Comissão mensal: R$100 (40% de R$250)
+- Comissão ativação: R$60 (40% de R$150)
+- Total primeira comissão: R$160
+
+---
+
+### 68. Sistema de Convites para Parceiros Comerciais
+
+**Objetivo**: Permitir que o parceiro gere links de convite durante visitas de venda, aproveitando o momento de engajamento do prospect.
+
+#### Novos endpoints em `/api/parceiro/`:
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | `/convites` | Gera novo convite vinculado ao parceiro |
+| GET | `/convites` | Lista convites do parceiro (últimos 50) |
+| DELETE | `/convites/{id}` | Revoga convite não utilizado |
+
+##### 68.1 Backend - parceiro_auth.py
+- **Arquivo**: `app/api/parceiro_auth.py`
+- Novo schema `ConviteParceiroCreate` com campos:
+  - `email_destino` (opcional)
+  - `nome_destino` (opcional)
+  - `telefone_destino` (opcional)
+  - `observacoes` (opcional)
+  - `enviar_email` (boolean) — se True, envia email automaticamente
+- Endpoint `POST /convites`:
+  - Gera token de 48 bytes (válido por 30 dias)
+  - Vincula `parceiro_id` ao convite
+  - Se `enviar_email=True` e email informado, envia email com nome do parceiro
+- Endpoint `GET /convites`:
+  - Retorna convites do parceiro com status (pendente/usado/expirado)
+- Endpoint `DELETE /convites/{id}`:
+  - Revoga convite não utilizado (verifica se pertence ao parceiro)
+
+##### 68.2 Validação de convite atualizada
+- **Arquivo**: `app/api/cliente_registro.py`
+- Endpoint `GET /api/registro-cliente/{token}` agora retorna `partner_name`
+- JOIN com tabela `parceiros_comerciais` para buscar nome
+
+##### 68.3 Email de convite personalizado
+- **Arquivo**: `app/services/email_service.py`
+- Método `send_convite_registro()` agora aceita parâmetro opcional `parceiro_nome`
+- Se parceiro informado, email mostra destaque: "[Nome do Parceiro] convidou você para conhecer o Horário Inteligente!"
+- Box verde destacando o nome do parceiro no template HTML
+
+##### 68.4 Dashboard do Parceiro
+- **Arquivo**: `static/parceiro/dashboard.html`
+- Novo botão "Gerar Convite" no header
+- Nova seção "Meus Convites" com lista de convites
+- Modal para gerar convite com:
+  - Campos opcionais (nome, email, telefone)
+  - Toggle "Enviar convite por e-mail"
+  - Validação: se marcar enviar email, campo email é obrigatório
+- Funções JavaScript: `carregarConvites()`, `gerarConvite()`, `revogarConvite()`, `copiarLink()`
+- Badges de status: Pendente (azul), Usado (verde), Expirado (cinza)
+
+#### Fluxo completo:
+1. Parceiro acessa dashboard → clica "Gerar Convite"
+2. Preenche dados opcionais → marca "Enviar por e-mail" se desejar
+3. Sistema gera link único vinculado ao parceiro
+4. Se marcou enviar email: prospect recebe email com link e nome do parceiro
+5. Se não marcou: parceiro copia link e envia manualmente (WhatsApp, etc.)
+6. Prospect acessa link → página mostra "Convite de: [Nome do Parceiro]"
+7. Prospect preenche cadastro → cliente criado com `status='pendente_aprovacao'`
+8. Vínculo cliente-parceiro já é criado automaticamente
+9. Admin aprova e configura plano → comissões calculadas corretamente
+
+---
+
+*Ultima atualizacao: 03/02/2026 - Sistema de convites para parceiros + correção cálculo de comissões*

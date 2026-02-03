@@ -37,6 +37,11 @@
                 </div>
             </div>
             <div class="flex items-center gap-3">
+                <button onclick="abrirModalConvite()"
+                   class="bg-gradient-to-r from-blue-500 to-cyan-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-700 transition flex items-center gap-2">
+                    <i class="fas fa-link"></i>
+                    <span class="hidden sm:inline">Gerar Convite</span>
+                </button>
                 <a href="/static/parceiro/novo-cliente.html"
                    class="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-green-600 hover:to-emerald-700 transition flex items-center gap-2">
                     <i class="fas fa-plus"></i>
@@ -101,6 +106,30 @@
                     <p class="text-gray-400 text-sm mb-1">Recorrencia</p>
                     <p class="text-white font-bold text-lg" id="infoRecorrencia">-</p>
                 </div>
+            </div>
+        </div>
+
+        <!-- Convites Pendentes -->
+        <div id="convitesSection" class="hidden bg-gray-900 rounded-xl border border-gray-800 overflow-hidden mb-8">
+            <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-white">
+                    <i class="fas fa-link mr-2 text-blue-400"></i>Meus Convites
+                </h2>
+                <button onclick="carregarConvites()" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+
+            <div id="convitesContainer" class="p-4">
+                <div id="convitesLoading" class="flex items-center justify-center py-6">
+                    <div class="loader"></div>
+                    <span class="text-gray-400 ml-3">Carregando...</span>
+                </div>
+                <div id="convitesEmpty" class="hidden text-center py-6">
+                    <i class="fas fa-link-slash text-gray-600 text-3xl mb-2"></i>
+                    <p class="text-gray-400 text-sm">Nenhum convite gerado ainda</p>
+                </div>
+                <div id="convitesList" class="hidden space-y-3"></div>
             </div>
         </div>
 
@@ -322,6 +351,270 @@
 
         // Carregar ao iniciar
         carregarDados();
+        carregarConvites();
+
+        // ===== CONVITES =====
+        async function carregarConvites() {
+            const section = document.getElementById('convitesSection');
+            const loading = document.getElementById('convitesLoading');
+            const empty = document.getElementById('convitesEmpty');
+            const list = document.getElementById('convitesList');
+
+            loading.classList.remove('hidden');
+            empty.classList.add('hidden');
+            list.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/parceiro/convites', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.status === 401) {
+                    logout();
+                    return;
+                }
+
+                const convites = await response.json();
+                loading.classList.add('hidden');
+
+                if (convites.length === 0) {
+                    empty.classList.remove('hidden');
+                    section.classList.remove('hidden');
+                    return;
+                }
+
+                section.classList.remove('hidden');
+                list.classList.remove('hidden');
+                list.innerHTML = convites.map(c => `
+                    <div class="bg-gray-800 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                ${getConviteStatusBadge(c.status)}
+                                <span class="text-gray-400 text-xs">${formatarData(c.criado_em)}</span>
+                            </div>
+                            <p class="text-white text-sm truncate">${escapeHtml(c.nome_destino || c.email_destino || 'Convite generico')}</p>
+                            ${c.cliente_id ? `<p class="text-green-400 text-xs mt-1"><i class="fas fa-check mr-1"></i>Cliente cadastrado</p>` : ''}
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${c.status === 'pendente' ? `
+                                <button onclick="copiarLink('${escapeHtml(c.url)}')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 transition" title="Copiar link">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button onclick="revogarConvite(${c.id})" class="bg-red-600/50 text-red-300 px-3 py-1.5 rounded text-sm hover:bg-red-600 transition" title="Revogar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                loading.classList.add('hidden');
+            }
+        }
+
+        function getConviteStatusBadge(status) {
+            const badges = {
+                'pendente': '<span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-900/50 text-blue-300">Pendente</span>',
+                'usado': '<span class="px-2 py-0.5 rounded text-xs font-medium bg-green-900/50 text-green-300">Usado</span>',
+                'expirado': '<span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-700 text-gray-400">Expirado</span>'
+            };
+            return badges[status] || badges['pendente'];
+        }
+
+        function abrirModalConvite() {
+            document.getElementById('modalConvite').classList.remove('hidden');
+            document.getElementById('conviteNome').value = '';
+            document.getElementById('conviteEmail').value = '';
+            document.getElementById('conviteTelefone').value = '';
+            document.getElementById('conviteResultado').classList.add('hidden');
+            document.getElementById('conviteForm').classList.remove('hidden');
+        }
+
+        function fecharModalConvite() {
+            document.getElementById('modalConvite').classList.add('hidden');
+        }
+
+        async function gerarConvite() {
+            const nome = document.getElementById('conviteNome').value.trim();
+            const email = document.getElementById('conviteEmail').value.trim();
+            const telefone = document.getElementById('conviteTelefone').value.trim();
+            const enviarEmail = document.getElementById('conviteEnviarEmail').checked;
+
+            // Validar: se marcou enviar por email, precisa ter email
+            if (enviarEmail && !email) {
+                alert('Informe o e-mail do prospect para enviar o convite por e-mail.');
+                document.getElementById('conviteEmail').focus();
+                return;
+            }
+
+            const btn = document.getElementById('btnGerarConvite');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loader mr-2" style="width:16px;height:16px;border-width:2px;display:inline-block;"></span>Gerando...';
+
+            try {
+                const response = await fetch('/api/parceiro/convites', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nome_destino: nome || null,
+                        email_destino: email || null,
+                        telefone_destino: telefone || null,
+                        enviar_email: enviarEmail
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.sucesso) {
+                    document.getElementById('conviteForm').classList.add('hidden');
+                    document.getElementById('conviteResultado').classList.remove('hidden');
+                    document.getElementById('conviteLinkGerado').value = data.convite.url;
+
+                    // Mostrar mensagem se email foi enviado
+                    const msgEmailEnviado = document.getElementById('msgEmailEnviado');
+                    if (data.convite.email_enviado) {
+                        msgEmailEnviado.classList.remove('hidden');
+                        msgEmailEnviado.innerHTML = `<i class="fas fa-check-circle mr-1"></i>E-mail enviado para ${escapeHtml(email)}`;
+                    } else {
+                        msgEmailEnviado.classList.add('hidden');
+                    }
+
+                    carregarConvites();
+                } else {
+                    alert(data.detail || 'Erro ao gerar convite');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro de conexao. Tente novamente.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-link mr-2"></i>Gerar Convite';
+            }
+        }
+
+        function copiarLinkGerado() {
+            const input = document.getElementById('conviteLinkGerado');
+            input.select();
+            document.execCommand('copy');
+            alert('Link copiado para a area de transferencia!');
+        }
+
+        function copiarLink(url) {
+            const textarea = document.createElement('textarea');
+            textarea.value = url;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert('Link copiado!');
+        }
+
+        async function revogarConvite(conviteId) {
+            if (!confirm('Tem certeza que deseja revogar este convite?')) return;
+
+            try {
+                const response = await fetch(`/api/parceiro/convites/${conviteId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    carregarConvites();
+                } else {
+                    const data = await response.json();
+                    alert(data.detail || 'Erro ao revogar convite');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro de conexao.');
+            }
+        }
     </script>
+
+    <!-- Modal Gerar Convite -->
+    <div id="modalConvite" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-800 w-full max-w-md">
+            <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
+                <h3 class="text-lg font-semibold text-white">
+                    <i class="fas fa-link mr-2 text-blue-400"></i>Gerar Convite
+                </h3>
+                <button onclick="fecharModalConvite()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Formulario -->
+            <div id="conviteForm" class="p-6">
+                <p class="text-gray-400 text-sm mb-4">
+                    Gere um link de convite para enviar ao prospect. Quando ele se cadastrar, sera automaticamente vinculado a voce.
+                </p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Nome do prospect (opcional)</label>
+                        <input type="text" id="conviteNome" placeholder="Ex: Dr. Joao"
+                               class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Email (opcional)</label>
+                        <input type="email" id="conviteEmail" placeholder="email@exemplo.com"
+                               class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">Telefone (opcional)</label>
+                        <input type="text" id="conviteTelefone" placeholder="(00) 00000-0000"
+                               class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="flex items-center gap-3 pt-2">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="conviteEnviarEmail" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                        <div>
+                            <span class="text-sm font-medium text-gray-300">Enviar convite por e-mail</span>
+                            <p class="text-xs text-gray-500">O prospect recebera o link no e-mail informado</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 flex gap-3">
+                    <button onclick="fecharModalConvite()" class="flex-1 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition">
+                        Cancelar
+                    </button>
+                    <button id="btnGerarConvite" onclick="gerarConvite()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">
+                        <i class="fas fa-link mr-2"></i>Gerar Convite
+                    </button>
+                </div>
+            </div>
+
+            <!-- Resultado -->
+            <div id="conviteResultado" class="hidden p-6">
+                <div class="text-center mb-4">
+                    <div class="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i class="fas fa-check text-green-400 text-2xl"></i>
+                    </div>
+                    <h4 class="text-white font-semibold">Convite Gerado!</h4>
+                    <p class="text-gray-400 text-sm">Copie o link abaixo e envie ao seu prospect</p>
+                </div>
+                <p id="msgEmailEnviado" class="hidden text-green-400 text-sm text-center mb-3 bg-green-500/10 py-2 px-3 rounded-lg"></p>
+                <div class="flex gap-2">
+                    <input type="text" id="conviteLinkGerado" readonly
+                           class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm">
+                    <button onclick="copiarLinkGerado()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                <p class="text-gray-500 text-xs mt-3 text-center">
+                    <i class="fas fa-clock mr-1"></i>Valido por 30 dias
+                </p>
+                <button onclick="fecharModalConvite()" class="w-full mt-4 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

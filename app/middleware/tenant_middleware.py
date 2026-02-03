@@ -42,7 +42,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 request.state.is_admin = False
                 response = await call_next(request)
                 return response
-            if path.startswith('/api/financeiro/') or path.startswith('/api/gestao-interna/') or path.startswith('/api/admin/') or path.startswith('/api/interno/') or path.startswith('/api/ativacao/') or path.startswith('/api/parceiro/'):
+            if path.startswith('/api/financeiro/') or path.startswith('/api/gestao-interna/') or path.startswith('/api/admin/') or path.startswith('/api/interno/') or path.startswith('/api/ativacao/') or path.startswith('/api/parceiro/') or path.startswith('/api/registro-cliente/'):
                 request.state.cliente_id = None
                 request.state.subdomain = 'admin'
                 request.state.is_admin = True

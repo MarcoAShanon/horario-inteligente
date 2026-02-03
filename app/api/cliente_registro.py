@@ -101,10 +101,12 @@ async def validar_convite(
     try:
         convite = db.execute(
             text("""
-                SELECT id, token, email_destino, nome_destino, telefone_destino,
-                       usado, expira_em, observacoes
-                FROM convites_clientes
-                WHERE token = :token
+                SELECT c.id, c.token, c.email_destino, c.nome_destino, c.telefone_destino,
+                       c.usado, c.expira_em, c.observacoes, c.parceiro_id,
+                       p.nome as parceiro_nome
+                FROM convites_clientes c
+                LEFT JOIN parceiros_comerciais p ON p.id = c.parceiro_id
+                WHERE c.token = :token
             """),
             {"token": token}
         ).fetchone()
@@ -114,7 +116,7 @@ async def validar_convite(
 
         # Verificar se ja foi usado
         if convite[5]:  # usado
-            raise HTTPException(status_code=410, detail="Este convite ja foi utilizado")
+            raise HTTPException(status_code=409, detail="Este convite ja foi utilizado")
 
         # Verificar se expirou
         agora = datetime.now(timezone.utc)
@@ -125,7 +127,7 @@ async def validar_convite(
         if expira_em < agora:
             raise HTTPException(status_code=410, detail="Este convite expirou")
 
-        return {
+        response = {
             "valido": True,
             "dados_preenchidos": {
                 "email": convite[2],
@@ -133,6 +135,12 @@ async def validar_convite(
                 "telefone": convite[4],
             }
         }
+
+        # Adicionar nome do parceiro se houver
+        if convite[9]:  # parceiro_nome
+            response["partner_name"] = convite[9]
+
+        return response
 
     except HTTPException:
         raise

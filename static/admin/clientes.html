@@ -66,6 +66,11 @@
                     <i class="fas fa-plus"></i>
                     Novo Cliente
                 </a>
+                <a href="/static/admin/convites.html"
+                   class="bg-gray-700 text-white px-4 py-3 rounded-lg font-semibold hover:bg-gray-600 transition flex items-center gap-2">
+                    <i class="fas fa-envelope-open-text"></i>
+                    Convites
+                </a>
             </div>
 
             <!-- Filtros -->
@@ -74,6 +79,7 @@
                         class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <option value="todos">Todos</option>
                     <option value="ativos" selected>Ativos</option>
+                    <option value="pendente_aprovacao">Pendente Aprovacao</option>
                     <option value="pendente_aceite">Pendente Aceite</option>
                     <option value="inativos">Inativos</option>
                 </select>
@@ -228,6 +234,8 @@
                     clientesFiltrados = clientes.filter(c => c.ativo || c.status === 'ativo');
                 } else if (filtro === 'inativos') {
                     clientesFiltrados = clientes.filter(c => !c.ativo && c.status !== 'pendente_aceite');
+                } else if (filtro === 'pendente_aprovacao') {
+                    clientesFiltrados = clientes.filter(c => c.status === 'pendente_aprovacao');
                 } else if (filtro === 'pendente_aceite') {
                     clientesFiltrados = clientes.filter(c => c.status === 'pendente_aceite');
                 }
@@ -286,6 +294,12 @@
                         </td>
                         <td class="px-4 py-4 text-center">
                             <div class="flex items-center justify-center gap-2">
+                                ${cliente.status === 'pendente_aprovacao' ? `
+                                <a href="/static/admin/clientes-aprovar.html?id=${cliente.id}"
+                                   class="text-amber-400 hover:text-amber-300 p-2" title="Aprovar">
+                                    <i class="fas fa-check-double"></i>
+                                </a>
+                                ` : ''}
                                 <button onclick="verDetalhes(${cliente.id})"
                                         class="text-blue-400 hover:text-blue-300 p-2" title="Ver detalhes">
                                     <i class="fas fa-eye"></i>
@@ -317,11 +331,13 @@
         function getStatusBadge(cliente) {
             const status = cliente.status || (cliente.ativo ? 'ativo' : 'suspenso');
             const badges = {
+                'pendente_aprovacao': '<span class="px-2 py-1 rounded text-xs font-medium bg-amber-900/50 text-amber-300">Pendente Aprovacao</span>',
                 'pendente_aceite': '<span class="px-2 py-1 rounded text-xs font-medium bg-yellow-900/50 text-yellow-300">Pendente Aceite</span>',
                 'ativo': '<span class="px-2 py-1 rounded text-xs font-medium bg-green-900/50 text-green-300">Ativo</span>',
                 'aguardando_pagamento': '<span class="px-2 py-1 rounded text-xs font-medium bg-orange-900/50 text-orange-300">Aguardando Pgto</span>',
                 'suspenso': '<span class="px-2 py-1 rounded text-xs font-medium bg-red-900/50 text-red-300">Suspenso</span>',
-                'cancelado': '<span class="px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">Cancelado</span>'
+                'cancelado': '<span class="px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">Cancelado</span>',
+                'rejeitado': '<span class="px-2 py-1 rounded text-xs font-medium bg-red-900/50 text-red-300">Rejeitado</span>'
             };
             return badges[status] || `<span class="px-2 py-1 rounded text-xs font-medium bg-gray-700 text-gray-300">${escapeHtml(status)}</span>`;
         }

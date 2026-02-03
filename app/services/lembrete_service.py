@@ -508,10 +508,29 @@ Exemplo: confirmar,0.95"""
             nome_medico = "Médico"
 
         if intencao == "confirmar":
+            # Buscar endereço da clínica
+            cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+            endereco = cliente.endereco if cliente else None
+
+            # Verificar se é convênio
+            eh_convenio = agendamento.forma_pagamento and agendamento.forma_pagamento.startswith("convenio")
+
+            # Montar orientações
+            orientacoes_lista = []
+            if endereco:
+                orientacoes_lista.append(f"📍 Nosso endereço: {endereco}")
+            if eh_convenio:
+                orientacoes_lista.append("🪪 Traga documento com foto e carteirinha do convênio")
+            else:
+                orientacoes_lista.append("🪪 Traga documento com foto")
+            orientacoes_lista.append("📎 Se tiver exames recentes, traga no dia da consulta!")
+            orientacoes = "\n".join(orientacoes_lista)
+
             resposta = (
-                f"Perfeito, {primeiro_nome}! Sua consulta com {nome_medico} "
-                f"está confirmada para {data_hora}. "
-                f"Qualquer coisa, é só me chamar aqui. Até lá!"
+                f"Perfeito, {primeiro_nome}! ✅\n\n"
+                f"Sua consulta com {nome_medico} está confirmada para {data_hora}.\n\n"
+                f"{orientacoes}\n\n"
+                f"Aguardamos você!"
             )
             acao = "confirmar_agendamento"
 

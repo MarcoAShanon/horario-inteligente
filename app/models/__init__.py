@@ -32,6 +32,7 @@ from app.models.historico_aceite import HistoricoAceite
 from app.models.historico_aceite_parceiro import HistoricoAceiteParceiro
 from app.models.historico_inadimplencia import HistoricoInadimplencia
 from app.models.comissionamento_parceiro import ComissionamentoParceiro
+from app.models.convite_cliente import ConviteCliente
 
 # Models de Conversas WhatsApp
 from app.models.conversa import Conversa, StatusConversa, NivelUrgencia
@@ -76,6 +77,8 @@ __all__ = [
     "HistoricoInadimplencia",
     # Model de Comissionamento Parceiro
     "ComissionamentoParceiro",
+    # Model de Convites de Clientes
+    "ConviteCliente",
     # Models de Conversas WhatsApp
     "Conversa",
     "StatusConversa",

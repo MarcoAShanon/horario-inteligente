@@ -483,42 +483,82 @@ async def criar_cliente(
 
                 # Calcular comissão
                 percentual_comissao = float(parceiro[2]) if parceiro[2] else 40.0  # Default 40%
-                valor_comissao = valor_final * (percentual_comissao / 100)
 
-                # Criar registro de comissão
+                # Valor comissionável mensal = plano base + extras (SEM linha dedicada)
+                valor_comissionavel = valor_base_plano + valor_extras_profissionais
+                comissao_mensal = valor_comissionavel * (percentual_comissao / 100)
+
+                # Comissão sobre taxa de ativação
+                taxa_ativacao = float(plano[5]) if plano[5] else 150.0
+                # Se ativação é cortesia, não há comissão sobre ativação
+                comissao_ativacao = 0.0 if assinatura_dados.ativacao_cortesia else taxa_ativacao * (percentual_comissao / 100)
+
+                # Criar registro de comissão mensal (mes_referencia=1)
                 db.execute(
                     text("""
                         INSERT INTO comissoes (
                             parceiro_id, cliente_id, assinatura_id,
                             valor_base, percentual_aplicado, valor_comissao,
                             mes_referencia, data_referencia, status,
-                            created_at
+                            observacoes, created_at
                         ) VALUES (
                             :parceiro_id, :cliente_id, :assinatura_id,
                             :valor_base, :percentual_aplicado, :valor_comissao,
                             1, :data_referencia, 'pendente',
-                            :created_at
+                            'Comissão mensal', :created_at
                         )
                     """),
                     {
                         "parceiro_id": dados.parceiro_id,
                         "cliente_id": cliente_id,
                         "assinatura_id": assinatura_id,
-                        "valor_base": valor_final,
+                        "valor_base": valor_comissionavel,
                         "percentual_aplicado": percentual_comissao,
-                        "valor_comissao": valor_comissao,
+                        "valor_comissao": comissao_mensal,
                         "data_referencia": date.today(),
                         "created_at": agora
                     }
                 )
-                logger.info(f"[Onboarding] Comissão criada: R${valor_comissao:.2f} ({percentual_comissao}% de R${valor_final:.2f})")
+                logger.info(f"[Onboarding] Comissão mensal criada: R${comissao_mensal:.2f} ({percentual_comissao}% de R${valor_comissionavel:.2f})")
+
+                # Criar registro de comissão sobre ativação (mes_referencia=0)
+                if comissao_ativacao > 0:
+                    db.execute(
+                        text("""
+                            INSERT INTO comissoes (
+                                parceiro_id, cliente_id, assinatura_id,
+                                valor_base, percentual_aplicado, valor_comissao,
+                                mes_referencia, data_referencia, status,
+                                observacoes, created_at
+                            ) VALUES (
+                                :parceiro_id, :cliente_id, :assinatura_id,
+                                :valor_base, :percentual_aplicado, :valor_comissao,
+                                0, :data_referencia, 'pendente',
+                                'Comissão sobre taxa de ativação', :created_at
+                            )
+                        """),
+                        {
+                            "parceiro_id": dados.parceiro_id,
+                            "cliente_id": cliente_id,
+                            "assinatura_id": assinatura_id,
+                            "valor_base": taxa_ativacao,
+                            "percentual_aplicado": percentual_comissao,
+                            "valor_comissao": comissao_ativacao,
+                            "data_referencia": date.today(),
+                            "created_at": agora
+                        }
+                    )
+                    logger.info(f"[Onboarding] Comissão ativação criada: R${comissao_ativacao:.2f} ({percentual_comissao}% de R${taxa_ativacao:.2f})")
 
                 comissao_info = {
                     "parceiro_id": dados.parceiro_id,
                     "parceiro_nome": parceiro[1],
-                    "valor_base": valor_final,
+                    "valor_base_mensal": valor_comissionavel,
+                    "valor_base_ativacao": taxa_ativacao if not assinatura_dados.ativacao_cortesia else 0,
                     "percentual": percentual_comissao,
-                    "valor_comissao": valor_comissao,
+                    "comissao_mensal": comissao_mensal,
+                    "comissao_ativacao": comissao_ativacao,
+                    "total_primeira_comissao": comissao_mensal + comissao_ativacao,
                     "tipo_parceria": tipo_parceria,
                     "ordem_cliente": ordem_cliente
                 }
@@ -1505,6 +1545,7 @@ class PlanoUpdate(BaseModel):
     """Dados para atualizar plano do cliente"""
     plano: str  # 'individual', 'clinica', 'profissional'
     valor_mensalidade: str  # ex: "150.00"
+    linha_dedicada: bool = False  # Linha WhatsApp dedicada (+R$40)
 
     @validator('plano')
     def plano_valido(cls, v):
@@ -1569,12 +1610,14 @@ async def atualizar_plano_cliente(
         result_assinatura = db.execute(
             text("""
                 UPDATE assinaturas
-                SET valor_mensal = :valor_mensal, valor_com_desconto = :valor_mensal, atualizado_em = :atualizado_em
+                SET valor_mensal = :valor_mensal, valor_com_desconto = :valor_mensal,
+                    linha_dedicada = :linha_dedicada, atualizado_em = :atualizado_em
                 WHERE cliente_id = :cliente_id AND status IN ('ativa', 'pendente')
                 RETURNING id
             """),
             {
                 "valor_mensal": float(dados.valor_mensalidade),
+                "linha_dedicada": dados.linha_dedicada,
                 "atualizado_em": agora,
                 "cliente_id": cliente_id
             }
@@ -1584,7 +1627,8 @@ async def atualizar_plano_cliente(
 
         db.commit()
 
-        logger.info(f"[Admin] Plano do cliente {cliente_id} atualizado: {plano_anterior} -> {dados.plano}, R${valor_anterior} -> R${dados.valor_mensalidade}")
+        linha_str = " (c/ linha dedicada)" if dados.linha_dedicada else ""
+        logger.info(f"[Admin] Plano do cliente {cliente_id} atualizado: {plano_anterior} -> {dados.plano}, R${valor_anterior} -> R${dados.valor_mensalidade}{linha_str}")
 
         return {
             "success": True,
@@ -1594,6 +1638,7 @@ async def atualizar_plano_cliente(
             "plano_novo": dados.plano,
             "valor_anterior": valor_anterior,
             "valor_novo": dados.valor_mensalidade,
+            "linha_dedicada": dados.linha_dedicada,
             "assinatura_atualizada": assinatura_atualizada
         }
 
@@ -1699,7 +1744,7 @@ async def aprovar_cliente(
             assinatura_dados=assinatura_dados
         )
 
-        db.execute(
+        result_assinatura = db.execute(
             text("""
                 INSERT INTO assinaturas (
                     cliente_id, plano_id, valor_mensal,
@@ -1726,6 +1771,7 @@ async def aprovar_cliente(
                     :motivo_desconto_ativacao,
                     :criado_em
                 )
+                RETURNING id
             """),
             {
                 "cliente_id": cliente_id,
@@ -1751,7 +1797,8 @@ async def aprovar_cliente(
                 "criado_em": agora
             }
         )
-        logger.info(f"[Aprovacao] Assinatura criada para cliente {cliente_id}: R${billing['valor_final']:.2f}/mes")
+        assinatura_id = result_assinatura.fetchone()[0]
+        logger.info(f"[Aprovacao] Assinatura criada para cliente {cliente_id}: R${billing['valor_final']:.2f}/mes (ID={assinatura_id})")
 
         # 6. Criar medicos adicionais (se houver)
         medicos_adicionais_response = []
@@ -1882,31 +1929,140 @@ async def aprovar_cliente(
             }
         )
 
-        # 10. Vincular parceiro (se informado na aprovacao e nao vinculado antes)
+        # 10. Vincular parceiro e criar comissões (se informado na aprovacao)
+        comissao_info = None
         if dados.parceiro_id:
-            vinculo_existente = db.execute(
-                text("SELECT id FROM clientes_parceiros WHERE cliente_id = :cid AND parceiro_id = :pid"),
-                {"cid": cliente_id, "pid": dados.parceiro_id}
+            # Buscar dados do parceiro
+            parceiro = db.execute(
+                text("""
+                    SELECT id, nome, percentual_comissao, tipo_comissao, parceria_lancamento, limite_clientes_lancamento
+                    FROM parceiros_comerciais
+                    WHERE id = :parceiro_id AND ativo = true
+                """),
+                {"parceiro_id": dados.parceiro_id}
             ).fetchone()
 
-            if not vinculo_existente:
+            if parceiro:
+                vinculo_existente = db.execute(
+                    text("SELECT id FROM clientes_parceiros WHERE cliente_id = :cid AND parceiro_id = :pid"),
+                    {"cid": cliente_id, "pid": dados.parceiro_id}
+                ).fetchone()
+
+                if not vinculo_existente:
+                    # Contar clientes existentes do parceiro
+                    clientes_parceiro = db.execute(
+                        text("SELECT COUNT(*) FROM clientes_parceiros WHERE parceiro_id = :parceiro_id AND ativo = true"),
+                        {"parceiro_id": dados.parceiro_id}
+                    ).scalar() or 0
+
+                    ordem_cliente = clientes_parceiro + 1
+                    tipo_parceria = 'lancamento' if parceiro[4] and ordem_cliente <= (parceiro[5] or 40) else 'padrao'
+
+                    db.execute(
+                        text("""
+                            INSERT INTO clientes_parceiros (
+                                cliente_id, parceiro_id, data_vinculo, tipo_parceria,
+                                ordem_cliente, ativo, criado_em
+                            ) VALUES (
+                                :cliente_id, :parceiro_id, :data_vinculo, :tipo_parceria,
+                                :ordem_cliente, true, :criado_em
+                            )
+                        """),
+                        {
+                            "cliente_id": cliente_id,
+                            "parceiro_id": dados.parceiro_id,
+                            "data_vinculo": date.today(),
+                            "tipo_parceria": tipo_parceria,
+                            "ordem_cliente": ordem_cliente,
+                            "criado_em": agora
+                        }
+                    )
+                    logger.info(f"[Aprovacao] Vínculo cliente-parceiro criado: cliente {cliente_id} -> parceiro {dados.parceiro_id}")
+
+                # Calcular comissões
+                percentual_comissao = float(parceiro[2]) if parceiro[2] else 40.0
+
+                # Valor comissionável mensal = plano base + extras (SEM linha dedicada)
+                valor_base_plano = float(plano[3])
+                profissionais_inclusos = plano[4]
+                profissionais_extras = max(0, total_profissionais - profissionais_inclusos)
+                valor_extras_profissionais = profissionais_extras * 50.0
+                valor_comissionavel = valor_base_plano + valor_extras_profissionais
+                comissao_mensal = valor_comissionavel * (percentual_comissao / 100)
+
+                # Comissão sobre taxa de ativação
+                taxa_ativacao = float(plano[5]) if plano[5] else 150.0
+                comissao_ativacao = 0.0 if assinatura_dados.ativacao_cortesia else taxa_ativacao * (percentual_comissao / 100)
+
+                # Criar registro de comissão mensal (mes_referencia=1)
                 db.execute(
                     text("""
-                        INSERT INTO clientes_parceiros (
-                            cliente_id, parceiro_id, data_vinculo, tipo_parceria,
-                            ordem_cliente, ativo, criado_em
+                        INSERT INTO comissoes (
+                            parceiro_id, cliente_id, assinatura_id,
+                            valor_base, percentual_aplicado, valor_comissao,
+                            mes_referencia, data_referencia, status,
+                            observacoes, created_at
                         ) VALUES (
-                            :cliente_id, :parceiro_id, :data_vinculo, 'padrao',
-                            1, true, :criado_em
+                            :parceiro_id, :cliente_id, :assinatura_id,
+                            :valor_base, :percentual_aplicado, :valor_comissao,
+                            1, :data_referencia, 'pendente',
+                            'Comissão mensal', :created_at
                         )
                     """),
                     {
-                        "cliente_id": cliente_id,
                         "parceiro_id": dados.parceiro_id,
-                        "data_vinculo": date.today(),
-                        "criado_em": agora
+                        "cliente_id": cliente_id,
+                        "assinatura_id": assinatura_id,
+                        "valor_base": valor_comissionavel,
+                        "percentual_aplicado": percentual_comissao,
+                        "valor_comissao": comissao_mensal,
+                        "data_referencia": date.today(),
+                        "created_at": agora
                     }
                 )
+                logger.info(f"[Aprovacao] Comissão mensal criada: R${comissao_mensal:.2f} ({percentual_comissao}% de R${valor_comissionavel:.2f})")
+
+                # Criar registro de comissão sobre ativação (mes_referencia=0)
+                if comissao_ativacao > 0:
+                    db.execute(
+                        text("""
+                            INSERT INTO comissoes (
+                                parceiro_id, cliente_id, assinatura_id,
+                                valor_base, percentual_aplicado, valor_comissao,
+                                mes_referencia, data_referencia, status,
+                                observacoes, created_at
+                            ) VALUES (
+                                :parceiro_id, :cliente_id, :assinatura_id,
+                                :valor_base, :percentual_aplicado, :valor_comissao,
+                                0, :data_referencia, 'pendente',
+                                'Comissão sobre taxa de ativação', :created_at
+                            )
+                        """),
+                        {
+                            "parceiro_id": dados.parceiro_id,
+                            "cliente_id": cliente_id,
+                            "assinatura_id": assinatura_id,
+                            "valor_base": taxa_ativacao,
+                            "percentual_aplicado": percentual_comissao,
+                            "valor_comissao": comissao_ativacao,
+                            "data_referencia": date.today(),
+                            "created_at": agora
+                        }
+                    )
+                    logger.info(f"[Aprovacao] Comissão ativação criada: R${comissao_ativacao:.2f} ({percentual_comissao}% de R${taxa_ativacao:.2f})")
+
+                comissao_info = {
+                    "parceiro_id": dados.parceiro_id,
+                    "parceiro_nome": parceiro[1],
+                    "valor_base_mensal": valor_comissionavel,
+                    "valor_base_ativacao": taxa_ativacao if not assinatura_dados.ativacao_cortesia else 0,
+                    "percentual": percentual_comissao,
+                    "comissao_mensal": comissao_mensal,
+                    "comissao_ativacao": comissao_ativacao,
+                    "total_primeira_comissao": comissao_mensal + comissao_ativacao
+                }
+            else:
+                logger.warning(f"[Aprovacao] Parceiro {dados.parceiro_id} não encontrado ou inativo")
 
         db.commit()
 
@@ -1969,6 +2125,8 @@ async def aprovar_cliente(
             response["medicos_adicionais"] = medicos_adicionais_response
         if secretaria_response:
             response["secretaria"] = secretaria_response
+        if comissao_info:
+            response["comissao"] = comissao_info
 
         return response
 

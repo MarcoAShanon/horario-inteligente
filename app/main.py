@@ -370,6 +370,16 @@ try:
     app.include_router(parceiro_registro_router, tags=["Registro Parceiro"])
     logger.info("✅ Router de registro de parceiro registrado")
 
+    # Router de Registro de Cliente via Convite (self-service)
+    from app.api.cliente_registro import router as cliente_registro_router
+    app.include_router(cliente_registro_router, tags=["Registro Cliente"])
+    logger.info("✅ Router de registro de cliente registrado")
+
+    # Router de Gestão de Convites de Clientes (admin)
+    from app.api.admin_convites import router as admin_convites_router
+    app.include_router(admin_convites_router, tags=["Admin - Convites"])
+    logger.info("✅ Router de convites de clientes registrado")
+
     logger.info("✅ Routers principais registrados com sucesso (incluindo Admin, Financeiro e Gestão Interna)")
     
 except Exception as e:

@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convites de Clientes - Admin Horario Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .loader {
+            border: 3px solid #374151;
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast {
+            animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s;
+            animation-fill-mode: forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/admin/clientes.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                    <i class="fas fa-envelope-open-text text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">Convites de Clientes</h1>
+                    <p class="text-sm text-gray-400">Gerenciar convites de registro</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-gray-300 hidden sm:inline" id="adminName">
+                    <i class="fas fa-user-circle mr-2"></i>
+                    Carregando...
+                </span>
+                <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-[100] flex flex-col gap-2"></div>
+
+    <!-- Container Principal -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Acoes -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div class="flex items-center gap-3">
+                <button onclick="abrirModalGerar()"
+                    class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    Gerar Convite
+                </button>
+            </div>
+
+            <!-- Filtros -->
+            <div class="flex items-center gap-3">
+                <select id="filtroStatus" onchange="filtrarConvites()"
+                    class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <option value="todos">Todos</option>
+                    <option value="pendente">Pendentes</option>
+                    <option value="usado">Usados</option>
+                    <option value="expirado">Expirados</option>
+                </select>
+                <button onclick="carregarConvites()" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition" title="Atualizar">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Estatisticas Rapidas -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-envelope text-purple-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statTotal">0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Total</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-clock text-yellow-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statPendentes">0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Pendentes</p>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                <div class="flex items-center justify-between">
+                    <i class="fas fa-check-circle text-green-500 text-xl"></i>
+                    <span class="text-xl font-bold text-white" id="statUsados">0</span>
+                </div>
+                <p class="text-gray-400 text-sm mt-1">Usados</p>
+            </div>
+        </div>
+
+        <!-- Tabela de Convites -->
+        <div class="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+            <!-- Loading -->
+            <div id="loadingState" class="flex items-center justify-center py-12">
+                <div class="loader"></div>
+                <span class="text-gray-400 ml-3">Carregando convites...</span>
+            </div>
+
+            <!-- Tabela -->
+            <div id="tabelaContainer" class="hidden overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300">Destino</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Status</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold text-gray-300 hidden md:table-cell">Data Criacao</th>
+                            <th class="px-4 py-3 text-center text-sm font-semibold text-gray-300">Acoes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaBody" class="divide-y divide-gray-800">
+                        <!-- Preenchido via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Estado Vazio -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <i class="fas fa-envelope-open text-gray-600 text-5xl mb-4"></i>
+                <p class="text-gray-400">Nenhum convite encontrado</p>
+                <button onclick="abrirModalGerar()" class="text-purple-400 hover:text-purple-300 mt-2 inline-block">
+                    <i class="fas fa-plus mr-1"></i>Gerar primeiro convite
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gerar Convite -->
+    <div id="modalGerar" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white">Gerar Novo Convite</h3>
+                    <button onclick="fecharModalGerar()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <form id="formConvite" onsubmit="gerarConvite(event)" class="space-y-4">
+                    <!-- Nome -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">
+                            Nome do Destinatario <span class="text-red-400">*</span>
+                        </label>
+                        <input type="text" id="campo_nome_destino" name="nome_destino" required
+                            class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="Nome completo">
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">
+                            Email do Destinatario <span class="text-red-400">*</span>
+                        </label>
+                        <input type="email" id="campo_email_destino" name="email_destino" required
+                            class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="email@exemplo.com">
+                    </div>
+
+                    <!-- Telefone -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">
+                            Telefone
+                        </label>
+                        <input type="tel" id="campo_telefone_destino" name="telefone_destino"
+                            class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            placeholder="(11) 99999-9999">
+                    </div>
+
+                    <!-- Observacoes -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-1">
+                            Observacoes
+                        </label>
+                        <textarea id="campo_observacoes" name="observacoes" rows="3"
+                            class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                            placeholder="Notas internas sobre este convite..."></textarea>
+                    </div>
+
+                    <!-- Enviar Email -->
+                    <div class="flex items-center gap-3 bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                        <input type="checkbox" id="campo_enviar_email" name="enviar_email"
+                            class="w-4 h-4 rounded border-gray-600 text-purple-500 focus:ring-purple-500 focus:ring-offset-0 bg-gray-700">
+                        <label for="campo_enviar_email" class="text-sm text-gray-300 cursor-pointer select-none">
+                            <i class="fas fa-paper-plane mr-1 text-purple-400"></i>
+                            Enviar convite por email automaticamente
+                        </label>
+                    </div>
+
+                    <!-- Botoes -->
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" id="btnGerar"
+                            class="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-2.5 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-paper-plane"></i>
+                            Gerar Convite
+                        </button>
+                        <button type="button" onclick="fecharModalGerar()"
+                            class="flex-1 bg-gray-700 text-white py-2.5 rounded-lg hover:bg-gray-600 transition">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Link Gerado -->
+    <div id="modalLinkGerado" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-lg">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-white">Convite Gerado com Sucesso</h3>
+                    <button onclick="fecharModalLink()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check text-white text-2xl"></i>
+                    </div>
+                    <p class="text-gray-300 text-sm">Compartilhe o link abaixo com o destinatario para que ele possa se registrar.</p>
+                </div>
+
+                <!-- Link Gerado -->
+                <div class="bg-gray-800 rounded-lg p-4 border border-gray-700 mb-4">
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Link do Convite</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="linkGerado" readonly
+                            class="flex-1 bg-gray-700 border border-gray-600 text-white px-3 py-2 rounded-lg text-sm focus:outline-none select-all">
+                        <button onclick="copiarLinkGerado()" id="btnCopiarGerado"
+                            class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition flex items-center gap-2 whitespace-nowrap">
+                            <i class="fas fa-copy"></i>
+                            Copiar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Info do Destino -->
+                <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700 mb-6">
+                    <p class="text-sm text-gray-400">
+                        <i class="fas fa-user mr-2 text-purple-400"></i>
+                        <span id="linkDestinoNome">-</span>
+                    </p>
+                    <p class="text-sm text-gray-400 mt-1">
+                        <i class="fas fa-envelope mr-2 text-purple-400"></i>
+                        <span id="linkDestinoEmail">-</span>
+                    </p>
+                </div>
+
+                <button onclick="fecharModalLink()"
+                    class="w-full bg-gray-700 text-white py-2.5 rounded-lg hover:bg-gray-600 transition">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Verificar autenticacao
+        const token = localStorage.getItem('adminToken');
+        const adminData = JSON.parse(localStorage.getItem('adminData') || '{}');
+
+        if (!token) {
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Atualizar nome do admin
+        document.getElementById('adminName').innerHTML = `
+            <i class="fas fa-user-circle mr-2"></i>
+            ${escapeHtml(adminData.nome || 'Admin')}
+        `;
+
+        // Estado global
+        let todosConvites = [];
+
+        function logout() {
+            ['adminToken', 'adminData', 'authToken', 'userData', 'refreshToken', 'financeiroToken', 'financeiroUser'].forEach(k => localStorage.removeItem(k));
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-blue-600';
+            const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+            toast.className = `toast ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 min-w-[280px]`;
+            toast.innerHTML = `<i class="fas ${icon}"></i><span class="text-sm">${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, 3000);
+        }
+
+        // Carregar convites
+        async function carregarConvites() {
+            const loadingState = document.getElementById('loadingState');
+            const tabelaContainer = document.getElementById('tabelaContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            loadingState.classList.remove('hidden');
+            tabelaContainer.classList.add('hidden');
+            emptyState.classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/admin/convites', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '/static/admin/login.html';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar convites');
+                }
+
+                todosConvites = await response.json();
+
+                // Se a API retornar um objeto com array dentro
+                if (todosConvites && !Array.isArray(todosConvites)) {
+                    todosConvites = todosConvites.convites || todosConvites.data || [];
+                }
+
+                atualizarEstatisticas();
+                filtrarConvites();
+
+            } catch (error) {
+                console.error('Erro:', error);
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.innerHTML = `
+                    <i class="fas fa-exclamation-triangle text-red-500 text-5xl mb-4"></i>
+                    <p class="text-red-400">Erro ao carregar convites</p>
+                    <button onclick="carregarConvites()" class="text-purple-400 hover:text-purple-300 mt-2">
+                        <i class="fas fa-sync-alt mr-1"></i>Tentar novamente
+                    </button>
+                `;
+            }
+        }
+
+        function atualizarEstatisticas() {
+            const total = todosConvites.length;
+            const pendentes = todosConvites.filter(c => c.status === 'pendente').length;
+            const usados = todosConvites.filter(c => c.status === 'usado').length;
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statPendentes').textContent = pendentes;
+            document.getElementById('statUsados').textContent = usados;
+        }
+
+        function filtrarConvites() {
+            const filtro = document.getElementById('filtroStatus').value;
+            const loadingState = document.getElementById('loadingState');
+            const tabelaContainer = document.getElementById('tabelaContainer');
+            const emptyState = document.getElementById('emptyState');
+            const tabelaBody = document.getElementById('tabelaBody');
+
+            loadingState.classList.add('hidden');
+
+            let convitesFiltrados = todosConvites;
+            if (filtro !== 'todos') {
+                convitesFiltrados = todosConvites.filter(c => c.status === filtro);
+            }
+
+            if (convitesFiltrados.length === 0) {
+                tabelaContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.innerHTML = `
+                    <i class="fas fa-envelope-open text-gray-600 text-5xl mb-4"></i>
+                    <p class="text-gray-400">Nenhum convite encontrado</p>
+                    <button onclick="abrirModalGerar()" class="text-purple-400 hover:text-purple-300 mt-2 inline-block">
+                        <i class="fas fa-plus mr-1"></i>Gerar primeiro convite
+                    </button>
+                `;
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tabelaContainer.classList.remove('hidden');
+
+            tabelaBody.innerHTML = convitesFiltrados.map(convite => `
+                <tr class="hover:bg-gray-800/50 transition">
+                    <td class="px-4 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-user-plus text-white text-sm"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-white font-medium truncate">${escapeHtml(convite.nome_destino || convite.nome || '-')}</p>
+                                <p class="text-gray-400 text-sm truncate">${escapeHtml(convite.email_destino || convite.email || '-')}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        ${getStatusBadge(convite.status)}
+                    </td>
+                    <td class="px-4 py-4 text-gray-400 text-sm hidden md:table-cell">
+                        ${formatarData(convite.criado_em || convite.created_at)}
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                            ${convite.status === 'pendente' ? `
+                                <button onclick="copiarLink('${escapeHtml(convite.url || convite.link || '')}')"
+                                    class="text-purple-400 hover:text-purple-300 p-2" title="Copiar link do convite">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button onclick="revogarConvite(${convite.id})"
+                                    class="text-red-400 hover:text-red-300 p-2" title="Revogar convite">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            ` : `
+                                <span class="text-gray-600 p-2" title="Nenhuma acao disponivel">
+                                    <i class="fas fa-minus"></i>
+                                </span>
+                            `}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pendente': '<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-900/50 text-yellow-300 border border-yellow-700/50"><i class="fas fa-clock mr-1"></i>Pendente</span>',
+                'usado': '<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-green-900/50 text-green-300 border border-green-700/50"><i class="fas fa-check mr-1"></i>Usado</span>',
+                'expirado': '<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-red-900/50 text-red-300 border border-red-700/50"><i class="fas fa-times mr-1"></i>Expirado</span>'
+            };
+            return badges[status] || `<span class="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-700 text-gray-300">${escapeHtml(status || 'Desconhecido')}</span>`;
+        }
+
+        function formatarData(dataStr) {
+            if (!dataStr) return '-';
+            const data = new Date(dataStr);
+            return data.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Copiar link
+        function copiarLink(url) {
+            if (!url) {
+                showToast('Link do convite nao disponivel', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(url).then(() => {
+                showToast('Link copiado para a area de transferencia!', 'success');
+            }).catch(() => {
+                // Fallback para navegadores mais antigos
+                const textarea = document.createElement('textarea');
+                textarea.value = url;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Link copiado para a area de transferencia!', 'success');
+                } catch (e) {
+                    showToast('Erro ao copiar link', 'error');
+                }
+                document.body.removeChild(textarea);
+            });
+        }
+
+        function copiarLinkGerado() {
+            const linkInput = document.getElementById('linkGerado');
+            const url = linkInput.value;
+            if (!url) return;
+
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = document.getElementById('btnCopiarGerado');
+                btn.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+                btn.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+                btn.classList.add('bg-green-600');
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+                    btn.classList.remove('bg-green-600');
+                    btn.classList.add('bg-purple-600', 'hover:bg-purple-700');
+                }, 2000);
+                showToast('Link copiado!', 'success');
+            }).catch(() => {
+                linkInput.select();
+                document.execCommand('copy');
+                showToast('Link copiado!', 'success');
+            });
+        }
+
+        // Modal Gerar Convite
+        function abrirModalGerar() {
+            document.getElementById('formConvite').reset();
+            document.getElementById('modalGerar').classList.remove('hidden');
+            document.getElementById('campo_nome_destino').focus();
+        }
+
+        function fecharModalGerar() {
+            document.getElementById('modalGerar').classList.add('hidden');
+        }
+
+        function fecharModalLink() {
+            document.getElementById('modalLinkGerado').classList.add('hidden');
+            carregarConvites();
+        }
+
+        // Gerar convite via API
+        async function gerarConvite(event) {
+            event.preventDefault();
+
+            const btnGerar = document.getElementById('btnGerar');
+            const originalContent = btnGerar.innerHTML;
+            btnGerar.disabled = true;
+            btnGerar.innerHTML = '<div class="loader mx-auto" style="width:20px;height:20px;border-width:2px;"></div>';
+
+            const payload = {
+                nome_destino: document.getElementById('campo_nome_destino').value.trim(),
+                email_destino: document.getElementById('campo_email_destino').value.trim(),
+                telefone_destino: document.getElementById('campo_telefone_destino').value.trim(),
+                observacoes: document.getElementById('campo_observacoes').value.trim(),
+                enviar_email: document.getElementById('campo_enviar_email').checked
+            };
+
+            try {
+                const response = await fetch('/api/admin/convites', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '/static/admin/login.html';
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || errorData.message || 'Erro ao gerar convite');
+                }
+
+                const resultado = await response.json();
+
+                // Fechar modal de formulario
+                fecharModalGerar();
+
+                // Preencher e abrir modal de link gerado
+                const conviteData = resultado.convite || resultado;
+                const linkUrl = conviteData.url || conviteData.link || resultado.url || '';
+                document.getElementById('linkGerado').value = linkUrl;
+                document.getElementById('linkDestinoNome').textContent = payload.nome_destino;
+                document.getElementById('linkDestinoEmail').textContent = payload.email_destino;
+
+                // Resetar botao copiar
+                const btnCopiar = document.getElementById('btnCopiarGerado');
+                btnCopiar.innerHTML = '<i class="fas fa-copy"></i> Copiar';
+                btnCopiar.classList.remove('bg-green-600');
+                btnCopiar.classList.add('bg-purple-600', 'hover:bg-purple-700');
+
+                document.getElementById('modalLinkGerado').classList.remove('hidden');
+
+                if (payload.enviar_email) {
+                    showToast('Convite gerado e email enviado!', 'success');
+                } else {
+                    showToast('Convite gerado com sucesso!', 'success');
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast(error.message || 'Erro ao gerar convite', 'error');
+            } finally {
+                btnGerar.disabled = false;
+                btnGerar.innerHTML = originalContent;
+            }
+        }
+
+        // Revogar convite
+        async function revogarConvite(conviteId) {
+            if (!confirm('Tem certeza que deseja revogar este convite? Esta acao nao pode ser desfeita.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/convites/${conviteId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    window.location.href = '/static/admin/login.html';
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || errorData.message || 'Erro ao revogar convite');
+                }
+
+                showToast('Convite revogado com sucesso', 'success');
+                await carregarConvites();
+
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast(error.message || 'Erro ao revogar convite', 'error');
+            }
+        }
+
+        // Fechar modais ao clicar fora
+        document.getElementById('modalGerar').addEventListener('click', function(e) {
+            if (e.target === this) fecharModalGerar();
+        });
+
+        document.getElementById('modalLinkGerado').addEventListener('click', function(e) {
+            if (e.target === this) fecharModalLink();
+        });
+
+        // Fechar modais com Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (!document.getElementById('modalLinkGerado').classList.contains('hidden')) {
+                    fecharModalLink();
+                } else if (!document.getElementById('modalGerar').classList.contains('hidden')) {
+                    fecharModalGerar();
+                }
+            }
+        });
+
+        // Mascara de telefone
+        function maskPhone(value) {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{2})(\d)/, '($1) $2')
+                .replace(/(\d{5})(\d)/, '$1-$2')
+                .replace(/(-\d{4})\d+?$/, '$1');
+        }
+
+        document.getElementById('campo_telefone_destino').addEventListener('input', function() {
+            this.value = maskPhone(this.value);
+        });
+
+        // Carregar ao iniciar
+        carregarConvites();
+    </script>
+</body>
+</html>

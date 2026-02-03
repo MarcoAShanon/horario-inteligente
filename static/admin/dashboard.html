@@ -50,7 +50,7 @@
     <!-- Container Principal -->
     <div class="max-w-7xl mx-auto px-4 py-8">
         <!-- Estatísticas -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
             <!-- Total Clientes -->
             <div class="bg-gray-900 rounded-lg p-6 border border-gray-800">
                 <div class="flex items-center justify-between mb-2">
@@ -95,6 +95,15 @@
                 </div>
                 <p class="text-gray-400 text-sm">Novos (7 dias)</p>
             </div>
+
+            <!-- Pendentes de Aprovacao -->
+            <a href="/static/admin/clientes.html?filtro=pendente_aprovacao" class="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-amber-500 transition">
+                <div class="flex items-center justify-between mb-2">
+                    <i class="fas fa-user-clock text-3xl text-amber-500"></i>
+                    <span class="text-2xl font-bold text-white" id="pendentesAprovacao">0</span>
+                </div>
+                <p class="text-gray-400 text-sm">Pendentes Aprovacao</p>
+            </a>
         </div>
 
         <!-- Atalhos Rápidos -->
@@ -108,6 +117,19 @@
                     <div>
                         <h3 class="text-white font-semibold group-hover:text-purple-400 transition">Clientes</h3>
                         <p class="text-gray-400 text-sm">Gerenciar clínicas</p>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Convites de Clientes -->
+            <a href="/static/admin/convites.html" class="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-cyan-500 transition group">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500">
+                        <i class="fas fa-envelope-open-text text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-semibold group-hover:text-cyan-400 transition">Convites</h3>
+                        <p class="text-gray-400 text-sm">Links de registro</p>
                     </div>
                 </div>
             </a>
@@ -307,6 +329,17 @@
                 document.getElementById('totalPacientes').textContent = data.total_pacientes;
                 document.getElementById('agendamentosMes').textContent = data.agendamentos_mes;
                 document.getElementById('novosClientes').textContent = data.novos_clientes_semana;
+
+                // Carregar pendentes de aprovacao
+                try {
+                    const respPendentes = await fetch('/api/admin/clientes?status_filter=pendente_aprovacao', {
+                        headers: { 'Authorization': `Bearer ${adminToken}` }
+                    });
+                    if (respPendentes.ok) {
+                        const pendentes = await respPendentes.json();
+                        document.getElementById('pendentesAprovacao').textContent = pendentes.length;
+                    }
+                } catch (e) { console.warn('Erro ao carregar pendentes:', e); }
 
             } catch (error) {
                 console.error('Erro ao carregar estatísticas:', error);

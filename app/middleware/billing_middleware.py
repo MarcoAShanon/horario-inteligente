@@ -50,6 +50,10 @@ class BillingMiddleware(BaseHTTPMiddleware):
         '/static/parceiro/',
         '/static/termo-parceria-comercial.html',
 
+        # Registro de cliente via convite
+        '/api/registro-cliente/',
+        '/static/registro-cliente.html',
+
         # Assets estáticos
         '/static/css/',
         '/static/js/',

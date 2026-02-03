@@ -1491,6 +1491,149 @@ Duvidas? Responda este email ou acesse horariointeligente.com.br
             logger.error(f"Erro ao enviar email de ativacao parceiro: {e}", exc_info=True)
             return False
 
+    def send_convite_registro(
+        self,
+        to_email: str,
+        to_name: str,
+        url_convite: str,
+        parceiro_nome: str = None
+    ) -> bool:
+        """
+        Envia email com link de convite para registro de cliente.
+
+        Args:
+            to_email: Email do prospect
+            to_name: Nome do prospect
+            url_convite: URL completa do formulario de registro
+            parceiro_nome: Nome do parceiro que enviou o convite (opcional)
+
+        Returns:
+            True se enviou com sucesso, False caso contrario
+        """
+        try:
+            # Texto personalizado se houver parceiro
+            convite_por = f"<strong>{parceiro_nome}</strong> convidou voce" if parceiro_nome else "Voce foi convidado(a)"
+            convite_por_text = f"{parceiro_nome} convidou voce" if parceiro_nome else "Voce foi convidado(a)"
+
+            html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }}
+        .header {{ background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .header h1 {{ margin: 0; font-size: 24px; }}
+        .content {{ background: white; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .button {{ display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%); color: white !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }}
+        .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
+        .info-box {{ background: #eff6ff; border-left: 4px solid #3B82F6; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .step {{ display: flex; align-items: flex-start; margin: 10px 0; }}
+        .step-number {{ background: #3B82F6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 10px; flex-shrink: 0; }}
+        .partner-box {{ background: #f0fdf4; border-left: 4px solid #22c55e; padding: 12px 15px; margin: 15px 0; border-radius: 5px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Convite para Cadastro</h1>
+        </div>
+        <div class="content">
+            <p>Ola, <strong>{to_name}</strong>!</p>
+
+            {f'<div class="partner-box"><strong>{parceiro_nome}</strong> convidou voce para conhecer o Horario Inteligente!</div>' if parceiro_nome else ''}
+
+            <p>{convite_por} para cadastrar sua clinica no <strong>Horario Inteligente</strong>, o sistema de agendamento automatizado mais humanizado do mercado!</p>
+
+            <p>Clique no botao abaixo para preencher seus dados:</p>
+
+            <p style="text-align: center;">
+                <a href="{url_convite}" class="button">
+                    Iniciar Cadastro
+                </a>
+            </p>
+
+            <div class="info-box">
+                <strong>Como funciona:</strong>
+                <div style="margin-top: 10px;">
+                    <div class="step">
+                        <span class="step-number">1</span>
+                        <span>Preencha os dados basicos da sua clinica</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">2</span>
+                        <span>Nossa equipe ira configurar seu plano</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">3</span>
+                        <span>Voce recebera um email para ativar sua conta</span>
+                    </div>
+                </div>
+            </div>
+
+            <p>Ou copie e cole o link abaixo no navegador:</p>
+            <p style="font-size: 12px; word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 5px;">
+                {url_convite}
+            </p>
+
+            <p style="font-size: 13px; color: #666;">Este link e valido por 30 dias.</p>
+
+            <p>Atenciosamente,<br>
+            <strong>Equipe Horario Inteligente</strong></p>
+        </div>
+        <div class="footer">
+            <p>Duvidas? Responda este email ou acesse horariointeligente.com.br</p>
+            <p>&copy; 2026 Horario Inteligente. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+            """
+
+            text_body = f"""
+Ola, {to_name}!
+
+{convite_por_text} para cadastrar sua clinica no Horario Inteligente.
+
+Acesse o link abaixo para preencher seus dados:
+{url_convite}
+
+Como funciona:
+1. Preencha os dados basicos da sua clinica
+2. Nossa equipe ira configurar seu plano
+3. Voce recebera um email para ativar sua conta
+
+Este link e valido por 30 dias.
+
+Atenciosamente,
+Equipe Horario Inteligente
+            """
+
+            message = EmailMessage()
+            message["Subject"] = "Convite para Cadastro - Horario Inteligente"
+            message["From"] = f"{self.from_name} <{self.from_email}>"
+            message["To"] = to_email
+            message["Reply-To"] = "contato@horariointeligente.com.br"
+
+            message.set_content(text_body)
+            message.add_alternative(html_body, subtype='html', cte='base64')
+
+            if self.smtp_password:
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(message)
+
+                logger.info(f"Email de convite de registro enviado para {to_email}")
+                return True
+            else:
+                logger.warning(f"SMTP nao configurado. Convite para {to_email}: {url_convite}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Erro ao enviar email de convite de registro: {e}", exc_info=True)
+            return False
+
     def send_contact_form(
         self,
         nome: str,

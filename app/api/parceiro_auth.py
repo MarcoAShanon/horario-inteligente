@@ -559,3 +559,195 @@ async def reenviar_ativacao_parceiro(
         "sucesso": True,
         "mensagem": "Email de ativação reenviado"
     }
+
+
+# ==================== CONVITES ====================
+
+class ConviteParceiroCreate(BaseModel):
+    """Dados para gerar novo convite pelo parceiro"""
+    email_destino: Optional[str] = None
+    nome_destino: Optional[str] = None
+    telefone_destino: Optional[str] = None
+    observacoes: Optional[str] = None
+    enviar_email: bool = False  # Se True, envia convite por email ao prospect
+
+
+@router.post("/convites")
+async def gerar_convite_parceiro(
+    dados: ConviteParceiroCreate,
+    parceiro = Depends(get_current_parceiro),
+    db: Session = Depends(get_db)
+):
+    """
+    Gera novo convite de cadastro vinculado ao parceiro.
+    O prospect que se cadastrar via este link será automaticamente
+    vinculado ao parceiro para fins de comissão.
+
+    Se enviar_email=True e email_destino informado, envia convite por email.
+    """
+    try:
+        parceiro_id = parceiro["parceiro_id"]
+        parceiro_nome = parceiro.get("nome", "Parceiro")
+        token = secrets.token_urlsafe(48)
+        agora = datetime.now()
+        expira_em = agora + timedelta(days=30)
+
+        result = db.execute(
+            text("""
+                INSERT INTO convites_clientes (
+                    token, email_destino, nome_destino, telefone_destino,
+                    observacoes, criado_por_id, criado_por_tipo, parceiro_id,
+                    expira_em, criado_em
+                ) VALUES (
+                    :token, :email_destino, :nome_destino, :telefone_destino,
+                    :observacoes, :criado_por_id, 'parceiro', :parceiro_id,
+                    :expira_em, :criado_em
+                )
+                RETURNING id
+            """),
+            {
+                "token": token,
+                "email_destino": dados.email_destino,
+                "nome_destino": dados.nome_destino,
+                "telefone_destino": dados.telefone_destino,
+                "observacoes": dados.observacoes,
+                "criado_por_id": parceiro_id,
+                "parceiro_id": parceiro_id,
+                "expira_em": expira_em,
+                "criado_em": agora
+            }
+        )
+        convite_id = result.fetchone()[0]
+        db.commit()
+
+        url_convite = f"https://horariointeligente.com.br/static/registro-cliente.html?token={token}"
+
+        logger.info(f"[Parceiro] Convite gerado: ID={convite_id}, parceiro={parceiro_id}, destino={dados.email_destino or 'generico'}")
+
+        # Enviar email se solicitado e email informado
+        email_enviado = False
+        if dados.enviar_email and dados.email_destino:
+            try:
+                email_service = get_email_service()
+                email_enviado = email_service.send_convite_registro(
+                    to_email=dados.email_destino,
+                    to_name=dados.nome_destino or "Prezado(a)",
+                    url_convite=url_convite,
+                    parceiro_nome=parceiro_nome
+                )
+                if email_enviado:
+                    logger.info(f"[Parceiro] Email de convite enviado para {dados.email_destino}")
+            except Exception as e:
+                logger.warning(f"[Parceiro] Erro ao enviar email de convite: {e}")
+
+        return {
+            "sucesso": True,
+            "convite": {
+                "id": convite_id,
+                "token": token,
+                "url": url_convite,
+                "expira_em": expira_em.isoformat(),
+                "email_enviado": email_enviado
+            }
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[Parceiro] Erro ao gerar convite: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar convite: {str(e)}")
+
+
+@router.get("/convites")
+async def listar_convites_parceiro(
+    parceiro = Depends(get_current_parceiro),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista convites gerados pelo parceiro.
+    Retorna status: pendente, usado ou expirado.
+    """
+    parceiro_id = parceiro["parceiro_id"]
+    from datetime import timezone as tz
+    agora_utc = datetime.now(tz.utc)
+
+    result = db.execute(
+        text("""
+            SELECT id, token, email_destino, nome_destino, telefone_destino,
+                   observacoes, usado, usado_em, cliente_id, expira_em, criado_em
+            FROM convites_clientes
+            WHERE parceiro_id = :parceiro_id
+            ORDER BY criado_em DESC
+            LIMIT 50
+        """),
+        {"parceiro_id": parceiro_id}
+    ).fetchall()
+
+    convites = []
+    for row in result:
+        expira_em = row[9]
+        if expira_em and expira_em.tzinfo is None:
+            expira_em = expira_em.replace(tzinfo=tz.utc)
+
+        usado = row[6]
+        if usado:
+            status = 'usado'
+        elif expira_em and expira_em < agora_utc:
+            status = 'expirado'
+        else:
+            status = 'pendente'
+
+        convites.append({
+            "id": row[0],
+            "token": row[1],
+            "email_destino": row[2],
+            "nome_destino": row[3],
+            "telefone_destino": row[4],
+            "observacoes": row[5],
+            "usado": usado,
+            "usado_em": row[7].isoformat() if row[7] else None,
+            "cliente_id": row[8],
+            "expira_em": row[9].isoformat() if row[9] else None,
+            "criado_em": row[10].isoformat() if row[10] else None,
+            "status": status,
+            "url": f"https://horariointeligente.com.br/static/registro-cliente.html?token={row[1]}"
+        })
+
+    return convites
+
+
+@router.delete("/convites/{convite_id}")
+async def revogar_convite_parceiro(
+    convite_id: int,
+    parceiro = Depends(get_current_parceiro),
+    db: Session = Depends(get_db)
+):
+    """
+    Revoga (exclui) um convite não utilizado.
+    Parceiro só pode revogar seus próprios convites.
+    """
+    parceiro_id = parceiro["parceiro_id"]
+
+    # Verificar se convite pertence ao parceiro e não foi usado
+    convite = db.execute(
+        text("""
+            SELECT id, usado FROM convites_clientes
+            WHERE id = :id AND parceiro_id = :parceiro_id
+        """),
+        {"id": convite_id, "parceiro_id": parceiro_id}
+    ).fetchone()
+
+    if not convite:
+        raise HTTPException(status_code=404, detail="Convite não encontrado")
+
+    if convite[1]:  # usado
+        raise HTTPException(status_code=400, detail="Não é possível revogar um convite já utilizado")
+
+    db.execute(
+        text("DELETE FROM convites_clientes WHERE id = :id"),
+        {"id": convite_id}
+    )
+    db.commit()
+
+    logger.info(f"[Parceiro] Convite {convite_id} revogado pelo parceiro {parceiro_id}")
+
+    return {"sucesso": True, "mensagem": "Convite revogado com sucesso"}

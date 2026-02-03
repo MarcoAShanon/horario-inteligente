@@ -178,6 +178,36 @@ async def alerta_cliente_inativo(nome_cliente: str, motivo: str = ""):
     return await enviar_mensagem_telegram(mensagem.strip())
 
 
+async def alerta_novo_registro_cliente(
+    nome_clinica: str,
+    email: str,
+    telefone: str,
+    tipo_consultorio: str,
+    medico_nome: str,
+    especialidade: str
+):
+    """Notifica admin quando prospect preenche cadastro via convite"""
+
+    tipo_label = "Individual" if tipo_consultorio == 'individual' else "Multi-consultorio"
+
+    mensagem = f"""
+<b>NOVO REGISTRO DE CLIENTE (Self-Service)</b>
+
+<b>{nome_clinica}</b>
+<b>Email:</b> {email}
+<b>Telefone:</b> {telefone}
+<b>Tipo:</b> {tipo_label}
+<b>Medico:</b> {medico_nome}
+<b>Especialidade:</b> {especialidade}
+
+Acesse o painel para revisar e aprovar.
+
+{datetime.now().strftime('%d/%m/%Y %H:%M')}
+"""
+
+    return await enviar_mensagem_telegram(mensagem.strip())
+
+
 async def alerta_erro_sistema(erro: str, contexto: str = ""):
     """Notifica sobre erros críticos do sistema"""
 

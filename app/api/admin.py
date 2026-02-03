@@ -375,23 +375,28 @@ async def listar_clientes(
     admin = Depends(get_current_admin),
     db: Session = Depends(get_db),
     skip: int = 0,
-    limit: int = 50
+    limit: int = 50,
+    status_filter: Optional[str] = None
 ):
-    """Lista todos os clientes"""
+    """Lista todos os clientes, com filtro opcional por status"""
     try:
-        result = db.execute(
-            text("""
-                SELECT
-                    id, nome, subdomain, email, telefone,
-                    plano, ativo, whatsapp_numero,
-                    criado_em, atualizado_em
-                FROM clientes
-                WHERE is_demo = false
-                ORDER BY criado_em DESC
-                LIMIT :limit OFFSET :skip
-            """),
-            {"limit": limit, "skip": skip}
-        ).fetchall()
+        query = """
+            SELECT
+                id, nome, subdomain, email, telefone,
+                plano, ativo, whatsapp_numero,
+                criado_em, atualizado_em, status
+            FROM clientes
+            WHERE is_demo = false
+        """
+        params = {"limit": limit, "skip": skip}
+
+        if status_filter:
+            query += " AND status = :status_filter"
+            params["status_filter"] = status_filter
+
+        query += " ORDER BY criado_em DESC LIMIT :limit OFFSET :skip"
+
+        result = db.execute(text(query), params).fetchall()
 
         clientes = []
         for row in result:
@@ -406,7 +411,8 @@ async def listar_clientes(
                 "whatsapp_numero": row[7],
                 "criado_em": row[8].isoformat() if row[8] else None,
                 "atualizado_em": row[9].isoformat() if row[9] else None,
-                "url": f"https://{row[2]}.horariointeligente.com.br"
+                "url": f"https://{row[2]}.horariointeligente.com.br",
+                "status": row[10]
             })
 
         return clientes
@@ -438,7 +444,11 @@ async def obter_cliente(
                     COUNT(DISTINCT CASE WHEN a.status NOT IN ('cancelado', 'remarcado', 'faltou') THEN a.id END) as total_agendamentos,
                     c.credenciais_enviadas_em,
                     c.status,
-                    c.endereco
+                    c.endereco,
+                    c.cnpj,
+                    c.tipo_consultorio,
+                    c.qtd_medicos_adicionais,
+                    c.necessita_secretaria
                 FROM clientes c
                 LEFT JOIN medicos m ON m.cliente_id = c.id
                 LEFT JOIN pacientes p ON p.cliente_id = c.id
@@ -473,6 +483,10 @@ async def obter_cliente(
             "credenciais_enviadas_em": result[14].isoformat() if result[14] else None,
             "status": result[15],
             "endereco": result[16],
+            "cnpj": result[17],
+            "tipo_consultorio": result[18],
+            "qtd_medicos_adicionais": result[19],
+            "necessita_secretaria": result[20],
             "url": f"https://{result[2]}.horariointeligente.com.br"
         }
 
