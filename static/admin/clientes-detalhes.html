@@ -44,7 +44,11 @@
                     <p class="text-sm text-gray-400" id="headerSubdomain">-</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
+                <a id="btnSetup" href="#" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition text-sm flex items-center gap-2">
+                    <i class="fas fa-cogs"></i>
+                    <span class="hidden sm:inline">Setup</span>
+                </a>
                 <span id="statusBadge" class="px-3 py-1 rounded-full text-sm font-medium">-</span>
             </div>
         </div>
@@ -535,6 +539,9 @@
         if (!clienteId) {
             window.location.href = '/static/admin/clientes.html';
         }
+
+        // Configurar link do botão Setup
+        document.getElementById('btnSetup').href = `/static/admin/cliente-setup.html?id=${clienteId}`;
 
         let clienteData = null;
         let isEditMode = false;
