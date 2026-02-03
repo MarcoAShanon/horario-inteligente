@@ -1634,6 +1634,141 @@ Equipe Horario Inteligente
             logger.error(f"Erro ao enviar email de convite de registro: {e}", exc_info=True)
             return False
 
+    def send_convite_profissional(
+        self,
+        to_email: str,
+        to_name: str,
+        clinica_nome: str,
+        activation_link: str
+    ) -> bool:
+        """
+        Envia email de convite para profissional completar cadastro e criar senha.
+
+        Args:
+            to_email: Email do profissional
+            to_name: Nome do profissional
+            clinica_nome: Nome da clinica
+            activation_link: Link para ativar conta e criar senha
+
+        Returns:
+            True se enviou com sucesso, False caso contrario
+        """
+        try:
+            html_body = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; }}
+        .header {{ background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+        .header h1 {{ margin: 0; font-size: 24px; }}
+        .content {{ background: white; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
+        .info-box {{ background: #f5f3ff; border-left: 4px solid #8B5CF6; padding: 15px; margin: 20px 0; border-radius: 5px; }}
+        .step {{ display: flex; align-items: flex-start; margin: 10px 0; }}
+        .step-number {{ background: #8B5CF6; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 10px; flex-shrink: 0; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Convite para Acesso ao Sistema</h1>
+        </div>
+        <div class="content">
+            <p>Ola, <strong>{to_name}</strong>!</p>
+
+            <p>Voce foi cadastrado(a) como profissional da clinica <strong>{clinica_nome}</strong> no sistema <strong>Horario Inteligente</strong>.</p>
+
+            <p>Para completar seu cadastro e criar sua senha de acesso, clique no botao abaixo:</p>
+
+            <p style="text-align: center;">
+                <a href="{activation_link}" style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%); background-color: #8B5CF6; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold;">
+                    Ativar Minha Conta
+                </a>
+            </p>
+
+            <div class="info-box">
+                <strong>O que voce podera fazer:</strong>
+                <div style="margin-top: 10px;">
+                    <div class="step">
+                        <span class="step-number">1</span>
+                        <span>Gerenciar sua agenda de atendimentos</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">2</span>
+                        <span>Visualizar e confirmar agendamentos</span>
+                    </div>
+                    <div class="step">
+                        <span class="step-number">3</span>
+                        <span>Acompanhar seu historico de pacientes</span>
+                    </div>
+                </div>
+            </div>
+
+            <p>Ou copie e cole o link abaixo no navegador:</p>
+            <p style="font-size: 12px; word-break: break-all; background: #f5f5f5; padding: 10px; border-radius: 5px;">
+                {activation_link}
+            </p>
+
+            <p style="font-size: 13px; color: #666;">Este link e valido por 7 dias.</p>
+
+            <p>Atenciosamente,<br>
+            <strong>Equipe Horario Inteligente</strong></p>
+        </div>
+        <div class="footer">
+            <p>Duvidas? Responda este email ou acesse horariointeligente.com.br</p>
+            <p>&copy; 2026 Horario Inteligente. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>
+            """
+
+            text_body = f"""
+Ola, {to_name}!
+
+Voce foi cadastrado(a) como profissional da clinica {clinica_nome} no sistema Horario Inteligente.
+
+Para completar seu cadastro e criar sua senha de acesso, acesse o link abaixo:
+{activation_link}
+
+O que voce podera fazer:
+1. Gerenciar sua agenda de atendimentos
+2. Visualizar e confirmar agendamentos
+3. Acompanhar seu historico de pacientes
+
+Este link e valido por 7 dias.
+
+Atenciosamente,
+Equipe Horario Inteligente
+            """
+
+            message = EmailMessage()
+            message["Subject"] = f"Convite para Acesso - {clinica_nome}"
+            message["From"] = f"{self.from_name} <{self.from_email}>"
+            message["To"] = to_email
+            message["Reply-To"] = "contato@horariointeligente.com.br"
+
+            message.set_content(text_body)
+            message.add_alternative(html_body, subtype='html', cte='base64')
+
+            if self.smtp_password:
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+                    server.login(self.smtp_user, self.smtp_password)
+                    server.send_message(message)
+
+                logger.info(f"Email de convite profissional enviado para {to_email}")
+                return True
+            else:
+                logger.warning(f"SMTP nao configurado. Convite profissional para {to_email}: {activation_link}")
+                return True
+
+        except Exception as e:
+            logger.error(f"Erro ao enviar email de convite profissional: {e}", exc_info=True)
+            return False
+
     def send_contact_form(
         self,
         nome: str,

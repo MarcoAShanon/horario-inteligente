@@ -8,10 +8,13 @@ class Configuracao(BaseModel):
     
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False)
     
-    # WhatsApp Configuration
+    # WhatsApp Configuration (API Oficial Meta)
     whatsapp_numero = Column(String(20), nullable=True)
-    whatsapp_token = Column(String(500), nullable=True)
-    evolution_instance_id = Column(String(100), nullable=True)
+    whatsapp_token = Column(String(500), nullable=True)  # Access Token do Meta
+    whatsapp_phone_number_id = Column(String(50), nullable=True)  # Phone Number ID no Meta
+    whatsapp_business_account_id = Column(String(50), nullable=True)  # WABA ID
+    whatsapp_display_name = Column(String(100), nullable=True)  # Nome de exibição (informativo)
+    evolution_instance_id = Column(String(100), nullable=True)  # Legado - não mais utilizado
     whatsapp_ativo = Column(Boolean, default=False)
     
     # Anthropic AI Configuration

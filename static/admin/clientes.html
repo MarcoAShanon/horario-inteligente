@@ -406,13 +406,17 @@
                             </div>
                         </div>
 
-                        <div class="flex gap-3 mt-6">
+                        <div class="flex gap-2 mt-6">
                             <a href="/static/admin/clientes-detalhes.html?id=${cliente.id}"
-                               class="flex-1 bg-purple-600 text-white py-2 rounded-lg text-center hover:bg-purple-700 transition">
-                                <i class="fas fa-edit mr-2"></i>Editar
+                               class="flex-1 bg-purple-600 text-white py-2 rounded-lg text-center hover:bg-purple-700 transition text-sm">
+                                <i class="fas fa-edit mr-1"></i>Editar
+                            </a>
+                            <a href="/static/admin/cliente-setup.html?id=${cliente.id}"
+                               class="flex-1 bg-green-600 text-white py-2 rounded-lg text-center hover:bg-green-700 transition text-sm">
+                                <i class="fas fa-cogs mr-1"></i>Setup
                             </a>
                             <button onclick="fecharModal()"
-                                    class="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-600 transition">
+                                    class="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-600 transition text-sm">
                                 Fechar
                             </button>
                         </div>

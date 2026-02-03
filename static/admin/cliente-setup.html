@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup do Cliente - Admin Horário Inteligente</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; }
+        .loader {
+            border: 3px solid #374151;
+            border-top: 3px solid #8b5cf6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .tab-active {
+            border-bottom: 2px solid #8b5cf6;
+            color: #8b5cf6;
+        }
+        .input-dark {
+            background: #1e293b;
+            border: 1px solid #374151;
+            color: white;
+        }
+        .input-dark:focus {
+            border-color: #8b5cf6;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+        }
+        .input-dark::placeholder {
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <a href="/static/admin/clientes.html" class="text-gray-400 hover:text-white transition">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                    <i class="fas fa-cogs text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white" id="headerNome">Setup do Cliente</h1>
+                    <p class="text-sm text-gray-400" id="headerSubdomain">Configuracao inicial</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="statusBadge" class="px-3 py-1 rounded-full text-sm font-medium bg-yellow-500/20 text-yellow-400">
+                    <i class="fas fa-clock mr-1"></i>Em Setup
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="max-w-5xl mx-auto px-4 py-6">
+        <!-- Loading State -->
+        <div id="loadingState" class="flex items-center justify-center py-20">
+            <div class="loader"></div>
+            <span class="text-gray-400 ml-3">Carregando dados...</span>
+        </div>
+
+        <!-- Conteudo -->
+        <div id="conteudo" class="hidden">
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-800 mb-6 overflow-x-auto">
+                <button onclick="trocarAba('whatsapp')" id="tabWhatsapp" class="px-6 py-3 text-gray-400 hover:text-white transition whitespace-nowrap tab-active">
+                    <i class="fab fa-whatsapp mr-2"></i>WhatsApp
+                </button>
+                <button onclick="trocarAba('equipe')" id="tabEquipe" class="px-6 py-3 text-gray-400 hover:text-white transition whitespace-nowrap">
+                    <i class="fas fa-users mr-2"></i>Equipe
+                </button>
+                <button onclick="trocarAba('config')" id="tabConfig" class="px-6 py-3 text-gray-400 hover:text-white transition whitespace-nowrap">
+                    <i class="fas fa-sliders-h mr-2"></i>Configuracoes
+                </button>
+            </div>
+
+            <!-- Aba WhatsApp -->
+            <div id="abaWhatsapp" class="space-y-6">
+                <!-- Status da Conexao -->
+                <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                    <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+                        <i class="fab fa-whatsapp text-green-500 mr-2"></i>
+                        Configuracao WhatsApp (API Oficial Meta)
+                    </h2>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Phone Number ID -->
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Phone Number ID *</label>
+                            <input type="text" id="phoneNumberId" placeholder="Ex: 123456789012345"
+                                class="w-full px-4 py-3 rounded-lg input-dark">
+                            <p class="text-gray-500 text-xs mt-1">ID do numero no painel do Meta</p>
+                        </div>
+
+                        <!-- WABA ID -->
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">WABA ID *</label>
+                            <input type="text" id="wabaId" placeholder="Ex: 987654321098765"
+                                class="w-full px-4 py-3 rounded-lg input-dark">
+                            <p class="text-gray-500 text-xs mt-1">WhatsApp Business Account ID</p>
+                        </div>
+
+                        <!-- Numero -->
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Numero WhatsApp *</label>
+                            <input type="text" id="whatsappNumero" placeholder="Ex: 5521923670115"
+                                class="w-full px-4 py-3 rounded-lg input-dark">
+                            <p class="text-gray-500 text-xs mt-1">Numero completo com DDI+DDD</p>
+                        </div>
+
+                        <!-- Nome de Exibicao -->
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Nome de Exibicao</label>
+                            <input type="text" id="displayName" placeholder="Ex: Dra. Maria - Consultorio"
+                                class="w-full px-4 py-3 rounded-lg input-dark">
+                            <p class="text-gray-500 text-xs mt-1">Nome que aparece para os pacientes (informativo)</p>
+                        </div>
+
+                        <!-- Access Token -->
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-400 text-sm mb-2">Access Token *</label>
+                            <input type="password" id="accessToken" placeholder="Token de acesso permanente do Meta"
+                                class="w-full px-4 py-3 rounded-lg input-dark">
+                            <p class="text-gray-500 text-xs mt-1">Token permanente gerado no painel do Meta Business</p>
+                        </div>
+                    </div>
+
+                    <!-- Botoes -->
+                    <div class="flex flex-wrap gap-3 mt-6">
+                        <button onclick="testarConexao()" id="btnTestar" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-2">
+                            <i class="fas fa-plug"></i>
+                            Testar Conexao
+                        </button>
+                        <button onclick="salvarWhatsApp()" id="btnSalvarWpp" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition flex items-center gap-2">
+                            <i class="fas fa-save"></i>
+                            Salvar Configuracao
+                        </button>
+                        <div class="flex items-center gap-2 ml-auto">
+                            <span class="text-gray-400 text-sm">WhatsApp Ativo:</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="whatsappAtivo" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Status do Teste -->
+                    <div id="statusTeste" class="hidden mt-4 p-4 rounded-lg"></div>
+                </div>
+            </div>
+
+            <!-- Aba Equipe -->
+            <div id="abaEquipe" class="hidden space-y-6">
+                <!-- Lista de Profissionais -->
+                <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                    <h2 class="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                        <span><i class="fas fa-user-md text-purple-500 mr-2"></i>Profissionais da Clinica</span>
+                        <button onclick="abrirModalProfissional()" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition">
+                            <i class="fas fa-plus mr-1"></i>Adicionar
+                        </button>
+                    </h2>
+
+                    <div id="listaProfissionais" class="space-y-3">
+                        <!-- Profissionais serao carregados aqui -->
+                    </div>
+
+                    <div id="semProfissionais" class="hidden text-center py-8 text-gray-500">
+                        <i class="fas fa-users text-4xl mb-3"></i>
+                        <p>Nenhum profissional cadastrado</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aba Configuracoes -->
+            <div id="abaConfig" class="hidden space-y-6">
+                <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
+                    <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+                        <i class="fas fa-sliders-h text-blue-500 mr-2"></i>
+                        Configuracoes Gerais
+                    </h2>
+
+                    <div class="space-y-4">
+                        <!-- Horario de Funcionamento -->
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Horario de Funcionamento</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-gray-500 text-xs">Inicio</label>
+                                    <input type="time" id="horarioInicio" value="08:00" class="w-full px-4 py-2 rounded-lg input-dark">
+                                </div>
+                                <div>
+                                    <label class="text-gray-500 text-xs">Fim</label>
+                                    <input type="time" id="horarioFim" value="18:00" class="w-full px-4 py-2 rounded-lg input-dark">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dias de Funcionamento -->
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Dias de Funcionamento</label>
+                            <div class="flex flex-wrap gap-2">
+                                <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded-lg cursor-pointer">
+                                    <input type="checkbox" id="diaSeg" checked class="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded">
+                                    <span class="text-gray-300 text-sm">Seg</span>
+                                </label>
+                                <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded-lg cursor-pointer">
+                                    <input type="checkbox" id="diaTer" checked class="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded">
+                                    <span class="text-gray-300 text-sm">Ter</span>
+                                </label>
+                                <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded-lg cursor-pointer">
+                                    <input type="checkbox" id="diaQua" checked class="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded">
+                                    <span class="text-gray-300 text-sm">Qua</span>
+                                </label>
+                                <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded-lg cursor-pointer">
+                                    <input type="checkbox" id="diaQui" checked class="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded">
+                                    <span class="text-gray-300 text-sm">Qui</span>
+                                </label>
+                                <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded-lg cursor-pointer">
+                                    <input type="checkbox" id="diaSex" checked class="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded">
+                                    <span class="text-gray-300 text-sm">Sex</span>
+                                </label>
+                                <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded-lg cursor-pointer">
+                                    <input type="checkbox" id="diaSab" class="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded">
+                                    <span class="text-gray-300 text-sm">Sab</span>
+                                </label>
+                                <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded-lg cursor-pointer">
+                                    <input type="checkbox" id="diaDom" class="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded">
+                                    <span class="text-gray-300 text-sm">Dom</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Mensagem de Boas-vindas -->
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Mensagem de Boas-vindas</label>
+                            <textarea id="msgBoasVindas" rows="3" placeholder="Ola! Sou a assistente virtual da clinica..."
+                                class="w-full px-4 py-3 rounded-lg input-dark resize-none"></textarea>
+                        </div>
+
+                        <!-- Timezone -->
+                        <div>
+                            <label class="block text-gray-400 text-sm mb-2">Fuso Horario</label>
+                            <select id="timezone" class="w-full px-4 py-3 rounded-lg input-dark">
+                                <option value="America/Sao_Paulo">America/Sao_Paulo (Brasilia)</option>
+                                <option value="America/Manaus">America/Manaus (Amazonas)</option>
+                                <option value="America/Belem">America/Belem (Para)</option>
+                                <option value="America/Fortaleza">America/Fortaleza (Ceara)</option>
+                                <option value="America/Recife">America/Recife (Pernambuco)</option>
+                                <option value="America/Cuiaba">America/Cuiaba (Mato Grosso)</option>
+                                <option value="America/Rio_Branco">America/Rio_Branco (Acre)</option>
+                            </select>
+                        </div>
+
+                        <!-- Sistema Ativo -->
+                        <div class="flex items-center justify-between pt-4 border-t border-gray-800">
+                            <div>
+                                <span class="text-white font-medium">Sistema Ativo</span>
+                                <p class="text-gray-500 text-sm">Ativa o atendimento automatico para este cliente</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="sistemaAtivo" class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <button onclick="salvarConfiguracoes()" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition flex items-center gap-2">
+                            <i class="fas fa-save"></i>
+                            Salvar Configuracoes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Enviar Convite -->
+    <div id="modalConvite" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-md">
+            <div class="p-6 border-b border-gray-800">
+                <h3 class="text-lg font-semibold text-white flex items-center">
+                    <i class="fas fa-envelope text-purple-500 mr-2"></i>
+                    Enviar Convite ao Profissional
+                </h3>
+            </div>
+            <div class="p-6">
+                <p class="text-gray-400 mb-4">
+                    O profissional recebera um e-mail para completar seus dados e criar sua senha de acesso.
+                </p>
+                <div class="bg-gray-800 rounded-lg p-4 mb-4">
+                    <p class="text-white font-medium" id="conviteNome">-</p>
+                    <p class="text-gray-400 text-sm" id="conviteEmail">-</p>
+                </div>
+                <input type="hidden" id="conviteMedicoId">
+            </div>
+            <div class="p-6 border-t border-gray-800 flex justify-end gap-3">
+                <button onclick="fecharModalConvite()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">
+                    Cancelar
+                </button>
+                <button onclick="enviarConvite()" id="btnEnviarConvite" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition flex items-center gap-2">
+                    <i class="fas fa-paper-plane"></i>
+                    Enviar Convite
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/admin';
+        let token = localStorage.getItem('admin_token');
+        let clienteId = null;
+        let clienteData = null;
+
+        // Verificar autenticacao
+        if (!token) {
+            window.location.href = '/static/admin/login.html';
+        }
+
+        // Pegar ID do cliente da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        clienteId = urlParams.get('id');
+
+        if (!clienteId) {
+            alert('ID do cliente nao informado');
+            window.location.href = '/static/admin/clientes.html';
+        }
+
+        // Headers padrao
+        const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        };
+
+        // Carregar dados ao iniciar
+        document.addEventListener('DOMContentLoaded', carregarDados);
+
+        async function carregarDados() {
+            try {
+                // Carregar dados do cliente
+                const response = await fetch(`${API_BASE}/clientes/${clienteId}`, { headers });
+                if (!response.ok) throw new Error('Erro ao carregar cliente');
+
+                clienteData = await response.json();
+
+                // Atualizar header
+                document.getElementById('headerNome').textContent = clienteData.nome;
+                document.getElementById('headerSubdomain').textContent = clienteData.subdomain + '.horariointeligente.com.br';
+
+                // Carregar configuracoes
+                await carregarConfiguracoes();
+
+                // Carregar profissionais
+                await carregarProfissionais();
+
+                // Mostrar conteudo
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('conteudo').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao carregar dados do cliente');
+            }
+        }
+
+        async function carregarConfiguracoes() {
+            try {
+                const response = await fetch(`${API_BASE}/clientes/${clienteId}/configuracoes`, { headers });
+                if (response.ok) {
+                    const config = await response.json();
+
+                    // WhatsApp
+                    document.getElementById('phoneNumberId').value = config.whatsapp_phone_number_id || '';
+                    document.getElementById('wabaId').value = config.whatsapp_business_account_id || '';
+                    document.getElementById('whatsappNumero').value = config.whatsapp_numero || '';
+                    document.getElementById('displayName').value = config.whatsapp_display_name || '';
+                    document.getElementById('accessToken').value = config.whatsapp_token || '';
+                    document.getElementById('whatsappAtivo').checked = config.whatsapp_ativo || false;
+
+                    // Configuracoes gerais
+                    if (config.horario_funcionamento) {
+                        document.getElementById('horarioInicio').value = config.horario_funcionamento.inicio || '08:00';
+                        document.getElementById('horarioFim').value = config.horario_funcionamento.fim || '18:00';
+                        const dias = config.horario_funcionamento.dias || [];
+                        document.getElementById('diaSeg').checked = dias.includes('seg');
+                        document.getElementById('diaTer').checked = dias.includes('ter');
+                        document.getElementById('diaQua').checked = dias.includes('qua');
+                        document.getElementById('diaQui').checked = dias.includes('qui');
+                        document.getElementById('diaSex').checked = dias.includes('sex');
+                        document.getElementById('diaSab').checked = dias.includes('sab');
+                        document.getElementById('diaDom').checked = dias.includes('dom');
+                    }
+                    document.getElementById('msgBoasVindas').value = config.mensagem_boas_vindas || '';
+                    document.getElementById('timezone').value = config.timezone || 'America/Sao_Paulo';
+                    document.getElementById('sistemaAtivo').checked = config.sistema_ativo || false;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar configuracoes:', error);
+            }
+        }
+
+        async function carregarProfissionais() {
+            try {
+                const response = await fetch(`${API_BASE}/clientes/${clienteId}/medicos`, { headers });
+                if (!response.ok) throw new Error('Erro ao carregar profissionais');
+
+                const medicos = await response.json();
+                const container = document.getElementById('listaProfissionais');
+                const semProfissionais = document.getElementById('semProfissionais');
+
+                if (medicos.length === 0) {
+                    container.classList.add('hidden');
+                    semProfissionais.classList.remove('hidden');
+                    return;
+                }
+
+                container.classList.remove('hidden');
+                semProfissionais.classList.add('hidden');
+
+                container.innerHTML = medicos.map(m => `
+                    <div class="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                                <i class="fas fa-${m.is_secretaria ? 'headset' : 'user-md'} text-purple-400"></i>
+                            </div>
+                            <div>
+                                <p class="text-white font-medium">${m.nome}</p>
+                                <p class="text-gray-400 text-sm">${m.especialidade || (m.is_secretaria ? 'Secretaria' : 'Medico')} ${m.crm ? '- ' + m.crm : ''}</p>
+                                <p class="text-gray-500 text-xs">${m.email}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${m.pode_fazer_login ?
+                                `<span class="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
+                                    <i class="fas fa-check mr-1"></i>Ativo
+                                </span>` :
+                                `<button onclick="abrirModalConvite(${m.id}, '${m.nome}', '${m.email}')"
+                                    class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded-lg transition">
+                                    <i class="fas fa-envelope mr-1"></i>Enviar Convite
+                                </button>`
+                            }
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Erro ao carregar profissionais:', error);
+            }
+        }
+
+        function trocarAba(aba) {
+            // Esconder todas as abas
+            document.getElementById('abaWhatsapp').classList.add('hidden');
+            document.getElementById('abaEquipe').classList.add('hidden');
+            document.getElementById('abaConfig').classList.add('hidden');
+
+            // Remover classe ativa de todos os tabs
+            document.getElementById('tabWhatsapp').classList.remove('tab-active');
+            document.getElementById('tabEquipe').classList.remove('tab-active');
+            document.getElementById('tabConfig').classList.remove('tab-active');
+
+            // Mostrar aba selecionada
+            document.getElementById('aba' + aba.charAt(0).toUpperCase() + aba.slice(1)).classList.remove('hidden');
+            document.getElementById('tab' + aba.charAt(0).toUpperCase() + aba.slice(1)).classList.add('tab-active');
+        }
+
+        async function testarConexao() {
+            const btn = document.getElementById('btnTestar');
+            const statusDiv = document.getElementById('statusTeste');
+
+            const phoneNumberId = document.getElementById('phoneNumberId').value.trim();
+            const accessToken = document.getElementById('accessToken').value.trim();
+
+            if (!phoneNumberId || !accessToken) {
+                statusDiv.className = 'mt-4 p-4 rounded-lg bg-red-500/20 text-red-400';
+                statusDiv.innerHTML = '<i class="fas fa-exclamation-circle mr-2"></i>Preencha o Phone Number ID e o Access Token';
+                statusDiv.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Testando...';
+
+            try {
+                const response = await fetch(`${API_BASE}/clientes/${clienteId}/whatsapp/testar`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        phone_number_id: phoneNumberId,
+                        access_token: accessToken
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    statusDiv.className = 'mt-4 p-4 rounded-lg bg-green-500/20 text-green-400';
+                    statusDiv.innerHTML = `<i class="fas fa-check-circle mr-2"></i>Conexao OK! Numero verificado: ${data.phone_number || 'N/A'}`;
+                } else {
+                    statusDiv.className = 'mt-4 p-4 rounded-lg bg-red-500/20 text-red-400';
+                    statusDiv.innerHTML = `<i class="fas fa-times-circle mr-2"></i>${data.detail || 'Erro ao testar conexao'}`;
+                }
+                statusDiv.classList.remove('hidden');
+
+            } catch (error) {
+                statusDiv.className = 'mt-4 p-4 rounded-lg bg-red-500/20 text-red-400';
+                statusDiv.innerHTML = '<i class="fas fa-times-circle mr-2"></i>Erro de conexao com o servidor';
+                statusDiv.classList.remove('hidden');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plug"></i> Testar Conexao';
+        }
+
+        async function salvarWhatsApp() {
+            const btn = document.getElementById('btnSalvarWpp');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Salvando...';
+
+            try {
+                const response = await fetch(`${API_BASE}/clientes/${clienteId}/configuracoes/whatsapp`, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({
+                        whatsapp_phone_number_id: document.getElementById('phoneNumberId').value.trim(),
+                        whatsapp_business_account_id: document.getElementById('wabaId').value.trim(),
+                        whatsapp_numero: document.getElementById('whatsappNumero').value.trim(),
+                        whatsapp_display_name: document.getElementById('displayName').value.trim(),
+                        whatsapp_token: document.getElementById('accessToken').value.trim(),
+                        whatsapp_ativo: document.getElementById('whatsappAtivo').checked
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Configuracoes do WhatsApp salvas com sucesso!');
+                } else {
+                    const data = await response.json();
+                    alert(data.detail || 'Erro ao salvar configuracoes');
+                }
+            } catch (error) {
+                alert('Erro de conexao');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save"></i> Salvar Configuracao';
+        }
+
+        async function salvarConfiguracoes() {
+            const dias = [];
+            if (document.getElementById('diaSeg').checked) dias.push('seg');
+            if (document.getElementById('diaTer').checked) dias.push('ter');
+            if (document.getElementById('diaQua').checked) dias.push('qua');
+            if (document.getElementById('diaQui').checked) dias.push('qui');
+            if (document.getElementById('diaSex').checked) dias.push('sex');
+            if (document.getElementById('diaSab').checked) dias.push('sab');
+            if (document.getElementById('diaDom').checked) dias.push('dom');
+
+            try {
+                const response = await fetch(`${API_BASE}/clientes/${clienteId}/configuracoes`, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({
+                        horario_funcionamento: {
+                            inicio: document.getElementById('horarioInicio').value,
+                            fim: document.getElementById('horarioFim').value,
+                            dias: dias
+                        },
+                        mensagem_boas_vindas: document.getElementById('msgBoasVindas').value,
+                        timezone: document.getElementById('timezone').value,
+                        sistema_ativo: document.getElementById('sistemaAtivo').checked
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Configuracoes salvas com sucesso!');
+                } else {
+                    const data = await response.json();
+                    alert(data.detail || 'Erro ao salvar configuracoes');
+                }
+            } catch (error) {
+                alert('Erro de conexao');
+            }
+        }
+
+        function abrirModalConvite(medicoId, nome, email) {
+            document.getElementById('conviteMedicoId').value = medicoId;
+            document.getElementById('conviteNome').textContent = nome;
+            document.getElementById('conviteEmail').textContent = email;
+            document.getElementById('modalConvite').classList.remove('hidden');
+            document.getElementById('modalConvite').classList.add('flex');
+        }
+
+        function fecharModalConvite() {
+            document.getElementById('modalConvite').classList.add('hidden');
+            document.getElementById('modalConvite').classList.remove('flex');
+        }
+
+        async function enviarConvite() {
+            const btn = document.getElementById('btnEnviarConvite');
+            const medicoId = document.getElementById('conviteMedicoId').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
+
+            try {
+                const response = await fetch(`${API_BASE}/medicos/${medicoId}/enviar-convite`, {
+                    method: 'POST',
+                    headers
+                });
+
+                if (response.ok) {
+                    alert('Convite enviado com sucesso!');
+                    fecharModalConvite();
+                    await carregarProfissionais();
+                } else {
+                    const data = await response.json();
+                    alert(data.detail || 'Erro ao enviar convite');
+                }
+            } catch (error) {
+                alert('Erro de conexao');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Convite';
+        }
+
+        function abrirModalProfissional() {
+            alert('Funcionalidade em desenvolvimento. Use a pagina de detalhes do cliente para adicionar profissionais.');
+        }
+    </script>
+</body>
+</html>
