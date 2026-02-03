@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Horario Inteligente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #0f172a;
+            min-height: 100vh;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .gradient-border {
+            border-image: linear-gradient(135deg, #3b82f6, #06b6d4) 1;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+        }
+
+        .gradient-bg-subtle {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(6, 182, 212, 0.1));
+        }
+
+        .form-input {
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .radio-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .radio-card:hover {
+            border-color: #3b82f6;
+        }
+
+        .radio-card.selected {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .radio-card.selected .radio-dot {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+
+        .section-divider {
+            height: 2px;
+            background: linear-gradient(to right, transparent, #1e40af, #0891b2, transparent);
+        }
+
+        .btn-submit {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            transition: all 0.3s ease;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            background: linear-gradient(135deg, #2563eb, #0891b2);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .spinner {
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .pulse-icon {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="text-white antialiased">
+
+    <!-- Loading State -->
+    <div id="state-loading" class="flex items-center justify-center min-h-screen">
+        <div class="text-center">
+            <div class="spinner mx-auto mb-6"></div>
+            <p class="text-gray-400 text-lg">Validando seu convite...</p>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div id="state-error" class="hidden flex items-center justify-center min-h-screen px-4">
+        <div class="text-center max-w-md fade-in">
+            <div id="error-icon" class="mx-auto mb-6 w-20 h-20 rounded-full flex items-center justify-center bg-red-500/10">
+                <i class="fas fa-exclamation-triangle text-red-400 text-3xl"></i>
+            </div>
+            <h2 id="error-title" class="text-2xl font-bold text-white mb-3">Erro</h2>
+            <p id="error-message" class="text-gray-400 mb-8">Ocorreu um erro ao validar seu convite.</p>
+            <a href="/" class="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors">
+                <i class="fas fa-arrow-left"></i>
+                Voltar para a pagina inicial
+            </a>
+        </div>
+    </div>
+
+    <!-- Success State -->
+    <div id="state-success" class="hidden flex items-center justify-center min-h-screen px-4">
+        <div class="text-center max-w-lg fade-in">
+            <div class="mx-auto mb-6 w-24 h-24 rounded-full flex items-center justify-center gradient-bg-subtle pulse-icon">
+                <i class="fas fa-check-circle text-4xl" style="color: #06b6d4;"></i>
+            </div>
+            <h2 class="text-3xl font-bold mb-3">
+                <span class="gradient-text">Cadastro Enviado!</span>
+            </h2>
+            <p class="text-gray-400 mb-4 text-lg">
+                Seus dados foram recebidos com sucesso.
+            </p>
+            <div class="bg-gray-800/50 rounded-xl p-6 mb-8 border border-gray-700/50 text-left">
+                <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Proximos Passos</h3>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-3">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full gradient-bg flex items-center justify-center text-xs font-bold mt-0.5">1</span>
+                        <span class="text-gray-300">Nossa equipe vai analisar seu cadastro em ate <strong class="text-white">24 horas uteis</strong>.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full gradient-bg flex items-center justify-center text-xs font-bold mt-0.5">2</span>
+                        <span class="text-gray-300">Apos a aprovacao, voce recebera um <strong class="text-white">e-mail para ativar sua conta</strong> e aceitar os termos de uso.</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full gradient-bg flex items-center justify-center text-xs font-bold mt-0.5">3</span>
+                        <span class="text-gray-300">Com a conta ativada, voce podera acessar o painel e comecar a usar o sistema!</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 text-blue-400 text-sm">
+                <i class="fas fa-envelope mr-2"></i>
+                Fique atento ao seu e-mail para as proximas instrucoes.
+            </div>
+        </div>
+    </div>
+
+    <!-- Form State -->
+    <div id="state-form" class="hidden min-h-screen py-8 px-4">
+        <div class="max-w-2xl mx-auto fade-in">
+
+            <!-- Header -->
+            <div class="text-center mb-10">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-bg-subtle mb-4">
+                    <i class="fas fa-calendar-check text-2xl" style="color: #3b82f6;"></i>
+                </div>
+                <h1 class="text-3xl font-bold mb-2">
+                    <span class="gradient-text">Horario Inteligente</span>
+                </h1>
+                <p class="text-gray-400 text-lg">Complete seu registro para comecar a usar o sistema</p>
+                <div id="invite-info" class="hidden mt-3 inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 text-sm px-4 py-2 rounded-full">
+                    <i class="fas fa-envelope-open-text"></i>
+                    <span>Convite de: <strong id="invite-partner-name"></strong></span>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form id="registration-form" class="space-y-8" novalidate>
+
+                <!-- Section 1: Dados do Consultorio -->
+                <div class="bg-gray-800/30 rounded-2xl p-6 md:p-8 border border-gray-700/50">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
+                            <i class="fas fa-building-columns text-sm"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Dados do Consultorio</h2>
+                            <p class="text-gray-500 text-sm">Informacoes do seu estabelecimento</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-5">
+                        <!-- Nome Fantasia -->
+                        <div>
+                            <label for="nome_fantasia" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                Nome Fantasia <span class="text-red-400">*</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fas fa-store"></i>
+                                </span>
+                                <input type="text" id="nome_fantasia" name="nome_fantasia" required
+                                       placeholder="Ex: Clinica Saude Total"
+                                       class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+
+                        <!-- Documento CPF/CNPJ -->
+                        <div>
+                            <label for="documento" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                CPF ou CNPJ
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fas fa-id-card"></i>
+                                </span>
+                                <input type="text" id="documento" name="documento"
+                                       placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                                       maxlength="18"
+                                       class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <p class="mt-1 text-xs text-gray-500">Sera detectado automaticamente se e CPF ou CNPJ</p>
+                        </div>
+
+                        <!-- Email -->
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                E-mail <span class="text-red-400">*</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fas fa-envelope"></i>
+                                </span>
+                                <input type="email" id="email" name="email" required
+                                       placeholder="contato@suaclinica.com.br"
+                                       class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+
+                        <!-- Telefone -->
+                        <div>
+                            <label for="telefone" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                Telefone <span class="text-red-400">*</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fas fa-phone"></i>
+                                </span>
+                                <input type="text" id="telefone" name="telefone" required
+                                       placeholder="(00) 00000-0000"
+                                       maxlength="15"
+                                       class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+
+                        <!-- Endereco -->
+                        <div>
+                            <label for="endereco" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                Endereco
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </span>
+                                <input type="text" id="endereco" name="endereco"
+                                       placeholder="Rua, numero, bairro, cidade - UF"
+                                       class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Tipo de Atendimento -->
+                <div class="bg-gray-800/30 rounded-2xl p-6 md:p-8 border border-gray-700/50">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
+                            <i class="fas fa-stethoscope text-sm"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Tipo de Atendimento</h2>
+                            <p class="text-gray-500 text-sm">Como funciona seu consultorio?</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-5">
+                        <!-- Radio Cards -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <label class="radio-card selected block rounded-xl border-2 border-gray-700 p-5" id="card-individual">
+                                <input type="radio" name="tipo_consultorio" value="individual" class="hidden" checked>
+                                <div class="flex items-start gap-3">
+                                    <div class="radio-dot w-5 h-5 rounded-full border-2 border-gray-600 flex-shrink-0 mt-0.5"
+                                         style="background: linear-gradient(135deg, #3b82f6, #06b6d4); box-shadow: 0 0 0 3px rgba(59,130,246,0.3);"></div>
+                                    <div>
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <i class="fas fa-user-doctor text-blue-400"></i>
+                                            <span class="font-semibold text-white">Individual</span>
+                                        </div>
+                                        <p class="text-sm text-gray-400">Um unico medico atendendo no consultorio.</p>
+                                    </div>
+                                </div>
+                            </label>
+
+                            <label class="radio-card block rounded-xl border-2 border-gray-700 p-5" id="card-multi">
+                                <input type="radio" name="tipo_consultorio" value="multi_consultorio" class="hidden">
+                                <div class="flex items-start gap-3">
+                                    <div class="radio-dot w-5 h-5 rounded-full border-2 border-gray-600 flex-shrink-0 mt-0.5"></div>
+                                    <div>
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <i class="fas fa-user-group text-cyan-400"></i>
+                                            <span class="font-semibold text-white">Multi-consultorio</span>
+                                        </div>
+                                        <p class="text-sm text-gray-400">Varios medicos compartilham o mesmo espaco.</p>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Multi-consultorio Options (hidden by default) -->
+                        <div id="multi-options" class="hidden space-y-4 mt-4 p-5 bg-gray-800/50 rounded-xl border border-gray-700/50 fade-in">
+                            <div>
+                                <label for="qtd_medicos_adicionais" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                    Quantidade de medicos adicionais
+                                </label>
+                                <div class="relative w-40">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                        <i class="fas fa-users"></i>
+                                    </span>
+                                    <input type="number" id="qtd_medicos_adicionais" name="qtd_medicos_adicionais"
+                                           min="1" max="20" value="1"
+                                           class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500">Alem do medico principal (1 a 20)</p>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="necessita_secretaria" name="necessita_secretaria" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                                <div>
+                                    <span class="text-sm font-medium text-gray-300">Necessita secretaria</span>
+                                    <p class="text-xs text-gray-500">Adicionar acesso para secretaria(s) no sistema</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Selecao de Plano -->
+                <div id="section-plano" class="bg-gray-800/30 rounded-2xl p-6 md:p-8 border border-gray-700/50">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
+                            <i class="fas fa-tag text-sm"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Plano</h2>
+                            <p class="text-gray-500 text-sm">Selecione o plano adequado para voce</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- Card Plano Individual -->
+                        <label id="card-plano-individual" class="radio-card selected block rounded-xl border-2 border-gray-700 p-5">
+                            <input type="radio" name="plano" value="individual" class="hidden" checked>
+                            <div class="flex items-start gap-4">
+                                <div class="radio-dot w-5 h-5 rounded-full border-2 border-gray-600 flex-shrink-0 mt-1"
+                                     style="background: linear-gradient(135deg, #3b82f6, #06b6d4); box-shadow: 0 0 0 3px rgba(59,130,246,0.3);"></div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fas fa-user text-blue-400"></i>
+                                            <span class="font-semibold text-white text-lg">Individual</span>
+                                        </div>
+                                        <span class="text-green-400 font-bold text-xl">R$ 150<span class="text-sm font-normal">/mes</span></span>
+                                    </div>
+                                    <p class="text-sm text-gray-400">Ideal para consultorio com um unico profissional.</p>
+                                    <div class="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                                        <i class="fas fa-check text-green-500"></i>
+                                        <span>1 profissional incluso</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Card Plano Consultorio -->
+                        <label id="card-plano-clinica" class="radio-card block rounded-xl border-2 border-gray-700 p-5">
+                            <input type="radio" name="plano" value="clinica" class="hidden">
+                            <div class="flex items-start gap-4">
+                                <div class="radio-dot w-5 h-5 rounded-full border-2 border-gray-600 flex-shrink-0 mt-1"></div>
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <div class="flex items-center gap-2">
+                                            <i class="fas fa-users text-purple-400"></i>
+                                            <span class="font-semibold text-white text-lg">Consultorio</span>
+                                        </div>
+                                        <span class="text-green-400 font-bold text-xl">R$ 200<span class="text-sm font-normal">/mes</span></span>
+                                    </div>
+                                    <p class="text-sm text-gray-400">Para clinicas com multiplos profissionais.</p>
+                                    <div class="mt-2 space-y-1">
+                                        <div class="flex items-center gap-2 text-xs text-gray-500">
+                                            <i class="fas fa-check text-green-500"></i>
+                                            <span>2 profissionais inclusos</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 text-xs text-gray-500">
+                                            <i class="fas fa-plus text-cyan-400"></i>
+                                            <span>R$ 50/mes por profissional extra</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </label>
+
+                        <!-- Resumo de Valor (visivel apenas para Consultorio) -->
+                        <div id="resumo-valor-plano" class="hidden mt-4 p-4 bg-gray-800/60 rounded-xl border border-gray-700/50 fade-in">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-400">Valor estimado mensal</p>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Base R$ 200 + <span id="resumo-extras-count">0</span> extra(s) x R$ 50
+                                    </p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-2xl font-bold text-green-400">R$ <span id="resumo-valor-total">200</span></span>
+                                    <span class="text-sm text-gray-400">/mes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Medico Principal -->
+                <div class="bg-gray-800/30 rounded-2xl p-6 md:p-8 border border-gray-700/50">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
+                            <i class="fas fa-user-doctor text-sm"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Medico Principal</h2>
+                            <p class="text-gray-500 text-sm">Dados do profissional responsavel</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-5">
+                        <!-- Nome do Medico -->
+                        <div>
+                            <label for="medico_nome" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                Nome Completo <span class="text-red-400">*</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                                <input type="text" id="medico_nome" name="medico_nome" required
+                                       placeholder="Dr(a). Nome Completo"
+                                       class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+
+                        <!-- Especialidade e Registro em grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                            <div>
+                                <label for="medico_especialidade" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                    Especialidade <span class="text-red-400">*</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                        <i class="fas fa-briefcase-medical"></i>
+                                    </span>
+                                    <input type="text" id="medico_especialidade" name="medico_especialidade" required
+                                           placeholder="Ex: Cardiologia"
+                                           class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="medico_registro_profissional" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                    Registro Profissional <span class="text-red-400">*</span>
+                                </label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                        <i class="fas fa-id-badge"></i>
+                                    </span>
+                                    <input type="text" id="medico_registro_profissional" name="medico_registro_profissional" required
+                                           placeholder="CRM/CRO"
+                                           class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Email do Medico -->
+                        <div>
+                            <label for="medico_email" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                E-mail do Medico <span class="text-red-400">*</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fas fa-envelope"></i>
+                                </span>
+                                <input type="email" id="medico_email" name="medico_email" required
+                                       placeholder="medico@email.com"
+                                       class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+
+                        <!-- Telefone do Medico -->
+                        <div>
+                            <label for="medico_telefone" class="block text-sm font-medium text-gray-300 mb-1.5">
+                                Telefone do Medico
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                                    <i class="fas fa-phone"></i>
+                                </span>
+                                <input type="text" id="medico_telefone" name="medico_telefone"
+                                       placeholder="(00) 00000-0000"
+                                       maxlength="15"
+                                       class="form-input w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Error Message -->
+                <div id="submit-error" class="hidden bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
+                    <i class="fas fa-exclamation-circle text-red-400 flex-shrink-0"></i>
+                    <p id="submit-error-text" class="text-red-300 text-sm"></p>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-2">
+                    <button type="submit" id="btn-submit"
+                            class="btn-submit w-full text-white font-semibold py-4 px-6 rounded-xl text-lg flex items-center justify-center gap-3">
+                        <i class="fas fa-check-circle"></i>
+                        Finalizar Registro
+                    </button>
+                    <p class="text-center text-gray-500 text-xs mt-4">
+                        <i class="fas fa-lock mr-1"></i>
+                        Seus dados estao protegidos e serao utilizados apenas para configuracao da sua conta.
+                    </p>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        // ── State references ──
+        const stateLoading = document.getElementById('state-loading');
+        const stateError   = document.getElementById('state-error');
+        const stateSuccess = document.getElementById('state-success');
+        const stateForm    = document.getElementById('state-form');
+
+        const errorIcon    = document.getElementById('error-icon');
+        const errorTitle   = document.getElementById('error-title');
+        const errorMessage = document.getElementById('error-message');
+
+        // ── Helpers: show / hide states ──
+        function showState(state) {
+            [stateLoading, stateError, stateSuccess, stateForm].forEach(s => {
+                s.classList.add('hidden');
+                s.classList.remove('flex');
+            });
+            state.classList.remove('hidden');
+            if (state !== stateForm) {
+                state.classList.add('flex');
+            }
+        }
+
+        function showError(type) {
+            const errors = {
+                expired: {
+                    icon: 'fas fa-clock',
+                    iconBg: 'bg-yellow-500/10',
+                    iconColor: 'text-yellow-400',
+                    title: 'Convite Expirado',
+                    message: 'Este link de convite expirou. Por favor, solicite um novo convite ao seu parceiro.'
+                },
+                used: {
+                    icon: 'fas fa-check-double',
+                    iconBg: 'bg-blue-500/10',
+                    iconColor: 'text-blue-400',
+                    title: 'Convite Ja Utilizado',
+                    message: 'Este convite ja foi utilizado para criar uma conta. Se voce ja se registrou, faca login para acessar o sistema.'
+                },
+                not_found: {
+                    icon: 'fas fa-link-slash',
+                    iconBg: 'bg-red-500/10',
+                    iconColor: 'text-red-400',
+                    title: 'Convite Nao Encontrado',
+                    message: 'O link de convite nao foi encontrado. Verifique se o link esta correto ou solicite um novo convite.'
+                },
+                no_token: {
+                    icon: 'fas fa-key',
+                    iconBg: 'bg-orange-500/10',
+                    iconColor: 'text-orange-400',
+                    title: 'Token Nao Informado',
+                    message: 'Nenhum token de convite foi encontrado na URL. Utilize o link completo que voce recebeu por e-mail.'
+                },
+                network: {
+                    icon: 'fas fa-wifi',
+                    iconBg: 'bg-gray-500/10',
+                    iconColor: 'text-gray-400',
+                    title: 'Erro de Conexao',
+                    message: 'Nao foi possivel conectar ao servidor. Verifique sua conexao com a internet e tente novamente.'
+                },
+                generic: {
+                    icon: 'fas fa-exclamation-triangle',
+                    iconBg: 'bg-red-500/10',
+                    iconColor: 'text-red-400',
+                    title: 'Erro Inesperado',
+                    message: 'Ocorreu um erro inesperado. Por favor, tente novamente mais tarde.'
+                }
+            };
+
+            const err = errors[type] || errors.generic;
+
+            errorIcon.className = 'mx-auto mb-6 w-20 h-20 rounded-full flex items-center justify-center ' + err.iconBg;
+            errorIcon.innerHTML = '<i class="' + err.icon + ' ' + err.iconColor + ' text-3xl"></i>';
+            errorTitle.textContent = err.title;
+            errorMessage.textContent = err.message;
+
+            showState(stateError);
+        }
+
+        // ── Input masks ──
+        function maskCPF(value) {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+                .replace(/(-\d{2})\d+?$/, '$1');
+        }
+
+        function maskCNPJ(value) {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{2})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1/$2')
+                .replace(/(\d{4})(\d)/, '$1-$2')
+                .replace(/(-\d{2})\d+?$/, '$1');
+        }
+
+        function maskDocumento(value) {
+            const digits = value.replace(/\D/g, '');
+            if (digits.length <= 11) {
+                return maskCPF(value);
+            }
+            return maskCNPJ(value);
+        }
+
+        function maskPhone(value) {
+            return value
+                .replace(/\D/g, '')
+                .replace(/(\d{2})(\d)/, '($1) $2')
+                .replace(/(\d{5})(\d)/, '$1-$2')
+                .replace(/(-\d{4})\d+?$/, '$1');
+        }
+
+        // Attach masks
+        const docInput = document.getElementById('documento');
+        docInput.addEventListener('input', function () {
+            this.value = maskDocumento(this.value);
+        });
+
+        const phoneInput = document.getElementById('telefone');
+        phoneInput.addEventListener('input', function () {
+            this.value = maskPhone(this.value);
+        });
+
+        const medicoPhoneInput = document.getElementById('medico_telefone');
+        medicoPhoneInput.addEventListener('input', function () {
+            this.value = maskPhone(this.value);
+        });
+
+        // ── Radio card toggle ──
+        const cardIndividual = document.getElementById('card-individual');
+        const cardMulti      = document.getElementById('card-multi');
+        const multiOptions   = document.getElementById('multi-options');
+
+        function updateRadioCards() {
+            const radios = document.querySelectorAll('input[name="tipo_consultorio"]');
+            radios.forEach(function (radio) {
+                const card = radio.closest('.radio-card');
+                const dot  = card.querySelector('.radio-dot');
+                if (radio.checked) {
+                    card.classList.add('selected');
+                    dot.style.background = 'linear-gradient(135deg, #3b82f6, #06b6d4)';
+                    dot.style.boxShadow  = '0 0 0 3px rgba(59,130,246,0.3)';
+                    dot.style.borderColor = 'transparent';
+                } else {
+                    card.classList.remove('selected');
+                    dot.style.background  = 'transparent';
+                    dot.style.boxShadow   = 'none';
+                    dot.style.borderColor = '#4b5563';
+                }
+            });
+
+            const multiSelected = document.querySelector('input[name="tipo_consultorio"][value="multi_consultorio"]').checked;
+            if (multiSelected) {
+                multiOptions.classList.remove('hidden');
+            } else {
+                multiOptions.classList.add('hidden');
+            }
+
+            // Atualizar visibilidade do plano quando tipo muda
+            if (typeof atualizarVisibilidadePlano === 'function') {
+                atualizarVisibilidadePlano();
+            }
+        }
+
+        cardIndividual.addEventListener('click', updateRadioCards);
+        cardMulti.addEventListener('click', updateRadioCards);
+
+        // ── Plano selection ──
+        const cardPlanoIndividual = document.getElementById('card-plano-individual');
+        const cardPlanoClinica    = document.getElementById('card-plano-clinica');
+        const sectionPlano        = document.getElementById('section-plano');
+        const resumoValorPlano    = document.getElementById('resumo-valor-plano');
+
+        function updatePlanoCards() {
+            const radios = document.querySelectorAll('input[name="plano"]');
+            radios.forEach(function (radio) {
+                const card = radio.closest('.radio-card');
+                const dot  = card.querySelector('.radio-dot');
+                if (radio.checked) {
+                    card.classList.add('selected');
+                    dot.style.background = 'linear-gradient(135deg, #3b82f6, #06b6d4)';
+                    dot.style.boxShadow  = '0 0 0 3px rgba(59,130,246,0.3)';
+                    dot.style.borderColor = 'transparent';
+                } else {
+                    card.classList.remove('selected');
+                    dot.style.background  = 'transparent';
+                    dot.style.boxShadow   = 'none';
+                    dot.style.borderColor = '#4b5563';
+                }
+            });
+
+            // Mostrar resumo apenas para plano clinica
+            const planoClinicaSelected = document.querySelector('input[name="plano"][value="clinica"]').checked;
+            if (planoClinicaSelected) {
+                resumoValorPlano.classList.remove('hidden');
+                atualizarResumoValor();
+            } else {
+                resumoValorPlano.classList.add('hidden');
+            }
+        }
+
+        function atualizarResumoValor() {
+            const qtdExtras = parseInt(document.getElementById('qtd_medicos_adicionais').value, 10) || 0;
+            // Total de profissionais = medico principal (1) + adicionais
+            // Plano clinica inclui 2 profissionais
+            const profissionaisExtras = Math.max(0, (1 + qtdExtras) - 2);
+            const valorTotal = 200 + (profissionaisExtras * 50);
+
+            document.getElementById('resumo-extras-count').textContent = profissionaisExtras;
+            document.getElementById('resumo-valor-total').textContent = valorTotal;
+        }
+
+        function atualizarVisibilidadePlano() {
+            const tipoConsultorio = document.querySelector('input[name="tipo_consultorio"]:checked').value;
+
+            if (tipoConsultorio === 'individual') {
+                // Mostrar apenas plano Individual e seleciona-lo
+                cardPlanoIndividual.classList.remove('hidden');
+                cardPlanoClinica.classList.add('hidden');
+                document.querySelector('input[name="plano"][value="individual"]').checked = true;
+                resumoValorPlano.classList.add('hidden');
+            } else {
+                // Multi-consultorio: mostrar apenas plano Clinica e seleciona-lo
+                cardPlanoIndividual.classList.add('hidden');
+                cardPlanoClinica.classList.remove('hidden');
+                document.querySelector('input[name="plano"][value="clinica"]').checked = true;
+                resumoValorPlano.classList.remove('hidden');
+                atualizarResumoValor();
+            }
+
+            updatePlanoCards();
+        }
+
+        // Listeners para plano
+        cardPlanoIndividual.addEventListener('click', updatePlanoCards);
+        cardPlanoClinica.addEventListener('click', updatePlanoCards);
+
+        // Atualizar plano quando tipo de consultorio muda
+        document.querySelectorAll('input[name="tipo_consultorio"]').forEach(function(radio) {
+            radio.addEventListener('change', atualizarVisibilidadePlano);
+        });
+
+        // Atualizar resumo quando quantidade de medicos muda
+        document.getElementById('qtd_medicos_adicionais').addEventListener('input', atualizarResumoValor);
+
+        // ── Token extraction ──
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        // ── Initialize ──
+        async function init() {
+            if (!token) {
+                showError('no_token');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/registro-cliente/' + encodeURIComponent(token), {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Pre-fill fields if data is returned
+                    const prefill = data.dados_preenchidos || {};
+                    if (prefill.email) {
+                        document.getElementById('email').value = prefill.email;
+                    }
+                    if (prefill.nome) {
+                        document.getElementById('nome_fantasia').value = prefill.nome;
+                    }
+                    if (prefill.telefone) {
+                        document.getElementById('telefone').value = maskPhone(prefill.telefone);
+                    }
+
+                    // Show partner info if available
+                    if (data.partner_name) {
+                        document.getElementById('invite-partner-name').textContent = data.partner_name;
+                        document.getElementById('invite-info').classList.remove('hidden');
+                    }
+
+                    showState(stateForm);
+
+                    // Inicializar visibilidade correta do plano
+                    setTimeout(function() {
+                        if (typeof atualizarVisibilidadePlano === 'function') {
+                            atualizarVisibilidadePlano();
+                        }
+                    }, 100);
+
+                } else if (response.status === 410) {
+                    showError('expired');
+                } else if (response.status === 409) {
+                    showError('used');
+                } else if (response.status === 404) {
+                    showError('not_found');
+                } else {
+                    showError('generic');
+                }
+
+            } catch (err) {
+                console.error('Failed to validate invite token:', err);
+                showError('network');
+            }
+        }
+
+        // ── Form validation ──
+        function validateForm() {
+            const required = [
+                { id: 'nome_fantasia',               label: 'Nome Fantasia' },
+                { id: 'email',                        label: 'E-mail do consultorio' },
+                { id: 'telefone',                     label: 'Telefone do consultorio' },
+                { id: 'medico_nome',                  label: 'Nome do medico' },
+                { id: 'medico_especialidade',         label: 'Especialidade' },
+                { id: 'medico_registro_profissional', label: 'Registro profissional' },
+                { id: 'medico_email',                 label: 'E-mail do medico' }
+            ];
+
+            for (const field of required) {
+                const el = document.getElementById(field.id);
+                if (!el.value.trim()) {
+                    el.focus();
+                    return 'O campo "' + field.label + '" e obrigatorio.';
+                }
+            }
+
+            // Basic email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const email = document.getElementById('email').value.trim();
+            if (!emailRegex.test(email)) {
+                document.getElementById('email').focus();
+                return 'Informe um e-mail valido para o consultorio.';
+            }
+
+            const medicoEmail = document.getElementById('medico_email').value.trim();
+            if (!emailRegex.test(medicoEmail)) {
+                document.getElementById('medico_email').focus();
+                return 'Informe um e-mail valido para o medico.';
+            }
+
+            // Phone minimum length
+            const telefone = document.getElementById('telefone').value.replace(/\D/g, '');
+            if (telefone.length < 10) {
+                document.getElementById('telefone').focus();
+                return 'Informe um telefone valido com DDD.';
+            }
+
+            // Multi-consultorio validation
+            const isMulti = document.querySelector('input[name="tipo_consultorio"][value="multi_consultorio"]').checked;
+            if (isMulti) {
+                const qty = parseInt(document.getElementById('qtd_medicos_adicionais').value, 10);
+                if (isNaN(qty) || qty < 1 || qty > 20) {
+                    document.getElementById('qtd_medicos_adicionais').focus();
+                    return 'A quantidade de medicos adicionais deve ser entre 1 e 20.';
+                }
+            }
+
+            return null;
+        }
+
+        // ── Form submission ──
+        const form = document.getElementById('registration-form');
+        const btnSubmit = document.getElementById('btn-submit');
+        const submitError = document.getElementById('submit-error');
+        const submitErrorText = document.getElementById('submit-error-text');
+
+        form.addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            // Hide previous error
+            submitError.classList.add('hidden');
+
+            // Validate
+            const validationError = validateForm();
+            if (validationError) {
+                submitErrorText.textContent = validationError;
+                submitError.classList.remove('hidden');
+                submitError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+
+            // Disable button and show loading
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span class="spinner" style="width:24px;height:24px;border-width:2px;"></span> Registrando...';
+
+            const tipoAtendimento = document.querySelector('input[name="tipo_consultorio"]:checked').value;
+            const isMulti = tipoAtendimento === 'multi_consultorio';
+            const planoSelecionado = document.querySelector('input[name="plano"]:checked').value;
+
+            const payload = {
+                nome_fantasia:               document.getElementById('nome_fantasia').value.trim(),
+                documento:                   document.getElementById('documento').value.trim(),
+                email:                       document.getElementById('email').value.trim(),
+                telefone:                    document.getElementById('telefone').value.trim(),
+                endereco:                    document.getElementById('endereco').value.trim(),
+                tipo_consultorio:            tipoAtendimento,
+                qtd_medicos_adicionais:      isMulti ? parseInt(document.getElementById('qtd_medicos_adicionais').value, 10) : 0,
+                necessita_secretaria:        isMulti ? document.getElementById('necessita_secretaria').checked : false,
+                plano:                       planoSelecionado,
+                medico_nome:                 document.getElementById('medico_nome').value.trim(),
+                medico_especialidade:        document.getElementById('medico_especialidade').value.trim(),
+                medico_registro_profissional: document.getElementById('medico_registro_profissional').value.trim(),
+                medico_email:                document.getElementById('medico_email').value.trim(),
+                medico_telefone:             document.getElementById('medico_telefone').value.trim()
+            };
+
+            try {
+                const response = await fetch('/api/registro-cliente/' + encodeURIComponent(token), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    showState(stateSuccess);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    const errData = await response.json().catch(function () { return {}; });
+
+                    if (response.status === 410) {
+                        showError('expired');
+                        return;
+                    }
+                    if (response.status === 409) {
+                        showError('used');
+                        return;
+                    }
+
+                    const msg = errData.detail || errData.message || 'Erro ao processar o registro. Tente novamente.';
+                    submitErrorText.textContent = msg;
+                    submitError.classList.remove('hidden');
+                    submitError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+            } catch (err) {
+                console.error('Registration request failed:', err);
+                submitErrorText.textContent = 'Falha na conexao com o servidor. Verifique sua internet e tente novamente.';
+                submitError.classList.remove('hidden');
+                submitError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<i class="fas fa-check-circle"></i> Finalizar Registro';
+            }
+        });
+
+        // ── Kick off ──
+        init();
+
+    })();
+    </script>
+
+</body>
+</html>

@@ -20,6 +20,11 @@ from app.database import get_db
 from app.api.admin import get_current_admin
 from app.services.telegram_service import alerta_novo_cliente, alerta_cliente_inativo
 from app.services.email_service import get_email_service
+from app.services.onboarding_service import (
+    gerar_subdomain, gerar_senha_temporaria, hash_senha,
+    verificar_subdomain_disponivel, verificar_email_disponivel,
+    TABELAS_EMAIL_VALIDAS, calcular_billing, gerar_subdomain_unico
+)
 import asyncio
 
 router = APIRouter(prefix="/api/admin", tags=["Admin - Clientes"])
@@ -153,62 +158,6 @@ class StatusUpdate(BaseModel):
     """Dados para ativar/desativar cliente"""
     ativo: bool
     motivo: Optional[str] = None
-
-
-# ==================== FUNÇÕES AUXILIARES ====================
-
-def gerar_subdomain(nome: str) -> str:
-    """
-    Gera subdomain único a partir do nome.
-    Ex: "Dr. João Silva" -> "dr-joao-silva"
-    """
-    # Normalizar unicode (remove acentos)
-    nome_normalizado = unicodedata.normalize('NFKD', nome)
-    nome_ascii = nome_normalizado.encode('ASCII', 'ignore').decode('ASCII')
-
-    # Converter para minúsculas e substituir espaços/caracteres especiais
-    subdomain = nome_ascii.lower()
-    subdomain = re.sub(r'[^a-z0-9]+', '-', subdomain)
-    subdomain = subdomain.strip('-')
-
-    # Limitar tamanho
-    if len(subdomain) > 30:
-        subdomain = subdomain[:30].rstrip('-')
-
-    return subdomain
-
-
-def gerar_senha_temporaria() -> str:
-    """Gera senha temporária segura"""
-    # Formato: HI@ + 8 caracteres alfanuméricos (2.8 trilhões de combinações)
-    chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-    codigo = ''.join([chars[secrets.randbelow(len(chars))] for _ in range(8)])
-    return f"HI@{codigo}"
-
-
-def hash_senha(senha: str) -> str:
-    """Gera hash bcrypt da senha"""
-    return bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-
-def verificar_subdomain_disponivel(db: Session, subdomain: str) -> bool:
-    """Verifica se subdomain está disponível"""
-    result = db.execute(
-        text("SELECT id FROM clientes WHERE subdomain = :subdomain"),
-        {"subdomain": subdomain}
-    ).fetchone()
-    return result is None
-
-
-TABELAS_EMAIL_VALIDAS = {"medicos", "usuarios", "super_admins"}
-
-def verificar_email_disponivel(db: Session, email: str, tabela: str = "medicos") -> bool:
-    """Verifica se email está disponível"""
-    if tabela not in TABELAS_EMAIL_VALIDAS:
-        raise ValueError(f"Tabela invalida para verificacao de email: {tabela}")
-    query = text(f"SELECT id FROM {tabela} WHERE email = :email")
-    result = db.execute(query, {"email": email}).fetchone()
-    return result is None
 
 
 # ==================== ENDPOINTS ====================
@@ -1533,3 +1482,564 @@ async def get_certificado_status(admin = Depends(get_current_admin)):
             "status": "error",
             "message": str(e)
         }
+
+
+# ==================== APROVACAO / REJEICAO DE CLIENTES ====================
+
+class AprovacaoClienteRequest(BaseModel):
+    """Dados para aprovar cliente pendente"""
+    plano_id: int
+    assinatura: Optional[AssinaturaOnboarding] = None
+    medicos_adicionais: Optional[List[MedicoAdicionalOnboarding]] = None
+    secretaria: Optional[SecretariaOnboarding] = None
+    parceiro_id: Optional[int] = None
+
+
+class RejeicaoClienteRequest(BaseModel):
+    """Dados para rejeitar cliente pendente"""
+    motivo: Optional[str] = None
+    notificar_email: bool = False
+
+
+class PlanoUpdate(BaseModel):
+    """Dados para atualizar plano do cliente"""
+    plano: str  # 'individual', 'clinica', 'profissional'
+    valor_mensalidade: str  # ex: "150.00"
+
+    @validator('plano')
+    def plano_valido(cls, v):
+        planos_validos = ('individual', 'clinica', 'profissional')
+        if v not in planos_validos:
+            raise ValueError(f'Plano deve ser um de: {", ".join(planos_validos)}')
+        return v
+
+    @validator('valor_mensalidade')
+    def valor_valido(cls, v):
+        try:
+            valor = float(v.replace(',', '.'))
+            if valor < 0:
+                raise ValueError('Valor nao pode ser negativo')
+            return f"{valor:.2f}"
+        except (ValueError, AttributeError):
+            raise ValueError('Valor de mensalidade invalido')
+
+
+@router.put("/clientes/{cliente_id}/plano")
+async def atualizar_plano_cliente(
+    cliente_id: int,
+    dados: PlanoUpdate,
+    admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Atualiza o plano e valor de mensalidade de um cliente.
+    Tambem atualiza o valor_mensal na tabela assinaturas (se houver ativa).
+    """
+    try:
+        # 1. Verificar se cliente existe
+        cliente = db.execute(
+            text("SELECT id, nome, plano, valor_mensalidade FROM clientes WHERE id = :id"),
+            {"id": cliente_id}
+        ).fetchone()
+
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente nao encontrado")
+
+        plano_anterior = cliente[2]
+        valor_anterior = cliente[3]
+
+        # 2. Atualizar cliente
+        agora = datetime.now()
+        db.execute(
+            text("""
+                UPDATE clientes
+                SET plano = :plano, valor_mensalidade = :valor_mensalidade, atualizado_em = :atualizado_em
+                WHERE id = :id
+            """),
+            {
+                "plano": dados.plano,
+                "valor_mensalidade": dados.valor_mensalidade,
+                "atualizado_em": agora,
+                "id": cliente_id
+            }
+        )
+
+        # 3. Atualizar assinatura ativa (se houver)
+        assinatura_atualizada = False
+        result_assinatura = db.execute(
+            text("""
+                UPDATE assinaturas
+                SET valor_mensal = :valor_mensal, valor_com_desconto = :valor_mensal, atualizado_em = :atualizado_em
+                WHERE cliente_id = :cliente_id AND status IN ('ativa', 'pendente')
+                RETURNING id
+            """),
+            {
+                "valor_mensal": float(dados.valor_mensalidade),
+                "atualizado_em": agora,
+                "cliente_id": cliente_id
+            }
+        )
+        if result_assinatura.fetchone():
+            assinatura_atualizada = True
+
+        db.commit()
+
+        logger.info(f"[Admin] Plano do cliente {cliente_id} atualizado: {plano_anterior} -> {dados.plano}, R${valor_anterior} -> R${dados.valor_mensalidade}")
+
+        return {
+            "success": True,
+            "message": "Plano atualizado com sucesso",
+            "cliente_id": cliente_id,
+            "plano_anterior": plano_anterior,
+            "plano_novo": dados.plano,
+            "valor_anterior": valor_anterior,
+            "valor_novo": dados.valor_mensalidade,
+            "assinatura_atualizada": assinatura_atualizada
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[Admin] Erro ao atualizar plano: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar plano: {str(e)}")
+
+
+@router.post("/clientes/{cliente_id}/aprovar")
+async def aprovar_cliente(
+    cliente_id: int,
+    dados: AprovacaoClienteRequest,
+    request: Request,
+    admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Aprova cliente com status 'pendente_aprovacao'.
+    Configura billing, gera senhas, cria assinatura e envia email de ativacao.
+    """
+    try:
+        # 1. Validar cliente
+        cliente = db.execute(
+            text("""
+                SELECT id, nome, email, subdomain, status, telefone,
+                       tipo_consultorio, qtd_medicos_adicionais, necessita_secretaria
+                FROM clientes
+                WHERE id = :id
+            """),
+            {"id": cliente_id}
+        ).fetchone()
+
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente nao encontrado")
+
+        if cliente[4] != 'pendente_aprovacao':
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cliente nao esta pendente de aprovacao (status atual: {cliente[4]})"
+            )
+
+        nome_cliente = cliente[1]
+        email_cliente = cliente[2]
+        subdomain = cliente[3]
+
+        # 2. Buscar plano
+        plano = db.execute(
+            text("SELECT id, codigo, nome, valor_mensal, profissionais_inclusos, taxa_ativacao FROM planos WHERE id = :id AND ativo = true"),
+            {"id": dados.plano_id}
+        ).fetchone()
+
+        if not plano:
+            raise HTTPException(status_code=400, detail=f"Plano {dados.plano_id} nao encontrado ou inativo")
+
+        # 3. Buscar medico principal
+        medico_principal = db.execute(
+            text("""
+                SELECT id, nome, email FROM medicos
+                WHERE cliente_id = :cliente_id AND is_secretaria = false
+                ORDER BY criado_em ASC LIMIT 1
+            """),
+            {"cliente_id": cliente_id}
+        ).fetchone()
+
+        if not medico_principal:
+            raise HTTPException(status_code=400, detail="Medico principal nao encontrado para este cliente")
+
+        agora = datetime.now()
+
+        # 4. Gerar senha e atualizar medico principal
+        senha_temporaria = gerar_senha_temporaria()
+        senha_hash_val = hash_senha(senha_temporaria)
+
+        db.execute(
+            text("""
+                UPDATE medicos
+                SET pode_fazer_login = true, is_admin = true, senha = :senha,
+                    email_verificado = true, pode_ver_financeiro = true,
+                    atualizado_em = :atualizado_em
+                WHERE id = :id
+            """),
+            {
+                "senha": senha_hash_val,
+                "atualizado_em": agora,
+                "id": medico_principal[0]
+            }
+        )
+        logger.info(f"[Aprovacao] Medico principal {medico_principal[0]} atualizado com credenciais")
+
+        # 5. Calcular billing e criar assinatura
+        assinatura_dados = dados.assinatura or AssinaturaOnboarding()
+        total_profissionais = 1  # medico principal
+        if dados.medicos_adicionais:
+            total_profissionais += len(dados.medicos_adicionais)
+
+        billing = calcular_billing(
+            valor_base_plano=float(plano[3]),
+            profissionais_inclusos=plano[4],
+            total_profissionais=total_profissionais,
+            assinatura_dados=assinatura_dados
+        )
+
+        db.execute(
+            text("""
+                INSERT INTO assinaturas (
+                    cliente_id, plano_id, valor_mensal,
+                    profissionais_contratados, taxa_ativacao,
+                    data_inicio, status, dia_vencimento,
+                    periodo_cobranca, percentual_periodo,
+                    valor_original, valor_com_desconto,
+                    desconto_percentual, desconto_valor_fixo,
+                    desconto_duracao_meses, desconto_motivo,
+                    data_fim_desconto, linha_dedicada,
+                    ativacao_cortesia, desconto_ativacao_percentual,
+                    motivo_desconto_ativacao,
+                    criado_em
+                ) VALUES (
+                    :cliente_id, :plano_id, :valor_mensal,
+                    :profissionais, :taxa_ativacao,
+                    :data_inicio, 'pendente', :dia_vencimento,
+                    :periodo_cobranca, :percentual_periodo,
+                    :valor_original, :valor_com_desconto,
+                    :desconto_percentual, :desconto_valor_fixo,
+                    :desconto_duracao_meses, :desconto_motivo,
+                    :data_fim_desconto, :linha_dedicada,
+                    :ativacao_cortesia, :desconto_ativacao_percentual,
+                    :motivo_desconto_ativacao,
+                    :criado_em
+                )
+            """),
+            {
+                "cliente_id": cliente_id,
+                "plano_id": plano[0],
+                "valor_mensal": billing["valor_final"],
+                "profissionais": total_profissionais,
+                "taxa_ativacao": plano[5],
+                "data_inicio": date.today(),
+                "dia_vencimento": assinatura_dados.dia_vencimento,
+                "periodo_cobranca": assinatura_dados.periodo_cobranca,
+                "percentual_periodo": billing["percentual_periodo"],
+                "valor_original": billing["valor_original"],
+                "valor_com_desconto": billing["valor_final"],
+                "desconto_percentual": assinatura_dados.desconto_percentual,
+                "desconto_valor_fixo": assinatura_dados.desconto_valor_fixo,
+                "desconto_duracao_meses": assinatura_dados.desconto_duracao_meses,
+                "desconto_motivo": assinatura_dados.desconto_motivo,
+                "data_fim_desconto": billing["data_fim_desconto"],
+                "linha_dedicada": assinatura_dados.linha_dedicada,
+                "ativacao_cortesia": assinatura_dados.ativacao_cortesia,
+                "desconto_ativacao_percentual": billing["desconto_ativacao_pct"],
+                "motivo_desconto_ativacao": billing["motivo_desconto_ativacao"],
+                "criado_em": agora
+            }
+        )
+        logger.info(f"[Aprovacao] Assinatura criada para cliente {cliente_id}: R${billing['valor_final']:.2f}/mes")
+
+        # 6. Criar medicos adicionais (se houver)
+        medicos_adicionais_response = []
+        if dados.medicos_adicionais:
+            for med in dados.medicos_adicionais:
+                med_senha = gerar_senha_temporaria()
+                med_senha_hash = hash_senha(med_senha)
+
+                result_med = db.execute(
+                    text("""
+                        INSERT INTO medicos (
+                            cliente_id, nome, crm, especialidade,
+                            email, telefone, senha, ativo,
+                            pode_fazer_login, is_admin, email_verificado,
+                            is_secretaria, pode_ver_financeiro,
+                            criado_em, atualizado_em
+                        ) VALUES (
+                            :cliente_id, :nome, :crm, :especialidade,
+                            :email, :telefone, :senha, true,
+                            true, false, true,
+                            false, true,
+                            :criado_em, :atualizado_em
+                        )
+                        RETURNING id
+                    """),
+                    {
+                        "cliente_id": cliente_id,
+                        "nome": med.nome,
+                        "crm": med.registro_profissional,
+                        "especialidade": med.especialidade,
+                        "email": med.email,
+                        "telefone": med.telefone,
+                        "senha": med_senha_hash,
+                        "criado_em": agora,
+                        "atualizado_em": agora
+                    }
+                )
+                med_id = result_med.fetchone()[0]
+                medicos_adicionais_response.append({
+                    "id": med_id,
+                    "nome": med.nome,
+                    "email": med.email,
+                    "senha_temporaria": med_senha
+                })
+
+        # 7. Criar secretaria (se houver)
+        secretaria_response = None
+        if dados.secretaria:
+            sec_senha = gerar_senha_temporaria()
+            sec_senha_hash = hash_senha(sec_senha)
+
+            result_sec = db.execute(
+                text("""
+                    INSERT INTO medicos (
+                        cliente_id, nome, crm, especialidade,
+                        email, telefone, senha, ativo,
+                        pode_fazer_login, is_admin, email_verificado,
+                        is_secretaria, pode_ver_financeiro,
+                        criado_em, atualizado_em
+                    ) VALUES (
+                        :cliente_id, :nome, 'N/A', 'Secretaria',
+                        :email, :telefone, :senha, true,
+                        true, false, true,
+                        true, false,
+                        :criado_em, :atualizado_em
+                    )
+                    RETURNING id
+                """),
+                {
+                    "cliente_id": cliente_id,
+                    "nome": dados.secretaria.nome,
+                    "email": dados.secretaria.email,
+                    "telefone": dados.secretaria.telefone,
+                    "senha": sec_senha_hash,
+                    "criado_em": agora,
+                    "atualizado_em": agora
+                }
+            )
+            sec_id = result_sec.fetchone()[0]
+            secretaria_response = {
+                "id": sec_id,
+                "nome": dados.secretaria.nome,
+                "email": dados.secretaria.email,
+                "senha_temporaria": sec_senha
+            }
+
+        # 8. Criar configuracao default
+        db.execute(
+            text("""
+                INSERT INTO configuracoes (
+                    cliente_id, sistema_ativo, timezone,
+                    criado_em, atualizado_em
+                ) VALUES (
+                    :cliente_id, true, 'America/Sao_Paulo',
+                    :criado_em, :atualizado_em
+                )
+                ON CONFLICT (cliente_id) DO NOTHING
+            """),
+            {
+                "cliente_id": cliente_id,
+                "criado_em": agora,
+                "atualizado_em": agora
+            }
+        )
+
+        # 9. Gerar token de ativacao e atualizar status
+        token_ativacao = secrets.token_urlsafe(64)
+        token_expira_em = agora + timedelta(days=7)
+
+        db.execute(
+            text("""
+                UPDATE clientes
+                SET status = 'pendente_aceite',
+                    plano = :plano,
+                    valor_mensalidade = :valor_mensalidade,
+                    token_ativacao = :token_ativacao,
+                    token_expira_em = :token_expira_em,
+                    atualizado_em = :atualizado_em
+                WHERE id = :id
+            """),
+            {
+                "plano": plano[1],
+                "valor_mensalidade": str(billing["valor_final"]),
+                "token_ativacao": token_ativacao,
+                "token_expira_em": token_expira_em,
+                "atualizado_em": agora,
+                "id": cliente_id
+            }
+        )
+
+        # 10. Vincular parceiro (se informado na aprovacao e nao vinculado antes)
+        if dados.parceiro_id:
+            vinculo_existente = db.execute(
+                text("SELECT id FROM clientes_parceiros WHERE cliente_id = :cid AND parceiro_id = :pid"),
+                {"cid": cliente_id, "pid": dados.parceiro_id}
+            ).fetchone()
+
+            if not vinculo_existente:
+                db.execute(
+                    text("""
+                        INSERT INTO clientes_parceiros (
+                            cliente_id, parceiro_id, data_vinculo, tipo_parceria,
+                            ordem_cliente, ativo, criado_em
+                        ) VALUES (
+                            :cliente_id, :parceiro_id, :data_vinculo, 'padrao',
+                            1, true, :criado_em
+                        )
+                    """),
+                    {
+                        "cliente_id": cliente_id,
+                        "parceiro_id": dados.parceiro_id,
+                        "data_vinculo": date.today(),
+                        "criado_em": agora
+                    }
+                )
+
+        db.commit()
+
+        # 11. Enviar email de ativacao
+        link_ativacao = f"https://horariointeligente.com.br/static/ativar-conta.html?token={token_ativacao}"
+        try:
+            email_service = get_email_service()
+            email_service.send_ativacao_conta(email_cliente, nome_cliente, token_ativacao)
+            logger.info(f"[Aprovacao] Email de ativacao enviado para {email_cliente}")
+        except Exception as e:
+            logger.warning(f"[Aprovacao] Erro ao enviar email de ativacao: {e}")
+
+        # 12. Notificar via Telegram
+        try:
+            asyncio.create_task(alerta_novo_cliente(
+                nome_cliente=nome_cliente,
+                plano=plano[2],
+                subdomain=subdomain,
+                valor_mensal=billing["valor_final"],
+                periodo=assinatura_dados.periodo_cobranca
+            ))
+        except Exception as e:
+            logger.warning(f"[Telegram] Erro ao enviar notificacao: {e}")
+
+        # Montar resposta
+        response = {
+            "success": True,
+            "cliente": {
+                "id": cliente_id,
+                "nome": nome_cliente,
+                "subdomain": subdomain,
+                "plano": plano[1],
+                "plano_nome": plano[2],
+                "status": "pendente_aceite"
+            },
+            "ativacao": {
+                "status": "pendente_aceite",
+                "link_ativacao": link_ativacao,
+                "expira_em": token_expira_em.isoformat(),
+                "email_enviado": True
+            },
+            "assinatura": {
+                "valor_base_plano": float(plano[3]),
+                "valor_final": billing["valor_final"],
+                "periodo_cobranca": assinatura_dados.periodo_cobranca
+            },
+            "medico_principal": {
+                "id": medico_principal[0],
+                "nome": medico_principal[1],
+                "email": medico_principal[2]
+            },
+            "credenciais": {
+                "url_acesso": f"https://{subdomain}.horariointeligente.com.br",
+                "email": medico_principal[2],
+                "senha_temporaria": senha_temporaria
+            }
+        }
+
+        if medicos_adicionais_response:
+            response["medicos_adicionais"] = medicos_adicionais_response
+        if secretaria_response:
+            response["secretaria"] = secretaria_response
+
+        return response
+
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[Aprovacao] Erro ao aprovar cliente: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao aprovar cliente: {str(e)}")
+
+
+@router.post("/clientes/{cliente_id}/rejeitar")
+async def rejeitar_cliente(
+    cliente_id: int,
+    dados: RejeicaoClienteRequest,
+    admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Rejeita cliente com status 'pendente_aprovacao'.
+    Opcionalmente notifica prospect por email.
+    """
+    try:
+        cliente = db.execute(
+            text("SELECT id, nome, email, status FROM clientes WHERE id = :id"),
+            {"id": cliente_id}
+        ).fetchone()
+
+        if not cliente:
+            raise HTTPException(status_code=404, detail="Cliente nao encontrado")
+
+        if cliente[3] != 'pendente_aprovacao':
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cliente nao esta pendente de aprovacao (status atual: {cliente[3]})"
+            )
+
+        db.execute(
+            text("""
+                UPDATE clientes
+                SET status = 'rejeitado', atualizado_em = :atualizado_em
+                WHERE id = :id
+            """),
+            {"atualizado_em": datetime.now(), "id": cliente_id}
+        )
+        db.commit()
+
+        logger.info(f"[Aprovacao] Cliente {cliente_id} rejeitado. Motivo: {dados.motivo}")
+
+        # Notificar por email se solicitado
+        if dados.notificar_email and cliente[2]:
+            try:
+                email_service = get_email_service()
+                email_service.send_telegram_notification(
+                    f"<b>Cliente Rejeitado</b>\n\n"
+                    f"<b>Nome:</b> {cliente[1]}\n"
+                    f"<b>Motivo:</b> {dados.motivo or 'Nao informado'}\n"
+                )
+            except Exception as e:
+                logger.warning(f"[Aprovacao] Erro ao notificar rejeicao: {e}")
+
+        return {
+            "success": True,
+            "message": f"Cliente {cliente[1]} rejeitado com sucesso",
+            "status": "rejeitado"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[Aprovacao] Erro ao rejeitar cliente: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Erro ao rejeitar cliente: {str(e)}")

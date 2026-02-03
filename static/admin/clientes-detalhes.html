@@ -206,8 +206,11 @@
 
                     <!-- Plano -->
                     <div class="bg-gray-900 rounded-xl border border-gray-800 p-6">
-                        <h2 class="text-lg font-semibold text-white mb-4">
-                            <i class="fas fa-tag mr-2 text-yellow-400"></i>Plano
+                        <h2 class="text-lg font-semibold text-white mb-4 flex items-center justify-between">
+                            <span><i class="fas fa-tag mr-2 text-yellow-400"></i>Plano</span>
+                            <button onclick="abrirModalPlano()" class="text-sm text-purple-400 hover:text-purple-300">
+                                <i class="fas fa-edit mr-1"></i>Editar
+                            </button>
                         </h2>
                         <div class="bg-gray-800 rounded-lg p-4">
                             <div class="flex items-center justify-between mb-2">
@@ -378,6 +381,92 @@
         </div>
     </div>
 
+    <!-- Modal Editar Plano -->
+    <div id="modalPlano" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-md">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-white mb-4">
+                    <i class="fas fa-tag mr-2 text-yellow-400"></i>Editar Plano
+                </h3>
+
+                <!-- Cards de Plano -->
+                <div class="space-y-3 mb-6">
+                    <div id="planoCardIndividual" onclick="selecionarPlanoModal('individual')"
+                         class="cursor-pointer rounded-lg border-2 border-gray-700 p-4 hover:border-blue-500 transition">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                                <div>
+                                    <p class="text-white font-semibold">Individual</p>
+                                    <p class="text-gray-400 text-sm">1 profissional incluso</p>
+                                </div>
+                            </div>
+                            <span class="text-green-400 font-bold">R$ 150/mês</span>
+                        </div>
+                    </div>
+
+                    <div id="planoCardClinica" onclick="selecionarPlanoModal('clinica')"
+                         class="cursor-pointer rounded-lg border-2 border-gray-700 p-4 hover:border-blue-500 transition">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center">
+                                    <i class="fas fa-users text-white"></i>
+                                </div>
+                                <div>
+                                    <p class="text-white font-semibold">Consultório</p>
+                                    <p class="text-gray-400 text-sm">2 profissionais inclusos (+R$50/extra)</p>
+                                </div>
+                            </div>
+                            <span class="text-green-400 font-bold">R$ 200/mês</span>
+                        </div>
+                    </div>
+
+                    <div id="planoCardProfissional" onclick="selecionarPlanoModal('profissional')"
+                         class="cursor-pointer rounded-lg border-2 border-gray-700 p-4 hover:border-blue-500 transition">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-cyan-600 flex items-center justify-center">
+                                    <i class="fas fa-briefcase-medical text-white"></i>
+                                </div>
+                                <div>
+                                    <p class="text-white font-semibold">Profissional</p>
+                                    <p class="text-gray-400 text-sm">2 profissionais inclusos (+R$50/extra)</p>
+                                </div>
+                            </div>
+                            <span class="text-green-400 font-bold">R$ 200/mês</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Valor Mensalidade -->
+                <div class="mb-6">
+                    <label class="block text-sm text-gray-400 mb-2">Valor da Mensalidade (R$)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">R$</span>
+                        <input type="text" id="planoValorInput"
+                               class="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white text-lg font-semibold focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                               placeholder="150.00">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Você pode ajustar o valor livremente</p>
+                </div>
+
+                <input type="hidden" id="planoSelecionado" value="">
+
+                <div class="flex gap-3">
+                    <button onclick="salvarPlano()" id="btnSalvarPlano"
+                            class="flex-1 bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition">
+                        <i class="fas fa-save mr-1"></i>Salvar
+                    </button>
+                    <button onclick="fecharModalPlano()" class="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-600 transition">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -466,13 +555,18 @@
 
             // Plano
             const planos = {
-                'individual': { nome: 'Individual', valor: 'R$ 150/mês', desc: '1 profissional incluso' },
-                'clinica': { nome: 'Consultório', valor: 'R$ 200/mês', desc: '2 profissionais inclusos' },
-                'profissional': { nome: 'Profissional', valor: 'R$ 200/mês', desc: '2 profissionais inclusos' }
+                'individual': { nome: 'Individual', desc: '1 profissional incluso' },
+                'clinica': { nome: 'Consultório', desc: '2 profissionais inclusos' },
+                'profissional': { nome: 'Profissional', desc: '2 profissionais inclusos' }
             };
-            const plano = planos[c.plano] || { nome: c.plano, valor: '-', desc: '-' };
+            const plano = planos[c.plano] || { nome: c.plano || 'Não definido', desc: '-' };
             document.getElementById('planoNome').textContent = plano.nome;
-            document.getElementById('planoValor').textContent = plano.valor;
+
+            // Mostrar valor real da mensalidade
+            const valorMensalidade = c.valor_mensalidade ? parseFloat(c.valor_mensalidade) : 0;
+            document.getElementById('planoValor').textContent = valorMensalidade > 0
+                ? `R$ ${valorMensalidade.toFixed(2).replace('.', ',')}/mês`
+                : '-';
             document.getElementById('planoDescricao').textContent = plano.desc;
 
             // Botão status
@@ -846,13 +940,117 @@
         }
 
         // Fechar modais ao clicar fora
-        ['modalMedico', 'modalUsuario', 'modalCredenciais', 'modalResultadoCredenciais'].forEach(id => {
+        ['modalMedico', 'modalUsuario', 'modalCredenciais', 'modalResultadoCredenciais', 'modalPlano'].forEach(id => {
             document.getElementById(id).addEventListener('click', function(e) {
                 if (e.target === this) {
                     this.classList.add('hidden');
                 }
             });
         });
+
+        // ========== Funções do Modal de Plano ==========
+        function abrirModalPlano() {
+            // Pré-selecionar plano atual
+            const planoAtual = clienteData.plano || 'individual';
+            selecionarPlanoModal(planoAtual);
+
+            // Preencher valor atual
+            const valorAtual = clienteData.valor_mensalidade || '150.00';
+            document.getElementById('planoValorInput').value = valorAtual;
+
+            document.getElementById('modalPlano').classList.remove('hidden');
+        }
+
+        function fecharModalPlano() {
+            document.getElementById('modalPlano').classList.add('hidden');
+        }
+
+        function selecionarPlanoModal(plano) {
+            document.getElementById('planoSelecionado').value = plano;
+
+            // Remover seleção de todos os cards
+            ['Individual', 'Clinica', 'Profissional'].forEach(p => {
+                const card = document.getElementById('planoCard' + p);
+                card.classList.remove('border-purple-500', 'bg-purple-900/20');
+                card.classList.add('border-gray-700');
+            });
+
+            // Aplicar seleção no card escolhido
+            const cardId = 'planoCard' + plano.charAt(0).toUpperCase() + plano.slice(1);
+            const cardSelecionado = document.getElementById(cardId);
+            cardSelecionado.classList.remove('border-gray-700');
+            cardSelecionado.classList.add('border-purple-500', 'bg-purple-900/20');
+
+            // Atualizar valor padrão baseado no plano
+            const valoresPadrao = {
+                'individual': '150.00',
+                'clinica': '200.00',
+                'profissional': '200.00'
+            };
+
+            // Só atualiza o valor se estiver vazio ou se for um valor padrão de outro plano
+            const inputValor = document.getElementById('planoValorInput');
+            const valorAtual = inputValor.value;
+            const valoresDefault = Object.values(valoresPadrao);
+            if (!valorAtual || valoresDefault.includes(valorAtual)) {
+                inputValor.value = valoresPadrao[plano];
+            }
+        }
+
+        async function salvarPlano() {
+            const plano = document.getElementById('planoSelecionado').value;
+            const valor = document.getElementById('planoValorInput').value.trim().replace(',', '.');
+
+            if (!plano) {
+                alert('Selecione um plano');
+                return;
+            }
+
+            if (!valor || isNaN(parseFloat(valor)) || parseFloat(valor) < 0) {
+                alert('Informe um valor válido');
+                return;
+            }
+
+            const btn = document.getElementById('btnSalvarPlano');
+            const btnOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loader" style="width:18px;height:18px;border-width:2px;display:inline-block;margin-right:8px;"></div>Salvando...';
+
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}/plano`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Host': 'admin.horariointeligente.com.br'
+                    },
+                    body: JSON.stringify({
+                        plano: plano,
+                        valor_mensalidade: parseFloat(valor).toFixed(2)
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail || 'Erro ao salvar plano');
+
+                // Atualizar dados locais
+                clienteData.plano = plano;
+                clienteData.valor_mensalidade = parseFloat(valor).toFixed(2);
+
+                // Re-renderizar a seção de plano
+                renderizarCliente();
+
+                fecharModalPlano();
+                alert('Plano atualizado com sucesso!');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert(error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = btnOriginal;
+            }
+        }
 
         // Carregar dados
         carregarCliente();
