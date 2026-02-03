@@ -1549,7 +1549,7 @@ Duvidas? Responda este email ou acesse horariointeligente.com.br
             <p>Clique no botao abaixo para preencher seus dados:</p>
 
             <p style="text-align: center;">
-                <a href="{url_convite}" class="button">
+                <a href="{url_convite}" style="display: inline-block; padding: 15px 30px; background: linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%); background-color: #3B82F6; color: #ffffff !important; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold;">
                     Iniciar Cadastro
                 </a>
             </p>
