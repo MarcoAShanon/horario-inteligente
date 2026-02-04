@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from typing import Optional, List
 from app.models.conversa import Conversa, StatusConversa
 from app.models.mensagem import Mensagem, DirecaoMensagem, RemetenteMensagem, TipoMensagem
+from app.models.paciente import Paciente
+from app.models.agendamento import Agendamento
 
 
 class ConversaService:
@@ -126,7 +128,8 @@ class ConversaService:
         db: Session,
         cliente_id: int,
         status: Optional[StatusConversa] = None,
-        limit: int = 50
+        limit: int = 50,
+        medico_id: Optional[int] = None
     ) -> List[Conversa]:
         """Lista conversas do cliente, ordenadas por última mensagem"""
         query = db.query(Conversa).filter(Conversa.cliente_id == cliente_id)
@@ -136,6 +139,17 @@ class ConversaService:
         else:
             # Por padrão, não mostra encerradas
             query = query.filter(Conversa.status != StatusConversa.ENCERRADA)
+
+        # Filtro por vínculo médico-paciente via agendamentos
+        if medico_id is not None:
+            paciente_phones = db.query(Paciente.telefone).join(
+                Agendamento, Agendamento.paciente_id == Paciente.id
+            ).filter(
+                Paciente.cliente_id == cliente_id,
+                Agendamento.medico_id == medico_id
+            ).distinct().subquery()
+
+            query = query.filter(Conversa.paciente_telefone.in_(paciente_phones))
 
         return query.order_by(desc(Conversa.ultima_mensagem_at)).limit(limit).all()
 

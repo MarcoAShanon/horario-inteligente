@@ -31,6 +31,7 @@ from app.services.conversa_service import ConversaService
 from app.models.conversa import Conversa, StatusConversa
 from app.models.mensagem import Mensagem, DirecaoMensagem, RemetenteMensagem, TipoMensagem
 from app.api.auth import get_current_user
+from app.utils.auth_middleware import get_medico_filter_dependency
 from app.services.websocket_manager import websocket_manager
 
 
@@ -107,7 +108,8 @@ async def listar_conversas(
     status: Optional[str] = None,
     limit: int = 50,
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    medico_filter: Optional[int] = Depends(get_medico_filter_dependency)
 ):
     """Lista todas as conversas do cliente (tenant)"""
     cliente_id = current_user["cliente_id"]
@@ -119,7 +121,7 @@ async def listar_conversas(
         except ValueError:
             pass
 
-    conversas = ConversaService.listar_conversas(db, cliente_id, status_enum, limit)
+    conversas = ConversaService.listar_conversas(db, cliente_id, status_enum, limit, medico_id=medico_filter)
 
     # Buscar nomes de pacientes para conversas sem paciente_nome
     telefones_sem_nome = [c.paciente_telefone for c in conversas if not c.paciente_nome]
