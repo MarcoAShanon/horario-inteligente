@@ -9,6 +9,7 @@ from datetime import datetime
 from app.services.status_update_service import status_update_service
 from app.services.lembrete_service import lembrete_service
 from app.services.billing_service import billing_service
+from app.services.conversa_service import ConversaService
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +70,17 @@ class ReminderScheduler:
                 misfire_grace_time=3600
             )
 
+            # Job para devolver conversas inativas (humano assumiu mas esqueceu de devolver)
+            self.scheduler.add_job(
+                self._run_devolver_conversas_inativas,
+                trigger=IntervalTrigger(minutes=5),
+                id='devolver_conversas_inativas',
+                name='Devolver conversas inativas para IA',
+                replace_existing=True,
+                max_instances=1,
+                misfire_grace_time=300
+            )
+
             # Iniciar o scheduler
             self.scheduler.start()
             self.is_running = True
@@ -77,6 +89,7 @@ class ReminderScheduler:
             logger.info("🔄 Atualização de status a cada 15 minutos")
             logger.info("🔔 Lembretes inteligentes a cada 10 minutos")
             logger.info("💰 Billing sync diário às 06:00")
+            logger.info("🔁 Devolução de conversas inativas a cada 5 minutos")
 
             # Executar atualização de status imediatamente (idempotente, sem risco de duplicação)
             asyncio.create_task(self._run_status_update())
@@ -227,6 +240,37 @@ class ReminderScheduler:
 
         except Exception as e:
             logger.error(f"❌ Erro ao executar billing sync: {str(e)}")
+
+    async def _run_devolver_conversas_inativas(self):
+        """
+        Devolve para a IA conversas assumidas por humanos que ficaram inativas por 30+ minutos.
+        Chamado automaticamente pelo scheduler a cada 5 minutos.
+        """
+        try:
+            start_time = datetime.now()
+            logger.info(f"🔁 Verificando conversas inativas - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+            from app.database import SessionLocal
+            db = SessionLocal()
+
+            try:
+                devolvidas = ConversaService.devolver_conversas_inativas(db)
+
+                end_time = datetime.now()
+                duration = (end_time - start_time).total_seconds()
+
+                if devolvidas > 0:
+                    logger.info(
+                        f"✅ {devolvidas} conversa(s) devolvida(s) para IA por inatividade "
+                        f"em {duration:.2f}s"
+                    )
+                else:
+                    logger.debug(f"🔁 Nenhuma conversa inativa encontrada ({duration:.2f}s)")
+            finally:
+                db.close()
+
+        except Exception as e:
+            logger.error(f"❌ Erro ao devolver conversas inativas: {str(e)}")
 
     def get_status(self):
         """

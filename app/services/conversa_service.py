@@ -7,7 +7,7 @@ Gerencia operações de CRUD e lógica de negócio para conversas e mensagens.
 
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List
 from app.models.conversa import Conversa, StatusConversa
 from app.models.mensagem import Mensagem, DirecaoMensagem, RemetenteMensagem, TipoMensagem
@@ -93,6 +93,7 @@ class ConversaService:
             conversa.status = StatusConversa.HUMANO_ASSUMIU
             conversa.atendente_id = atendente_id
             conversa.atendente_tipo = atendente_tipo
+            conversa.ultima_mensagem_at = datetime.utcnow()
             db.commit()
             db.refresh(conversa)
         return conversa
@@ -178,3 +179,37 @@ class ConversaService:
             Conversa.paciente_telefone == telefone,
             Conversa.status != StatusConversa.ENCERRADA
         ).first()
+
+    @staticmethod
+    def devolver_conversas_inativas(db: Session, timeout_minutos: int = 30) -> int:
+        """
+        Devolve para a IA conversas assumidas por humanos que estão inativas.
+
+        Conversas com status 'humano_assumiu' e sem mensagens há mais de
+        timeout_minutos são automaticamente devolvidas para a IA.
+
+        Args:
+            db: Sessão do banco de dados
+            timeout_minutos: Minutos de inatividade para considerar timeout (default: 30)
+
+        Returns:
+            Número de conversas devolvidas
+        """
+        limite = datetime.utcnow() - timedelta(minutes=timeout_minutos)
+
+        conversas_inativas = db.query(Conversa).filter(
+            Conversa.status == StatusConversa.HUMANO_ASSUMIU,
+            Conversa.ultima_mensagem_at < limite
+        ).with_for_update(skip_locked=True).all()
+
+        count = 0
+        for conversa in conversas_inativas:
+            conversa.status = StatusConversa.IA_ATIVA
+            conversa.atendente_id = None
+            conversa.atendente_tipo = None
+            count += 1
+
+        if count > 0:
+            db.commit()
+
+        return count
