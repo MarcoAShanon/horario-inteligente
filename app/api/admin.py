@@ -439,7 +439,8 @@ async def obter_cliente(
                     c.id, c.nome, c.subdomain, c.email, c.telefone,
                     c.plano, c.ativo, c.whatsapp_numero, c.whatsapp_instance,
                     c.criado_em, c.atualizado_em,
-                    COUNT(DISTINCT m.id) as total_medicos,
+                    COUNT(DISTINCT CASE WHEN m.is_secretaria = false THEN m.id END) as total_medicos,
+                    COUNT(DISTINCT CASE WHEN m.is_secretaria = true THEN m.id END) as total_secretarias,
                     COUNT(DISTINCT p.id) as total_pacientes,
                     COUNT(DISTINCT CASE WHEN a.status NOT IN ('cancelado', 'remarcado', 'faltou') THEN a.id END) as total_agendamentos,
                     c.credenciais_enviadas_em,
@@ -448,9 +449,10 @@ async def obter_cliente(
                     c.cnpj,
                     c.tipo_consultorio,
                     c.qtd_medicos_adicionais,
-                    c.necessita_secretaria
+                    c.necessita_secretaria,
+                    c.valor_mensalidade
                 FROM clientes c
-                LEFT JOIN medicos m ON m.cliente_id = c.id
+                LEFT JOIN medicos m ON m.cliente_id = c.id AND m.ativo = true
                 LEFT JOIN pacientes p ON p.cliente_id = c.id
                 LEFT JOIN agendamentos a ON a.paciente_id = p.id
                 WHERE c.id = :id
@@ -478,15 +480,17 @@ async def obter_cliente(
             "criado_em": result[9].isoformat() if result[9] else None,
             "atualizado_em": result[10].isoformat() if result[10] else None,
             "total_medicos": result[11],
-            "total_pacientes": result[12],
-            "total_agendamentos": result[13],
-            "credenciais_enviadas_em": result[14].isoformat() if result[14] else None,
-            "status": result[15],
-            "endereco": result[16],
-            "cnpj": result[17],
-            "tipo_consultorio": result[18],
-            "qtd_medicos_adicionais": result[19],
-            "necessita_secretaria": result[20],
+            "total_secretarias": result[12],
+            "total_pacientes": result[13],
+            "total_agendamentos": result[14],
+            "credenciais_enviadas_em": result[15].isoformat() if result[15] else None,
+            "status": result[16],
+            "endereco": result[17],
+            "cnpj": result[18],
+            "tipo_consultorio": result[19],
+            "qtd_medicos_adicionais": result[20],
+            "necessita_secretaria": result[21],
+            "valor_mensalidade": result[22],
             "url": f"https://{result[2]}.horariointeligente.com.br"
         }
 

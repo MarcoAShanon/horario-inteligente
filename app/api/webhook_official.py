@@ -873,18 +873,23 @@ def get_cliente_id_from_phone_number_id(phone_number_id: str, db: Session) -> in
     """
     Identifica o cliente pelo phone_number_id do WhatsApp.
     Este é o identificador único do número que RECEBEU a mensagem.
+    Busca na tabela configuracoes onde o Setup salva os dados de WhatsApp.
     """
+    from app.models.configuracao import Configuracao
     from app.models.cliente import Cliente
 
     if phone_number_id:
-        cliente = db.query(Cliente).filter(
-            Cliente.whatsapp_phone_number_id == phone_number_id,
-            Cliente.ativo == True
+        # Busca na tabela configuracoes (onde o Setup salva os dados)
+        config = db.query(Configuracao).filter(
+            Configuracao.whatsapp_phone_number_id == phone_number_id,
+            Configuracao.whatsapp_ativo == True
         ).first()
 
-        if cliente:
-            logger.info(f"[Multi-tenant] Cliente {cliente.id} ({cliente.nome}) identificado pelo phone_number_id {phone_number_id}")
-            return cliente.id
+        if config:
+            cliente = db.query(Cliente).filter(Cliente.id == config.cliente_id, Cliente.ativo == True).first()
+            if cliente:
+                logger.info(f"[Multi-tenant] Cliente {cliente.id} ({cliente.nome}) identificado pelo phone_number_id {phone_number_id}")
+                return cliente.id
 
     # Fallback para cliente padrão
     default_id = int(os.getenv("DEFAULT_CLIENTE_ID", "3"))

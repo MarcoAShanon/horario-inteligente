@@ -392,9 +392,17 @@ INFORMAÇÕES DA CLÍNICA:
         if endereco_clinica:
             prompt += f"Endereço: {endereco_clinica}\n"
 
+        # Calcular especialidades únicas
+        medicos = contexto_clinica.get('medicos', [])
+        especialidades_unicas = list(set(m['especialidade'] for m in medicos))
+        quantidade_especialidades = len(especialidades_unicas)
+        quantidade_medicos = len(medicos)
+
+        prompt += f"📋 RESUMO: {quantidade_especialidades} especialidade(s), {quantidade_medicos} profissional(is)\n"
+        prompt += f"Especialidades: {', '.join(especialidades_unicas)}\n\n"
         prompt += "Médicos disponíveis:\n"
 
-        for medico in contexto_clinica.get('medicos', []):
+        for medico in medicos:
             prompt += f"- [ID: {medico['id']}] {medico['nome']} ({medico['especialidade']}) - CRM: {medico['crm']}\n"
             prompt += f"  Convênios: {', '.join(medico['convenios'])}\n"
             valor_particular = medico.get('valor_particular', 150.00)
@@ -415,10 +423,9 @@ INFORMAÇÕES DA CLÍNICA:
 
         # Adicionar informação sobre médico único ou múltiplos
         medico_unico = contexto_clinica.get('medico_unico', False)
-        quantidade_medicos = contexto_clinica.get('quantidade_medicos', 0)
 
         if medico_unico and quantidade_medicos == 1:
-            medico = contexto_clinica.get('medicos', [{}])[0]
+            medico = medicos[0] if medicos else {}
             prompt += f"""
 🏥 CLÍNICA COM MÉDICO ÚNICO:
 Esta clínica possui apenas 1 médico: {medico.get('nome', '')} ({medico.get('especialidade', '')})
@@ -428,8 +435,13 @@ Esta clínica possui apenas 1 médico: {medico.get('nome', '')} ({medico.get('es
 """
         else:
             prompt += f"""
-🏥 CLÍNICA COM MÚLTIPLOS MÉDICOS ({quantidade_medicos}):
-➡️ Pergunte para qual especialidade ou médico o paciente deseja agendar
+🏥 CLÍNICA COM MÚLTIPLOS PROFISSIONAIS:
+- Total de especialidades: {quantidade_especialidades}
+- Total de profissionais: {quantidade_medicos}
+⚠️ ATENÇÃO: Diga "{quantidade_especialidades} especialidades" (não {quantidade_medicos}). Exemplo correto:
+   "Temos {quantidade_especialidades} especialidades: {', '.join(especialidades_unicas)}"
+➡️ Pergunte para qual especialidade o paciente deseja agendar
+➡️ Se houver mais de um médico na mesma especialidade, pergunte qual médico prefere
 ➡️ Só defina medico_id após o paciente escolher
 """
 

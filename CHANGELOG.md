@@ -1,5 +1,51 @@
 # Changelog - Horário Inteligente SaaS
 
+## [3.8.0] - 2026-02-03
+
+### 🐛 Correções
+
+- **Multi-tenant WhatsApp**: Corrigida função `get_cliente_id_from_phone_number_id` para buscar na tabela `configuracoes` em vez de `clientes`
+  - Arquivo: `app/api/webhook_official.py`
+  - Problema: Sistema não identificava corretamente o cliente pelo Phone Number ID
+  - Solução: Busca agora na tabela `configuracoes` onde o Setup salva os dados de WhatsApp
+
+- **Contagem de Profissionais**: Separada contagem de médicos e secretárias
+  - Arquivo: `app/api/admin.py`
+  - Agora retorna `total_medicos` (apenas médicos) e `total_secretarias` separadamente
+  - Secretárias não são mais contadas como profissionais para cobrança
+
+- **IA - Especialidades vs Especialistas**: Corrigido prompt para diferenciar quantidade de especialidades da quantidade de profissionais
+  - Arquivo: `app/services/anthropic_service.py`
+  - Problema: IA dizia "3 especialidades" quando eram 2 especialidades e 3 profissionais
+  - Solução: Prompt agora inclui contagem correta e instrução explícita
+
+### 🆕 Adicionado
+
+- **valor_mensalidade no endpoint de detalhes**: Campo agora retornado em `GET /api/admin/clientes/{id}`
+
+- **Endpoint de profissionais para credenciais**: `GET /api/admin/clientes/{id}/profissionais-credenciais`
+  - Lista profissionais elegíveis para receber credenciais
+  - Retorna: id, nome, email, tipo (Admin/Médico/Secretária)
+
+- **Modal de seleção de destinatários**: Novo modal no painel admin para escolher quem recebe credenciais
+  - Arquivo: `static/admin/clientes-detalhes.html`
+  - Checkboxes para selecionar profissionais individualmente
+  - Opção "Selecionar todos"
+  - Evita enviar credenciais para quem não solicitou
+
+- **Campo editável de profissionais no plano**: Modal de editar plano agora permite ajustar quantidade de profissionais para cobrança
+  - Mostra "Médicos cadastrados" (informativo)
+  - Campo editável "Profissionais para cobrança"
+  - Cálculo de valor atualiza automaticamente
+
+### 🔧 Melhorias
+
+- **Endpoint enviar-credenciais**: Agora aceita lista opcional de `profissional_ids`
+  - Se fornecido, envia apenas para os selecionados
+  - Se não fornecido, envia para todos (comportamento anterior)
+
+---
+
 ## [3.7.0] - 2026-01-26
 
 ### 🆕 Adicionado

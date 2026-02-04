@@ -1295,15 +1295,62 @@ async def listar_usuarios_cliente(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/clientes/{cliente_id}/enviar-credenciais")
-async def enviar_credenciais(
+class EnviarCredenciaisRequest(BaseModel):
+    """Request para enviar credenciais - permite selecionar destinatários"""
+    profissional_ids: Optional[List[int]] = None  # Se None, envia para todos
+
+
+@router.get("/clientes/{cliente_id}/profissionais-credenciais")
+async def listar_profissionais_para_credenciais(
     cliente_id: int,
     admin = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
+    """Lista profissionais elegíveis para receber credenciais"""
+    try:
+        profissionais = db.execute(
+            text("""
+                SELECT id, nome, email, is_secretaria, especialidade, is_admin
+                FROM medicos
+                WHERE cliente_id = :cliente_id
+                  AND ativo = true
+                  AND email IS NOT NULL
+                  AND pode_fazer_login = true
+                ORDER BY is_admin DESC, is_secretaria ASC, nome
+            """),
+            {"cliente_id": cliente_id}
+        ).fetchall()
+
+        return {
+            "profissionais": [
+                {
+                    "id": p[0],
+                    "nome": p[1],
+                    "email": p[2],
+                    "is_secretaria": p[3],
+                    "especialidade": p[4],
+                    "is_admin": p[5],
+                    "tipo": "Secretária" if p[3] else ("Admin" if p[5] else "Médico(a)")
+                }
+                for p in profissionais
+            ]
+        }
+    except Exception as e:
+        logger.error(f"[Admin] Erro ao listar profissionais: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/clientes/{cliente_id}/enviar-credenciais")
+async def enviar_credenciais(
+    cliente_id: int,
+    dados: Optional[EnviarCredenciaisRequest] = None,
+    admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
     """
-    Gera novas senhas temporárias e envia credenciais de acesso
-    por email a todos os profissionais ativos do cliente.
+    Gera novas senhas temporárias e envia credenciais de acesso.
+    Se profissional_ids for fornecido, envia apenas para os selecionados.
+    Se não for fornecido, envia para todos os profissionais ativos.
     """
     try:
         # 1. Validar cliente existe, status ativo e ativo=true
@@ -1326,22 +1373,42 @@ async def enviar_credenciais(
         login_url = f"https://{subdomain}.horariointeligente.com.br/static/login.html"
 
         # 2. Buscar profissionais ativos com email
-        profissionais = db.execute(
-            text("""
-                SELECT id, nome, email, is_secretaria
-                FROM medicos
-                WHERE cliente_id = :cliente_id
-                  AND ativo = true
-                  AND email IS NOT NULL
-                  AND pode_fazer_login = true
-            """),
-            {"cliente_id": cliente_id}
-        ).fetchall()
+        if dados and dados.profissional_ids:
+            # Buscar apenas os selecionados
+            placeholders = ','.join([f':id_{i}' for i in range(len(dados.profissional_ids))])
+            params = {"cliente_id": cliente_id}
+            params.update({f"id_{i}": pid for i, pid in enumerate(dados.profissional_ids)})
+
+            profissionais = db.execute(
+                text(f"""
+                    SELECT id, nome, email, is_secretaria
+                    FROM medicos
+                    WHERE cliente_id = :cliente_id
+                      AND id IN ({placeholders})
+                      AND ativo = true
+                      AND email IS NOT NULL
+                      AND pode_fazer_login = true
+                """),
+                params
+            ).fetchall()
+        else:
+            # Buscar todos
+            profissionais = db.execute(
+                text("""
+                    SELECT id, nome, email, is_secretaria
+                    FROM medicos
+                    WHERE cliente_id = :cliente_id
+                      AND ativo = true
+                      AND email IS NOT NULL
+                      AND pode_fazer_login = true
+                """),
+                {"cliente_id": cliente_id}
+            ).fetchall()
 
         if not profissionais:
             raise HTTPException(
                 status_code=400,
-                detail="Nenhum profissional ativo com email encontrado"
+                detail="Nenhum profissional selecionado ou elegível encontrado"
             )
 
         # 3. Gerar novas senhas e atualizar no banco

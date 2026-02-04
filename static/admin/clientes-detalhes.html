@@ -385,6 +385,47 @@
         </div>
     </div>
 
+    <!-- Modal Selecionar Destinatários -->
+    <div id="modalSelecionarDestinatarios" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-md">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-white mb-4">
+                    <i class="fas fa-paper-plane mr-2 text-blue-400"></i>Enviar Credenciais
+                </h3>
+                <p class="text-gray-400 text-sm mb-4">Selecione quem deve receber as credenciais de acesso:</p>
+
+                <div class="mb-4">
+                    <label class="flex items-center gap-2 text-gray-300 text-sm mb-2 cursor-pointer">
+                        <input type="checkbox" id="checkTodos" onchange="toggleTodosDestinatarios()"
+                               class="w-4 h-4 bg-gray-800 border-gray-700 rounded text-blue-500">
+                        <span class="font-medium">Selecionar todos</span>
+                    </label>
+                </div>
+
+                <div id="listaDestinatarios" class="space-y-2 max-h-64 overflow-y-auto mb-4">
+                    <!-- Preenchido via JS -->
+                </div>
+
+                <div class="bg-yellow-900/30 border border-yellow-700 rounded-lg p-3 mb-4">
+                    <p class="text-yellow-300 text-xs">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        Isso vai gerar novas senhas temporarias para os selecionados.
+                    </p>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="confirmarEnvioCredenciais()" id="btnConfirmarEnvio"
+                            class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-paper-plane mr-1"></i>Enviar
+                    </button>
+                    <button onclick="fecharModalSelecionarDestinatarios()" class="flex-1 bg-gray-700 text-white py-2 rounded-lg hover:bg-gray-600 transition">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Editar Plano -->
     <div id="modalPlano" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -394,12 +435,24 @@
                 </h3>
 
                 <!-- Info do Cliente -->
-                <div class="bg-gray-800/50 rounded-lg p-3 mb-4 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-user-md text-purple-400"></i>
-                        <span class="text-gray-300 text-sm">Profissionais ativos:</span>
+                <div class="bg-gray-800/50 rounded-lg p-3 mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-user-md text-purple-400"></i>
+                            <span class="text-gray-300 text-sm">Medicos cadastrados:</span>
+                        </div>
+                        <span class="text-gray-400 text-sm" id="modalMedicosCadastrados">0</span>
                     </div>
-                    <span class="text-white font-bold text-lg" id="modalTotalProfissionais">0</span>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-calculator text-blue-400"></i>
+                            <span class="text-gray-300 text-sm">Profissionais para cobranca:</span>
+                        </div>
+                        <input type="number" id="modalTotalProfissionais" min="1" max="20"
+                               class="w-16 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-center font-bold focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                               onchange="calcularValorPlano()">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Ajuste se necessario (secretarias nao contam)</p>
                 </div>
 
                 <!-- Cards de Plano -->
@@ -585,7 +638,10 @@
             statusBadge.className = `px-3 py-1 rounded-full text-sm font-medium ${c.ativo ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`;
 
             // Stats
-            document.getElementById('statMedicos').textContent = c.total_medicos || 0;
+            const totalMedicos = c.total_medicos || 0;
+            const totalSecretarias = c.total_secretarias || 0;
+            document.getElementById('statMedicos').textContent = totalMedicos;
+            document.getElementById('statMedicos').title = totalSecretarias > 0 ? `+ ${totalSecretarias} secretária(s)` : '';
             document.getElementById('statPacientes').textContent = c.total_pacientes || 0;
             document.getElementById('statAgendamentos').textContent = c.total_agendamentos || 0;
             document.getElementById('statCriado').textContent = c.criado_em ? new Date(c.criado_em).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : '-';
@@ -817,25 +873,82 @@
             }
         }
 
-        async function enviarCredenciais() {
-            if (!confirm('Isso vai gerar novas senhas temporárias e enviar por email a todos os profissionais ativos. Deseja continuar?')) return;
+        let profissionaisParaCredenciais = [];
 
-            const container = document.getElementById('credenciaisButtonContainer');
-            const btnOriginal = container.innerHTML;
-            container.innerHTML = `
-                <button disabled class="w-full bg-gray-600 text-white py-2 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed">
-                    <div class="loader" style="width:18px;height:18px;border-width:2px;"></div>
-                    <span>Enviando...</span>
-                </button>
-            `;
+        async function enviarCredenciais() {
+            // Carregar lista de profissionais elegíveis
+            try {
+                const response = await fetch(`/api/admin/clientes/${clienteId}/profissionais-credenciais`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Host': 'admin.horariointeligente.com.br'
+                    }
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.detail || 'Erro ao carregar profissionais');
+
+                profissionaisParaCredenciais = data.profissionais;
+
+                if (profissionaisParaCredenciais.length === 0) {
+                    alert('Nenhum profissional elegível para receber credenciais.');
+                    return;
+                }
+
+                // Renderizar lista no modal
+                const lista = document.getElementById('listaDestinatarios');
+                lista.innerHTML = profissionaisParaCredenciais.map(p => `
+                    <label class="flex items-center gap-3 bg-gray-800 rounded-lg p-3 cursor-pointer hover:bg-gray-700 transition">
+                        <input type="checkbox" class="checkDestinatario w-4 h-4 bg-gray-700 border-gray-600 rounded text-blue-500"
+                               value="${p.id}" checked>
+                        <div class="flex-1">
+                            <p class="text-white text-sm font-medium">${escapeHtml(p.nome)}</p>
+                            <p class="text-gray-400 text-xs">${escapeHtml(p.email)} - ${escapeHtml(p.tipo)}</p>
+                        </div>
+                        ${p.is_admin ? '<span class="px-2 py-1 bg-yellow-900/50 text-yellow-300 text-xs rounded">Admin</span>' : ''}
+                    </label>
+                `).join('');
+
+                document.getElementById('checkTodos').checked = true;
+                document.getElementById('modalSelecionarDestinatarios').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert(error.message);
+            }
+        }
+
+        function toggleTodosDestinatarios() {
+            const checkTodos = document.getElementById('checkTodos').checked;
+            document.querySelectorAll('.checkDestinatario').forEach(cb => cb.checked = checkTodos);
+        }
+
+        function fecharModalSelecionarDestinatarios() {
+            document.getElementById('modalSelecionarDestinatarios').classList.add('hidden');
+        }
+
+        async function confirmarEnvioCredenciais() {
+            const selecionados = Array.from(document.querySelectorAll('.checkDestinatario:checked')).map(cb => parseInt(cb.value));
+
+            if (selecionados.length === 0) {
+                alert('Selecione pelo menos um destinatário.');
+                return;
+            }
+
+            const btn = document.getElementById('btnConfirmarEnvio');
+            const btnOriginal = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loader" style="width:18px;height:18px;border-width:2px;display:inline-block;margin-right:8px;"></div>Enviando...';
 
             try {
                 const response = await fetch(`/api/admin/clientes/${clienteId}/enviar-credenciais`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
                         'Host': 'admin.horariointeligente.com.br'
-                    }
+                    },
+                    body: JSON.stringify({ profissional_ids: selecionados })
                 });
 
                 const result = await response.json();
@@ -845,13 +958,16 @@
                 clienteData.credenciais_enviadas_em = result.credenciais_enviadas_em;
                 renderizarCredenciaisButton();
 
-                // Mostrar modal resultado
+                // Fechar modal de seleção e mostrar resultado
+                fecharModalSelecionarDestinatarios();
                 mostrarResultadoCredenciais(result);
 
             } catch (error) {
                 console.error('Erro:', error);
                 alert(error.message);
-                container.innerHTML = btnOriginal;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = btnOriginal;
             }
         }
 
@@ -995,7 +1111,7 @@
         }
 
         // Fechar modais ao clicar fora
-        ['modalMedico', 'modalUsuario', 'modalCredenciais', 'modalResultadoCredenciais', 'modalPlano'].forEach(id => {
+        ['modalMedico', 'modalUsuario', 'modalCredenciais', 'modalResultadoCredenciais', 'modalPlano', 'modalSelecionarDestinatarios'].forEach(id => {
             document.getElementById(id).addEventListener('click', function(e) {
                 if (e.target === this) {
                     this.classList.add('hidden');
@@ -1004,12 +1120,14 @@
         });
 
         // ========== Funções do Modal de Plano ==========
-        let totalProfissionaisCliente = 0;
 
         function abrirModalPlano() {
-            // Obter total de profissionais do cliente
-            totalProfissionaisCliente = clienteData.total_medicos || 1;
-            document.getElementById('modalTotalProfissionais').textContent = totalProfissionaisCliente;
+            // Obter total de médicos cadastrados (sem secretárias)
+            const medicosCadastrados = clienteData.total_medicos || 0;
+            document.getElementById('modalMedicosCadastrados').textContent = medicosCadastrados;
+
+            // Definir profissionais para cobrança (editável)
+            document.getElementById('modalTotalProfissionais').value = medicosCadastrados || 1;
 
             // Pré-selecionar plano atual
             const planoAtual = clienteData.plano || 'individual';
@@ -1058,6 +1176,7 @@
         function calcularValorPlano() {
             const plano = document.getElementById('planoSelecionado').value || 'individual';
             const linhaDedicada = document.getElementById('planoLinhaDedicada').checked;
+            const totalProfissionais = parseInt(document.getElementById('modalTotalProfissionais').value) || 1;
 
             // Valores base e profissionais inclusos por plano
             const planosConfig = {
@@ -1071,7 +1190,7 @@
             const profissionaisInclusos = config.inclusos;
 
             // Calcular extras
-            const profissionaisExtras = Math.max(0, totalProfissionaisCliente - profissionaisInclusos);
+            const profissionaisExtras = Math.max(0, totalProfissionais - profissionaisInclusos);
             const valorExtras = profissionaisExtras * 50;
             const valorLinha = linhaDedicada ? 40 : 0;
             const valorTotal = valorBase + valorExtras + valorLinha;
