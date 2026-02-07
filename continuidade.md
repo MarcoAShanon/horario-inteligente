@@ -4,8 +4,8 @@
 Sistema de agendamento médico multi-tenant (SaaS) chamado **Horário Inteligente**.
 
 - **Stack**: FastAPI (Python) + PostgreSQL + HTML/JS (Tailwind CSS)
-- **Serviço**: `horariointeligente.service` (systemd)
-- **Porta**: 8000
+- **Serviço**: `horariointeligente.service` (systemd, user `horariointeligente`, 4 workers)
+- **Porta**: 8000 (bind 127.0.0.1, atrás de Nginx)
 - **Diretório**: `/root/sistema_agendamento`
 
 ---
@@ -16,22 +16,55 @@ Sistema de agendamento médico multi-tenant (SaaS) chamado **Horário Inteligent
 /root/sistema_agendamento/
 ├── app/
 │   ├── api/
-│   │   ├── agendamentos.py    # CRUD de agendamentos, listagem de médicos
-│   │   ├── dashboard.py       # Métricas e dados financeiros
-│   │   ├── auth.py            # Autenticação
-│   │   ├── medico_config.py   # Configurações do médico (horários, convênios)
-│   │   └── ...
+│   │   ├── agendamentos.py       # CRUD de agendamentos, listagem de médicos
+│   │   ├── conversas.py           # API REST conversas WhatsApp
+│   │   ├── dashboard.py           # Métricas e dados financeiros
+│   │   ├── auth.py                # Autenticação (login unificado, JWT)
+│   │   ├── medico_config.py       # Configurações do médico
+│   │   ├── admin.py               # Painel admin
+│   │   ├── admin_clientes.py      # CRUD clientes + aprovação/rejeição
+│   │   ├── admin_convites.py      # Gestão de convites (admin)
+│   │   ├── cliente_registro.py    # API pública de registro via convite
+│   │   ├── ativacao.py            # API pública de ativação de conta
+│   │   ├── parceiro_auth.py       # Portal do parceiro (login, dashboard, convites)
+│   │   ├── webhook_official.py    # Webhook WhatsApp API Oficial Meta (router + endpoints de teste)
+│   │   └── websocket.py           # WebSocket para conversas em tempo real
+│   ├── models/                    # SQLAlchemy models
+│   ├── services/
+│   │   ├── webhook/               # Pacote de processamento do webhook WhatsApp
+│   │   │   ├── message_processor.py   # Pipeline principal (process_message)
+│   │   │   ├── tenant_resolver.py     # Resolução multi-tenant por phone_number_id
+│   │   │   ├── agendamento_ia.py      # Criação de agendamentos via IA
+│   │   │   └── audio_handler.py       # Transcrição Whisper + resposta TTS
+│   │   ├── anthropic_service.py   # IA conversacional (Claude)
+│   │   ├── conversa_service.py    # Lógica de negócio de conversas
+│   │   ├── lembrete_service.py    # Lembretes inteligentes (24h, 2h)
+│   │   ├── button_handler_service.py # Respostas a botões de templates WhatsApp
+│   │   ├── whatsapp_official_service.py # Envio via API Oficial Meta
+│   │   ├── onboarding_service.py  # Helpers de onboarding (subdomain, senha, billing)
+│   │   ├── crypto_service.py      # Criptografia PII (Fernet/LGPD)
+│   │   └── websocket_manager.py   # Broadcast WebSocket por tenant
+│   ├── middleware/
+│   │   ├── tenant_middleware.py    # Multi-tenant por subdomain
+│   │   └── billing_middleware.py   # Bloqueio de inadimplentes
+│   ├── utils/
+│   │   └── auth_middleware.py      # Controle de acesso médico/secretária
 │   ├── database.py
 │   └── main.py
 ├── static/
 │   ├── calendario-unificado.html  # Tela principal de agendamentos
+│   ├── conversas.html             # Painel de conversas WhatsApp
 │   ├── dashboard.html             # Painel com métricas e financeiro
-│   ├── js/components/
-│   │   ├── top-nav.js             # Navegação desktop (HiTopNav)
-│   │   ├── nav-init.js            # Inicializador unificado (HiNavInit)
-│   │   ├── bottom-nav.js          # Navegação mobile (HiBottomNav)
-│   │   └── ...
-│   └── ...
+│   ├── configuracoes.html         # Configurações do médico
+│   ├── perfil.html                # Perfil do usuário
+│   ├── registro-cliente.html      # Formulário público de registro via convite
+│   ├── ativar-conta.html          # Aceite de termos de uso
+│   ├── admin/                     # Páginas do painel admin
+│   ├── parceiro/                  # Páginas do portal do parceiro
+│   └── js/components/
+│       ├── top-nav.js             # HiTopNav — navegação desktop
+│       ├── nav-init.js            # HiNavInit — inicializador unificado
+│       └── bottom-nav.js          # HiBottomNav — navegação mobile
 └── venv/
 ```
 
@@ -39,48 +72,53 @@ Sistema de agendamento médico multi-tenant (SaaS) chamado **Horário Inteligent
 
 ## Banco de Dados (PostgreSQL)
 
-**Conexão**: `PGPASSWORD=postgres psql -h localhost -U postgres -d agendamento_saas`
+**Conexão**: `PGPASSWORD=<ver .env> psql -h localhost -U postgres -d agendamento_saas`
 
 ### Tabelas Principais
-- `medicos` - Cadastro de médicos (inclui secretárias com `is_secretaria=true`)
-  - `convenios_aceitos` (JSONB) - Array de convênios: `[{"nome": "Amil", "valor": 100.00, "codigo": "amil"}, ...]`
-- `pacientes` - Cadastro de pacientes
-- `agendamentos` - Agendamentos com campos:
-  - `forma_pagamento` (VARCHAR) - 'particular' ou 'convenio_0', 'convenio_1', etc. (índice do array de convênios)
-  - `valor_consulta` (VARCHAR) - Valor da consulta
-  - `status` - 'confirmado', 'realizado', 'cancelado', 'faltou', etc.
-  - `data_hora` (TIMESTAMP WITH TIME ZONE) - Armazenado em UTC
-- `lembretes` - Lembretes de agendamentos (FK para agendamentos)
-- `clientes` - Tenants do sistema (multi-tenant)
+- `clientes` — Tenants do sistema (multi-tenant). Status: `pendente_aprovacao`, `pendente_aceite`, `ativo`, `rejeitado`, `aguardando_pagamento`, `suspenso`, `cancelado`
+- `medicos` — Médicos e secretárias (`is_secretaria=true`). Campo `convenios_aceitos` (JSONB): `[{"nome": "Amil", "valor": 100.00, "codigo": "amil"}, ...]`
+- `pacientes` — Cadastro de pacientes. CPF criptografado (Fernet/LGPD)
+- `agendamentos` — `forma_pagamento` ('particular' ou 'convenio_0', etc.), `valor_consulta`, `status` (agendado/confirmado/realizado/cancelado/faltou/remarcado), `data_hora` (TIMESTAMP WITH TIME ZONE em BRT)
+- `conversas` — Conversas WhatsApp por tenant. Status: `ia_ativa`, `humano_assumiu`, `encerrada`
+- `mensagens` — Mensagens de cada conversa. Remetente: `PACIENTE`, `IA`, `ATENDENTE`, `SISTEMA`
+- `lembretes` — Lembretes de agendamentos (UNIQUE constraint em `agendamento_id, tipo`)
+- `convites_clientes` — Convites de cadastro (admin ou parceiro)
+- `historico_aceites` — Registro de aceites de termos (LGPD)
 
 ---
 
-## APIs Principais
+## Observações Técnicas
 
-### Agendamentos
-- `POST /api/agendamentos` - Criar agendamento
-- `GET /api/agendamentos/{id}` - Detalhes do agendamento
-- `GET /api/medicos` - Lista médicos (retorna `convenios_aceitos`)
-- `GET /api/horarios-disponiveis` - Horários disponíveis
+### Fuso Horário
+- **Banco de dados**: `America/Sao_Paulo` (BRT, UTC-3)
+- **Código Python**: Usar `now_brazil()` de `app.utils.timezone_helper` (nunca `datetime.now()` ou `datetime.utcnow()`)
+- **Exibição**: `converter_para_brasil(dt)` em `app/api/conversas.py`
 
-### Dashboard
-- `GET /api/dashboard/metricas?periodo=mes_atual` - Métricas gerais (inclui horários populares em BRT)
-- `GET /api/dashboard/financeiro?periodo=mes_atual` - Dados financeiros (faturamento, breakdown por tipo/convênio)
-- `GET /api/dashboard/financeiro/resumo?mes=1&ano=2026` - Previsto vs Realizado
+### Forma de Pagamento
+- `'particular'` → Consulta particular (valor de `medico.valor_consulta_particular`)
+- `'convenio_0'`, `'convenio_1'`, etc. → Índice no array `convenios_aceitos` do médico
+- Para obter o nome: `medicos.convenios_aceitos[índice].nome`
 
----
+### Controle de Acesso (Médico vs Secretária)
+- `app/utils/auth_middleware.py` → `get_medico_filter_dependency()`: retorna `None` (secretária, vê tudo) ou `medico_id` (médico, vê só seus dados)
+- Usado em: `/agendamentos/calendario`, `/api/conversas`
+- Ambos os tipos vêm da tabela `medicos` (secretária tem `is_secretaria=true`)
 
-## Fluxo de Agendamento
+### Navegação Unificada
+- **Desktop (>= 1024px)**: `HiTopNav` — barra superior sticky, 56px
+- **Mobile (< 1024px)**: `HiBottomNav` — barra inferior fixa com FAB central
+- **Inicialização**: `HiNavInit.init({ activeId: 'pagina' })` — configura ambas automaticamente
+- **Perfis**: Itens de menu variam por perfil (médico vs secretária)
 
-1. Frontend (`calendario-unificado.html`) envia:
-   - `paciente_nome`, `paciente_telefone`, `medico_id`, `data`, `hora`
-   - `forma_pagamento` ('particular' ou 'convenio_X')
-   - `valor_consulta` (obtido do dropdown de convênios)
+### Onboarding / Ativação
+- **Token ativação**: `secrets.token_urlsafe(64)`, expiração 7 dias
+- **Versões termos**: `VERSAO_TERMOS = "1.1"`, `VERSAO_PRIVACIDADE = "1.1"` (em `app/api/ativacao.py`)
+- **Convites**: `secrets.token_urlsafe(48)`, expiração 30 dias
 
-2. Backend (`agendamentos.py`):
-   - Cria/busca paciente
-   - Insere agendamento com `forma_pagamento` e `valor_consulta`
-   - Cria lembretes automáticos
+### Scheduler (Lembretes)
+- Apenas 1 worker executa o scheduler (file lock em `/tmp/horariointeligente_scheduler.lock`)
+- Job único: `lembretes_inteligentes` (API Oficial Meta) a cada 10 minutos
+- Locking por registro: `.with_for_update(skip_locked=True)`
 
 ---
 
@@ -112,1514 +150,294 @@ systemctl status horariointeligente.service
 # Logs em tempo real
 journalctl -u horariointeligente.service -f
 
-# Acessar banco
-PGPASSWORD=postgres psql -h localhost -U postgres -d agendamento_saas
-
 # Ativar venv
 source /root/sistema_agendamento/venv/bin/activate
 ```
 
 ---
 
-## Correções Realizadas (Sessão 27/01/2026)
+## Histórico Consolidado de Correções (27-29/01/2026)
 
-### 1. Salvar forma_pagamento no agendamento
-- **Problema**: Campo `forma_pagamento` não estava sendo salvo no INSERT
-- **Solução**: Adicionado campo no INSERT em `agendamentos.py:187-203`
-- **Coluna criada**: `ALTER TABLE agendamentos ADD COLUMN forma_pagamento VARCHAR(50)`
+Itens #1 a #41 — todos resolvidos. Resumo por área:
 
-### 2. Modal de detalhes - Exibir forma de pagamento
-- **Arquivo**: `static/calendario-unificado.html`
-- **Seção adicionada**: Bloco "Pagamento" no modal de detalhes
-- **Lógica**: Busca nome do convênio do array `medicosData` baseado no índice
+### IA Conversacional (anthropic_service.py)
+| # | Correção |
+|---|----------|
+| 12 | IA consulta horários reais do médico (não mais hardcoded 8h-17h) |
+| 13 | Verificação de conflito de horário antes de agendar |
+| 17 | ID real do médico no prompt (`[ID: X]`) |
+| 18 | Médico único: pula pergunta de especialidade |
+| 20 | Detecção de "hoje", "amanhã" com timezone correto |
+| 25 | 13h reconhecido como disponível (não confundir com almoço) |
+| 26 | Lembrete adaptativo (24h vs 2h) na confirmação |
+| 27 | "INDISPONÍVEL" ao invés de "OCUPADO (JÁ TEM PACIENTE)" |
+| 30 | Filtrar horários passados para hoje (margem de 30min) |
+| 32 | Motivo da consulta no fluxo de agendamento |
+| 33 | Lembrete de trazer exames na confirmação |
+| 34 | Detecção paciente novo vs retorno |
+| 37 | Não mencionar lembrete 24h ao confirmar presença |
+| 38 | "Médico não atende nesse dia" vs "agenda lotada" |
+| 41 | Parser de datas curtas (DD/MM, D/M) |
 
-### 3. API Financeiro para Dashboard
-- **Problema**: Endpoint `/api/dashboard/financeiro` não existia
-- **Solução**: Criado endpoint em `dashboard.py` que retorna:
-  - `faturamento_total`, `total_atendimentos`
-  - `particular` e `convenio` (valor e quantidade)
-  - `por_convenio` (lista para gráficos com nome real do convênio)
+### Calendário e Dashboard
+| # | Correção |
+|---|----------|
+| 1 | `forma_pagamento` salvo no INSERT de agendamentos |
+| 2 | Modal de detalhes exibe forma de pagamento |
+| 3 | Endpoint `/api/dashboard/financeiro` criado |
+| 5-6 | Gráficos financeiros renderizando com previsto + realizado |
+| 7 | Nome dos convênios nos gráficos (extraído do JSON do médico) |
+| 8 | Horários populares com fuso BRT (não UTC) |
+| 11 | Indicação visual de horários indisponíveis no calendário |
+| 21 | Dashboard exclui remarcados/cancelados/faltou |
+| 28-29 | Convênio salva `forma_pagamento` corretamente via IA |
+| 39 | Modal de cancelamento com motivos + notificação WhatsApp |
+| 40 | Horários desaparecem ao trocar data no reagendamento |
 
-### 4. API de Médicos - Retornar convênios
-- **Problema**: `/api/medicos` não retornava `convenios_aceitos`
-- **Solução**: Adicionado campo no SELECT e retorno em `agendamentos.py:358-380`
+### Conversas WhatsApp e WebSocket
+| # | Correção |
+|---|----------|
+| 14 | Cache Redis limpo ao deletar conversa |
+| 16 | Lista de conversas atualiza em tempo real (WebSocket) |
+| 31 | Chat do painel com horário BRT (não UTC) |
 
-### 5. Gráficos do Dashboard Financeiro não exibidos
-- **Problema**: Gráfico "Distribuição por Tipo" (pizza) e "Detalhamento" não apareciam
-- **Causa**: Função `renderizarBreakdown()` fazia `return` antes de chamar `renderizarGraficoFinanceiro()`
-- **Solução**:
-  - Movido a chamada do gráfico para antes da verificação de dados vazios
-  - Adicionada mensagem "Sem dados para exibir" quando não há dados
-- **Arquivo**: `static/dashboard.html:568-668`
-
-### 6. Gráficos Financeiros - Incluir Previsto + Realizado
-- **Problema**: Gráficos mostravam apenas agendamentos realizados
-- **Solução**: API agora inclui todos os status válidos
-- **Incluídos**: `realizado`, `realizada`, `concluido`, `concluida`, `confirmado`, `confirmada`, `agendado`, `agendada`, `pendente`
-- **Excluídos**: `cancelado`, `cancelada`, `faltou`
-- **Arquivo**: `app/api/dashboard.py:559-666`
-
-### 7. Nome dos convênios não aparecia nos gráficos
-- **Problema**: Todos os agendamentos apareciam como "Particular"
-- **Causa**: Query usava `p.convenio` (paciente), mas o nome está em `medicos.convenios_aceitos` (JSON)
-- **Solução**: Query extrai o nome do convênio do JSON usando índice:
-  ```sql
-  m.convenios_aceitos::jsonb -> CAST(SUBSTRING(a.forma_pagamento FROM 'convenio_([0-9]+)') AS INTEGER) ->> 'nome'
-  ```
-- **Arquivo**: `app/api/dashboard.py:645-680`
-
-### 8. Horários mais procurados com fuso horário errado
-- **Problema**: Gráfico mostrava horários em UTC ao invés de Brasília
-- **Exemplo**: Agendamento às 09:00 BRT aparecia como 12:00 UTC
-- **Solução**: Query alterada para usar `AT TIME ZONE 'America/Sao_Paulo'`
-- **Arquivo**: `app/api/dashboard.py:380-394`
-
-### 9. Dados demo do Dr. Carlos atualizados
-- **Problema**: Todos os agendamentos estavam como "particular"
-- **Solução**: Distribuição realista de convênios para demonstração
-- **Distribuição atual**:
-  | Tipo | Qtd | Valor | % |
-  |------|-----|-------|---|
-  | Particular | 52 | R$ 9.320,00 | 64.5% |
-  | Bradesco Saúde | 9 | R$ 1.260,00 | 8.7% |
-  | Unimed | 10 | R$ 1.200,00 | 8.3% |
-  | SulAmérica | 9 | R$ 1.170,00 | 8.1% |
-  | Amil | 10 | R$ 1.000,00 | 6.9% |
-  | Hapvida | 7 | R$ 490,00 | 3.4% |
-
-### 10. Senhas de teste resetadas
-- **Usuários**: Dr. João (ID 31) e Ana Santos (ID 32)
-- **Nova senha**: `teste123`
+### Outros
+| # | Correção |
+|---|----------|
+| 4 | `/api/medicos` retorna `convenios_aceitos` |
+| 10 | Senhas de teste resetadas |
+| 15 | Convênios salvam automaticamente (UX) |
+| 19 | Timezone do PostgreSQL alterado para BRT |
+| 22 | Valor consulta particular do médico (não hardcoded R$300) |
+| 23-24 | Fluxo agendado→confirmado + botão "Estou a caminho" |
+| 36 | Navegação unificada (HiTopNav + HiBottomNav, -403 linhas) |
 
 ---
 
-## Correções Realizadas (Sessão 28/01/2026)
+## Sistema de Onboarding (28/01/2026)
 
-### 11. Indicação Visual de Horários Indisponíveis no Calendário
-- **Problema**: Calendário não mostrava visualmente quais horários/dias estavam indisponíveis
-- **Solução**: Implementada indicação visual com CSS e verificação de disponibilidade
-- **Arquivo principal**: `static/calendario-unificado.html`
-
-#### Funcionalidades Implementadas:
-1. **CSS para células indisponíveis** (linhas 554-634):
-   - Dias indisponíveis (mensal): fundo cinza, cursor not-allowed
-   - Slots indisponíveis (semanal): padrão listrado diagonal
-   - Slots indisponíveis (diário): fundo claro com padrão sutil
-
-2. **Variáveis globais**:
-   - `configMedicoSelecionado`: configurações de horário do médico
-   - `bloqueiosPeriodo`: bloqueios ativos do período visível
-
-3. **Funções de verificação**:
-   - `carregarDisponibilidadeMedico(medicoId)`: carrega config e bloqueios
-   - `carregarBloqueiosPeriodo(medicoId)`: carrega bloqueios do período
-   - `verificarDiaDisponivel(data)`: verifica dias de atendimento
-   - `verificarHorarioDisponivel(data, hora)`: verifica horário no expediente
-   - `verificarDataBloqueada(data)`: verifica bloqueios
-
-4. **Comportamento**:
-   - Médico logado: disponibilidade carregada automaticamente
-   - Secretária: disponibilidade carregada ao selecionar médico no filtro
-   - "Todos os médicos": sem indicação (todos clicáveis)
-   - Células indisponíveis: não abrem modal de agendamento
-
-5. **Legenda atualizada**: Adicionado item "Fora do Expediente"
-
-#### APIs Utilizadas:
-- `GET /api/medicos/{id}/configuracoes` - Configurações do médico
-- `GET /api/medicos/{id}/bloqueios` - Bloqueios ativos
-
-### 12. IA não consultava horários reais do médico
-- **Problema**: IA "inventava" horários genéricos (8h-17h) para todos os médicos
-- **Causa Raiz**: O prompt da IA tinha horários hardcoded na linha 218:
-  ```
-  "Os médicos atendem de hora em hora: 8h, 9h, 10h, 11h, 12h, 13h, 14h, 15h, 16h, 17h"
-  ```
-- **A IA NÃO recebia**: dias de atendimento, horários por dia, bloqueios de agenda
-- **Solução implementada**:
-  1. Modificado `_obter_contexto_clinica()` para buscar configurações de `configuracoes_medico`
-  2. Adicionado import `from sqlalchemy import text`
-  3. Cada médico agora inclui `disponibilidade` com `dias_atendimento` e `horarios_por_dia`
-  4. Modificado `_construir_prompt()` para exibir horários reais de cada médico
-  5. Substituída regra genérica por instruções para consultar os horários configurados
-- **Arquivo**: `app/services/anthropic_service.py`
-- **Resultado**: IA agora informa corretamente os dias e horários de atendimento de cada médico
-  - Exemplo Dr. João: Segunda/Quarta 08:00-18:00 (almoço 12:00-13:00), Sexta 08:00-11:00
-
-### 13. IA permitia agendar em horários já ocupados
-- **Problema**: IA confirmava agendamento em horários que já tinham paciente marcado
-- **Causa Raiz**: Função `criar_agendamento_from_ia()` não verificava conflito de horário
-- **Solução implementada**:
-  1. Adicionado import `from app.services.agendamento_service import AgendamentoService`
-  2. Antes de criar agendamento, chama `verificar_disponibilidade_medico()`
-  3. Se horário ocupado, retorna dict com erro `{"erro": "horario_indisponivel"}`
-  4. Webhook trata o erro e envia mensagem informando que horário não está disponível
-- **Arquivo**: `app/api/webhook_official.py`
-- **Mensagem de erro**: "😔 Desculpe, mas o horário de [data] não está mais disponível..."
-
-### 14. Cache do Redis mantinha histórico de conversa
-- **Problema**: Mesmo após deletar conversa do PostgreSQL, o histórico permanecia no Redis
-- **Causa**: `ConversationManager` salva contexto no Redis (`conversation:cliente_X:telefone`)
-- **Solução**: Ao limpar testes, deletar também as chaves do Redis:
-  ```bash
-  redis-cli KEYS "*telefone*"
-  redis-cli DEL "conversation:cliente_11:5524988493257"
-  ```
-
-### 15. Convênios não salvavam automaticamente (UX confusa)
-- **Problema**: Ao adicionar convênio no modal, aparecia na tela mas não era salvo no banco
-- **Causa UX**: Usuário precisava clicar em "Salvar Valores" após "Adicionar" no modal
-- **Confusão**: Convênio aparecia visualmente, dando impressão de que já estava salvo
-- **Solução**: Salvar automaticamente ao adicionar/editar/remover convênio
-- **Arquivo**: `static/configuracoes.html`
-- **Função criada**: `salvarConveniosAutomatico()` - chamada após cada operação com convênio
-- **Resultado**: Convênio é salvo imediatamente ao clicar "Adicionar" no modal
-
-### 16. Lista de conversas não atualizava em tempo real
-- **Problema**: Painel lateral com lista de conversas não atualizava quando nova conversa chegava
-- **Causa**: Função `send_nova_conversa()` existia no WebSocket mas nunca era chamada
-- **Solução**:
-  1. Modificado `criar_ou_recuperar_conversa()` para retornar tupla `(conversa, is_nova)`
-  2. No webhook, quando `is_nova=True`, chama `websocket_manager.send_nova_conversa()`
-  3. Frontend já tinha `handleNovaConversa()` implementado, só precisava do evento
-- **Arquivos modificados**:
-  - `app/services/conversa_service.py` - retorna flag `is_nova`
-  - `app/api/webhook_official.py` - envia evento WebSocket para novas conversas
-  - `app/api/webhooks.py` - ajustado para nova assinatura da função
-- **Resultado**: Lista lateral atualiza automaticamente quando nova conversa chega
-
-### 17. IA retornava medico_id errado
-- **Problema**: IA usava ID 2 ao invés de 31 para o Dr. João
-- **Causa**: Prompt não mostrava o ID real dos médicos
-- **Solução**: Adicionado `[ID: X]` antes do nome de cada médico no prompt
-- **Arquivo**: `app/services/anthropic_service.py`
-- **Formato**: `- [ID: 31] Dr. João da Silva (Pediatra) - CRM: ...`
-
-### 18. IA perguntava especialidade mesmo com médico único
-- **Problema**: Em clínicas com apenas 1 médico, não faz sentido perguntar especialidade
-- **Solução**:
-  1. Filtrar secretárias da lista de médicos (`is_secretaria = true`)
-  2. Adicionar flag `medico_unico` no contexto
-  3. Quando médico único: pular pergunta de especialidade, usar ID automaticamente
-  4. Quando múltiplos médicos: perguntar normalmente
-- **Arquivo**: `app/services/anthropic_service.py`
-- **Contexto adicionado no prompt**:
-  - Médico único: "NÃO pergunte qual especialidade - use automaticamente o ID X"
-  - Múltiplos médicos: "Pergunte para qual especialidade deseja agendar"
-
-### Correções Adicionais (Sessão 28/01/2026 - Tarde)
-
-### 19. Timezone do PostgreSQL alterado para Brasília
-- **Problema**: Sistema usava UTC no banco, causando confusão em cálculos de "hoje"
-- **Solução**: Alterado timezone do banco para America/Sao_Paulo
-- **Comando**: `ALTER DATABASE agendamento_saas SET timezone TO 'America/Sao_Paulo'`
-- **Resultado**: Datas armazenadas e comparações agora usam horário de Brasília
-
-### 20. IA não detectava "hoje" e "amanhã" nas mensagens
-- **Problema**: Quando paciente dizia "tem horário pra hoje?", a IA não reconhecia
-- **Causa**: Código usava `date.today()` que não considera timezone
-- **Solução**:
-  1. Usar `datetime.now(tz_brazil).date()` com pytz
-  2. Detectar palavras: "hoje", "amanhã", "depois de amanhã"
-  3. Buscar também no histórico de conversa
-- **Arquivo**: `app/services/anthropic_service.py` linhas 115-130
-
-### 21. Dashboard contava agendamentos "remarcados" no total
-- **Problema**: Card "Total de Agendamentos" incluía status remarcado/cancelado/faltou
-- **Solução**: Filtrar esses status em todas as queries de contagem
-- **Arquivos modificados**:
-  - `app/api/dashboard.py` - total_agendamentos e consultas
-  - `app/api/dashboard_simples.py` - consultas_semana
-  - `app/api/financeiro.py` - total e previsto
-  - `app/api/admin.py` - estatísticas
-- **Filtro adicionado**: `status NOT IN ('cancelado', 'remarcado', 'faltou')`
-
-### 22. Financeiro mostrava R$ 300 ao invés do valor configurado
-- **Problema**: Valor da consulta particular era hardcoded como R$ 300
-- **Causa**: Webhook usava `valor = 300.00` fixo
-- **Solução**:
-  1. Adicionado campo `valor_consulta_particular` no modelo Medico
-  2. Webhook agora usa `medico.valor_consulta_particular`
-- **Arquivos**:
-  - `app/models/medico.py` - novo campo `valor_consulta_particular = Column(Numeric(10, 2))`
-  - `app/api/webhook_official.py` - usa valor do médico
-
-### 23. Status muda de "agendado" para "confirmado" no lembrete
-- **Problema**: Não estava claro quando o status deveria mudar
-- **Fluxo implementado**:
-  1. Agendamento criado → status = "agendado"
-  2. Paciente recebe lembrete 24h/2h com botões "Confirmar" ou "Preciso remarcar"
-  3. Ao clicar "Confirmar" ou "Estou a caminho" → status = "confirmado"
-- **Arquivo**: `app/services/lembrete_service.py`
-
-### 24. Botão "Estou a caminho" não era reconhecido
-- **Problema**: Template de 2h usa botão "Estou a caminho" que não estava mapeado
-- **Solução**: Adicionado no BUTTON_ACTIONS
-- **Arquivo**: `app/services/button_handler_service.py`
-- **Mapeamento**: `"Estou a caminho": "confirmar"`
-
-### 25. IA dizia "horário ocupado" quando estava livre (ex: 13h)
-- **Problema**: Paciente pedia 13h, IA dizia "já tem paciente" mesmo estando disponível
-- **Causa**: IA ignorava a lista de horários livres fornecida no prompt
-- **Solução**: Reforço das regras no prompt com exemplos específicos:
-  - "Se 13:00 ESTÁ na lista → Diga que está disponível!"
-  - "NUNCA diga ocupado se o horário APARECE na lista de livres"
-- **Arquivo**: `app/services/anthropic_service.py`
-- **Nota**: 13h estava sendo confundido porque é logo após o almoço (12h-13h)
-
-### 26. Mensagem de confirmação não mencionava lembrete de 2h
-- **Problema**: Para consultas no mesmo dia, IA dizia "lembrete 24h antes"
-- **Solução**: Regra adaptativa no prompt:
-  - Consulta > 24h: "Você receberá lembrete 24h e 2h antes"
-  - Consulta hoje: "Como sua consulta é em breve, receberá lembrete 2h antes"
-- **Arquivo**: `app/services/anthropic_service.py`
-
-### 27. Mensagem sobre indisponibilidade mais genérica
-- **Problema**: IA dizia "já tem paciente" para horário de almoço
-- **Solução**: Mudou de "OCUPADO (JÁ TEM PACIENTE)" para "INDISPONÍVEL"
-- **Motivo**: Horário pode estar indisponível por: almoço, fora do expediente, bloqueio
-- **Arquivo**: `app/services/anthropic_service.py`
-
-### 28. Convênio não salvava forma_pagamento corretamente
-- **Problema**: Agendamentos via IA salvavam `tipo_atendimento` mas não `forma_pagamento`
-- **Causa**: Webhook não buscava índice do convênio no array `convenios_aceitos`
-- **Solução**:
-  1. Buscar convênio pelo nome no array do médico
-  2. Salvar `forma_pagamento` como `convenio_X` (índice)
-  3. Salvar valor do convênio em `valor_consulta`
-- **Arquivo**: `app/api/webhook_official.py`
-- **Resultado**: Dashboard financeiro agora contabiliza convênios corretamente
-
-### 29. Campo forma_pagamento faltando no modelo Agendamento
-- **Problema**: `TypeError: 'forma_pagamento' is an invalid keyword argument`
-- **Causa**: Campo existia no banco mas não no modelo SQLAlchemy
-- **Solução**: Adicionado `forma_pagamento = Column(String(50), nullable=True)`
-- **Arquivo**: `app/models/agendamento.py`
-
-### 30. IA oferecia horários que já passaram
-- **Problema**: Às 10:26, IA oferecia "10:00" como opção para hoje
-- **Solução**: Filtrar horários passados quando data = hoje
-- **Arquivo**: `app/services/agendamento_service.py`
-- **Lógica**: `if eh_hoje and hora_atual <= agora + timedelta(minutes=30): continue`
-- **Margem**: 30 minutos para evitar agendamentos muito em cima da hora
-
-### 31. Chat do painel mostrava horário em UTC
-- **Problema**: Mensagens mostravam 13:26 quando eram 10:26 (3h de diferença)
-- **Causa**: Timestamps salvos em UTC (`datetime.utcnow`) sem conversão ao exibir
-- **Solução**: Função `converter_para_brasil(dt)` converte UTC → America/Sao_Paulo
-- **Arquivos**:
-  - `app/api/conversas.py` - API de mensagens
-  - `app/api/webhook_official.py` - WebSocket notifications
-- **Resultado**: Horários exibidos corretamente no fuso de Brasília
-
-### 32. Motivo da consulta implementado no fluxo
-- **Problema**: Campo `motivo_consulta` era preenchido com especialidade do médico
-- **Solução**: Novo passo no fluxo de agendamento
-- **Fluxo atualizado**:
-  1. Nome
-  2. Médico (se múltiplos)
-  3. **Motivo da consulta** ← NOVO
-  4. Data
-  5. Horário
-  6. Convênio/Particular
-  7. Confirmação
-- **Opções de motivo**:
-  - 🔄 Rotina/Retorno
-  - 📋 Levar resultados de exames
-  - 🩺 Sintoma específico (registrar qual)
-  - 🆕 Primeira consulta
-- **Arquivo**: `app/services/anthropic_service.py`
-- **Dados coletados**: `motivo_consulta` adicionado ao JSON de resposta
-
-### 33. Lembrete de trazer exames na confirmação
-- **Problema**: Paciente não era lembrado de trazer exames
-- **Solução**: Adicionar na mensagem de confirmação:
-  - "📎 Se tiver exames recentes, traga no dia da consulta!"
-- **Arquivo**: `app/services/anthropic_service.py`
-
-### 34. Detecção de paciente novo vs retorno
-- **Problema**: IA não sabia se paciente era novo ou tinha histórico
-- **Solução**: Verificar quantidade de agendamentos anteriores do paciente
-- **Lógica**:
-  - `qtd_agendamentos > 0` → "Provavelmente é RETORNO"
-  - `qtd_agendamentos == 0` → "Pode ser PRIMEIRA CONSULTA"
-  - Paciente não encontrado → "PACIENTE NOVO"
-- **Arquivo**: `app/services/anthropic_service.py`
-
----
-
-## Sistema de Onboarding com Aceite de Termos (Sessão 28/01/2026 - Noite)
-
-### 35. Fluxo completo de onboarding com aceite de termos
-- **Objetivo**: Admin/Parceiro cadastra cliente → cliente recebe email → aceita termos → conta ativa
-- **Antes**: `POST /api/admin/clientes` criava cliente com `ativo=true` direto
-- **Depois**: Cliente criado com `ativo=false`, `status='pendente_aceite'`, token de ativação (7 dias)
-
-#### Migrations Criadas (j01, j02, j03):
-- **j01**: Campos de onboarding na tabela `clientes`: `status`, `token_ativacao`, `token_expira_em`, `cadastrado_por_id/tipo`, `aceite_termos_em`, `aceite_ip`, `aceite_user_agent`, `aceite_versao_termos/privacidade`
-- **j02**: Tabela `historico_aceites` (registro de todos os aceites de termos)
-- **j03**: Campos de autenticação em `parceiros_comerciais`: `senha_hash`, `token_login`, `ultimo_login`
-
-#### Novos Arquivos:
-| Arquivo | Descrição |
-|---------|-----------|
-| `app/models/historico_aceite.py` | Model HistoricoAceite (FK clientes) |
-| `app/api/ativacao.py` | API pública de ativação de conta |
-| `app/api/parceiro_auth.py` | API do portal do parceiro (login, dashboard, CRUD clientes) |
-| `static/ativar-conta.html` | Página de aceite de termos (6 estados) |
-| `static/parceiro/login.html` | Login do parceiro |
-| `static/parceiro/dashboard.html` | Dashboard com stats e lista de clientes |
-| `static/parceiro/novo-cliente.html` | Form de cadastro simplificado |
-
-#### APIs de Ativação (`/api/ativacao/`):
-- `POST /api/ativacao/reenviar` — Reenvia email (gera novo token)
-- `GET /api/ativacao/{token}` — Retorna dados do cliente (público)
-- `POST /api/ativacao/{token}` — Processa aceite e ativa conta
-
-#### APIs do Portal Parceiro (`/api/parceiro/`):
-- `POST /api/parceiro/login` — Login com email+senha (bcrypt), retorna JWT
-- `GET /api/parceiro/me` — Dados do parceiro logado
-- `GET /api/parceiro/dashboard` — Stats: total, por status, comissões
-- `GET /api/parceiro/clientes` — Lista clientes do parceiro
-- `POST /api/parceiro/clientes` — Criar cliente (fluxo simplificado)
-- `POST /api/parceiro/reenviar-ativacao/{id}` — Reenviar email
-
-#### Arquivos Modificados:
-- `app/models/cliente.py` — Novos campos + relationship `aceites`
-- `app/models/parceiro_comercial.py` — Campos de autenticação
-- `app/models/__init__.py` — Export HistoricoAceite
-- `app/services/email_service.py` — 3 novos métodos: `send_ativacao_conta()`, `send_boas_vindas_ativacao()`, `send_notificacao_parceiro_ativacao()`
-- `app/api/admin_clientes.py` — Onboarding cria com `pendente_aceite`, envia email, resposta inclui `link_ativacao`
-- `app/api/parceiros_comerciais.py` — Endpoint `POST /{id}/definir-senha`
-- `app/main.py` — Routers de ativação e parceiro registrados
-- `app/middleware/tenant_middleware.py` — Bypass para `/api/ativacao/` e `/api/parceiro/`
-- `app/middleware/billing_middleware.py` — Rotas liberadas para ativação e parceiro
-- `static/admin/clientes-novo.html` — Modal mostra "Ativação Pendente" + link de ativação
-- `static/admin/clientes.html` — Badges de status (pendente=amarelo, ativo=verde, suspenso=vermelho), filtro "Pendente Aceite"
-
-#### Status de Cliente:
-| Status | Cor Badge | Descrição |
-|--------|-----------|-----------|
-| `pendente_aceite` | Amarelo | Aguardando aceite de termos |
-| `ativo` | Verde | Conta ativa e funcional |
-| `aguardando_pagamento` | Laranja | Aguardando primeiro pagamento |
-| `suspenso` | Vermelho | Suspenso por inadimplência |
-| `cancelado` | Cinza | Conta cancelada |
-
-#### Fluxo Completo:
-1. Admin/Parceiro cadastra cliente via painel
-2. Sistema cria cliente com `ativo=false`, `status='pendente_aceite'`
-3. Gera `token_ativacao` (URL-safe, 64 chars) com expiração de 7 dias
-4. Envia email com link: `https://horariointeligente.com.br/static/ativar-conta.html?token=XXX`
-5. Cliente acessa link, vê resumo dos dados + 2 checkboxes (Termos v1.0 + Privacidade v1.1)
-6. Ao aceitar: `status='ativo'`, `ativo=true`, registra IP/user-agent/versões em `historico_aceites`
-7. Envia email de boas-vindas + notifica parceiro (se aplicável)
-8. Token é limpo (`token_ativacao=NULL`)
-
-#### Retrocompatibilidade:
-- Migration j01 faz `UPDATE clientes SET status='ativo' WHERE ativo=true` e `status='suspenso' WHERE ativo=false`
-- Clientes existentes continuam funcionando normalmente
-
----
-
-## Pendências / Próximos Passos
-
-- [x] ~~Testar criação de novo agendamento com convênio~~ (Funcionando)
-- [x] ~~Gráficos do dashboard financeiro renderizando~~ (Corrigido)
-- [x] ~~Dados demo atualizados com convênios~~ (Concluído)
-- [x] ~~Horários populares com fuso horário correto~~ (Corrigido)
-- [x] ~~Indicação visual de horários indisponíveis~~ (Implementado)
-- [x] ~~IA consultando horários reais do médico~~ (Implementado)
-- [x] ~~Verificação de conflito de horário ao agendar via IA~~ (Implementado)
-- [x] ~~Timezone do banco alterado para Brasília~~ (Implementado)
-- [x] ~~IA detectando "hoje", "amanhã"~~ (Implementado)
-- [x] ~~Dashboard excluindo remarcados/cancelados~~ (Corrigido)
-- [x] ~~Valor consulta particular do médico~~ (Implementado)
-- [x] ~~Fluxo agendado → confirmado~~ (Implementado)
-- [x] ~~Botão "Estou a caminho"~~ (Mapeado)
-- [x] ~~IA reconhecendo 13h como disponível~~ (Corrigido)
-- [x] ~~Lembrete 2h para consultas do dia~~ (Implementado)
-- [x] ~~Convênio salvando forma_pagamento~~ (Corrigido)
-- [x] ~~Filtrar horários passados para hoje~~ (Implementado)
-- [x] ~~Chat do painel com horário correto~~ (Corrigido UTC→BRT)
-- [x] ~~Motivo da consulta no fluxo~~ (Implementado)
-- [x] ~~Detecção paciente novo vs retorno~~ (Implementado)
-- [x] ~~Onboarding com aceite de termos~~ (Implementado)
-- [x] ~~Portal do parceiro (login, dashboard, CRUD)~~ (Implementado)
-- [x] ~~Página de ativação de conta~~ (Implementado)
-- [x] ~~Email de ativação + boas-vindas~~ (Implementado)
-- [x] ~~Status badges no painel admin~~ (Implementado)
-- [x] ~~Campo endereço: admin API + perfil + contexto IA~~ (Corrigido)
-- [x] ~~Navegação unificada (top nav desktop + bottom nav mobile)~~ (Implementado)
-- [x] ~~Calibrar IA: lembrete de 24h na confirmação de presença~~ (Corrigido)
-- [x] ~~Calibrar IA: "lotado" vs "não atende nesse dia"~~ (Corrigido)
-- [x] ~~Modal de cancelamento com motivos + notificação WhatsApp~~ (Implementado)
-- [x] ~~Motivo e notificação WhatsApp no reagendamento~~ (Implementado)
-- [x] ~~Templates WhatsApp registrados no painel de conversas~~ (Implementado)
-- [x] ~~Horários não desapareciam ao trocar data no reagendamento~~ (Corrigido)
-- [x] ~~IA não reconhecia datas curtas (DD/MM, D/M)~~ (Corrigido)
-- [x] ~~Exibir nomes de pacientes e telefones formatados na sidebar de conversas~~ (Implementado)
-- [x] ~~Calibrar empatia da IA (não usar emojis em situações de dor/urgência)~~ (Concluído)
-- [x] ~~Validar exibição do nome do convênio no modal de detalhes~~ (Concluído)
-- [x] ~~Definir senha para parceiros existentes via admin~~ (Concluído)
-- [x] ~~Testar fluxo completo: admin cria → email chega → aceitar → conta ativa~~ (Concluído)
-
----
-
-## Correções Realizadas (Sessão 29/01/2026)
-
-### 36. Navegação Unificada — Top Nav (Desktop) + Bottom Nav (Mobile)
-- **Problema**: Cada página HTML tinha seu próprio header/nav inline com lógica duplicada de logout, menu mobile, navegação de secretária, etc. Manutenção difícil e comportamento inconsistente entre páginas.
-- **Solução**: Criados 2 componentes JS centralizados que gerenciam toda a navegação do sistema.
-
-#### Novos Arquivos:
-| Arquivo | Descrição |
-|---------|-----------|
-| `static/js/components/top-nav.js` | `HiTopNav` — Barra de navegação superior para desktop (>= 1024px). Sticky, 56px, com logo, links de navegação, nome do usuário e botão de sair. Suporta badges, dark mode e acessibilidade (ARIA). |
-| `static/js/components/nav-init.js` | `HiNavInit` — Inicializador que configura `HiTopNav` (desktop) + `HiBottomNav` (mobile) com itens baseados no perfil do usuário (médico vs secretária). Inclui menu overflow "Mais" no mobile com animação. |
-
-#### Navegação por Perfil:
-| Perfil | Desktop (Top Nav) | Mobile (Bottom Nav) |
-|--------|-------------------|---------------------|
-| **Médico** | Painel, Agenda, Conversas, Configurações, Perfil | Agenda, Conversas, **Novo** (FAB), Config, Mais (...) |
-| **Secretária** | Agenda, Conversas | Agenda, Conversas, **Novo** (FAB), Config, Senha |
-
-- **Menu "Mais" (mobile médico)**: Painel, Perfil, separador, Sair — com backdrop animado e menu popup
-
-#### Arquivos Modificados (8 páginas HTML):
-| Arquivo | Mudanças |
-|---------|----------|
-| `static/calendario-unificado.html` | Removidos: header inline (~110 linhas), breadcrumb, `configurarNavegacaoSecretaria()`, `toggleMobileMenu()`, `logout()`, config inline do `HiBottomNav`. Adicionado: `HiNavInit.init({ activeId: 'agenda', onNewAppointment: ... })`. Null checks em `userName`. |
-| `static/configuracao-agenda.html` | Substituída config inline do `HiBottomNav` por `HiNavInit.init({ activeId: 'config' })`. |
-| `static/configuracoes.html` | Removidos: header/nav inline (~30 linhas), `logout()`, botões de navegação para secretária. Adicionado: `HiNavInit.init({ activeId: 'config' })`. Null checks em `userName`. |
-| `static/conversas.html` | Removidos: header completo com links de navegação (~60 linhas), switching médico/secretária, `logout()`. Substituído por barra compacta de stats (48px). Adicionado: `HiNavInit.init({ activeId: 'conversas' })`. |
-| `static/dashboard-v2.html` | Removidos: header inline (~33 linhas), `logout()`. Adicionado: `HiNavInit.init({ activeId: 'dashboard' })`. Null check em `userName`. |
-| `static/dashboard.html` | Removidos: header inline (~40 linhas), `logout()`. Badge de conversas agora usa `HiTopNav.setBadge()` e `HiBottomNav.setBadge()`. Adicionado: `HiNavInit.init({ activeId: 'dashboard' })`. |
-| `static/minha-agenda.html` | Removidos: header/nav inline (~25 linhas), `logout()`. Adicionado: `HiNavInit.init({ activeId: 'config' })`. Null check em `userName`. |
-| `static/perfil.html` | Removido: header inline (~18 linhas). Substituída config inline do `HiBottomNav` por `HiNavInit.init({ activeId: 'perfil' })`. |
-
-#### Impacto:
-- **Redução de código**: ~522 linhas removidas, ~119 adicionadas (net -403 linhas)
-- **Logout centralizado**: Função `logout()` removida de todas as páginas — agora tratada pelos componentes de navegação
-- **Null checks**: Referências a `document.getElementById('userName')` agora verificam se o elemento existe, já que o header inline foi removido
-- **Consistência**: Todas as páginas agora compartilham o mesmo comportamento de navegação
-- **Uso**: `HiNavInit.init({ activeId: 'pagina' })` — uma única chamada configura desktop + mobile
-
-#### Backup:
-- `static/index.html.bak_20260128` — Backup do index.html antes das mudanças
-
-### 37. IA mencionava lembrete de 24h ao confirmar presença
-- **Problema**: Quando paciente confirmava presença (respondendo ao lembrete de 24h), a IA dizia "Você receberá um lembrete 24h antes e outro 2h antes" — mas o de 24h já tinha sido enviado
-- **Causa**: Regra de lembretes no prompt não distinguia entre criar novo agendamento e confirmar presença em um existente
-- **Solução**: Regra reformulada com 3 cenários:
-  1. **Confirmando presença** → NÃO mencionar lembrete de 24h (já recebeu). Só mencionar o de 2h se faltar mais de 2h para a consulta
-  2. **Novo agendamento > 24h** → Mencionar ambos os lembretes
-  3. **Novo agendamento < 24h** → Mencionar só o de 2h
-- **Arquivo**: `app/services/anthropic_service.py:545-550`
-
-### 38. IA dizia "agenda lotada" quando médico não atende no dia
-- **Problema**: Paciente pedia data em dia que o médico não atende (ex: quinta-feira), e a IA respondia "agenda completamente lotada" — quando na verdade o médico simplesmente não trabalha nesse dia
-- **Causa**: Quando `obter_horarios_disponiveis()` retornava lista vazia, o prompt sempre dizia "DIA LOTADO" sem verificar se o médico atende naquele dia da semana
-- **Solução**: Antes de declarar "lotado", verifica os `dias_atendimento` do médico contra o dia da semana solicitado:
-  - **Médico não atende no dia** → "O dia 26/02 é quinta-feira e o Dr. João não atende nesse dia. Ele atende às segundas, quartas e sextas."
-  - **Médico atende mas sem vagas** → "A agenda está lotada para esta data"
-- **Arquivo**: `app/services/anthropic_service.py:268-315`
-- **Lógica**: Busca `medico_info` no `contexto_clinica`, extrai `dias_atendimento` da `disponibilidade`, normaliza e compara com o dia da semana da data pedida
-
-### 39. Modal de cancelamento e motivo no reagendamento + notificação WhatsApp
-- **Problema**: "Cancelar Consulta" usava `prompt()` nativo do browser (feio); "Reagendar" não pedia motivo; nenhum dos dois notificava o paciente via WhatsApp
-- **Solução**:
-  1. **Novo modal de cancelamento** (`#modalCancelamento`): select com motivos predefinidos (Paciente solicitou, Médico indisponível, etc.), input "Outro", checkbox "Notificar via WhatsApp" (checked por padrão)
-  2. **Campos novos no modal de reagendamento**: select de motivo (opcional), input "Outro", checkbox WhatsApp
-  3. **Backend PUT** (reagendar): `motivo_reagendamento` salvo em `observacoes`; envia template `consulta_reagendada_clinica` ao paciente se checkbox marcado
-  4. **Backend DELETE** (cancelar): parâmetro `notificar_paciente`; envia template `consulta_cancelada_clinica` ao paciente se checkbox marcado
-  5. **Registro na conversa**: Após envio WhatsApp com sucesso, mensagem salva no painel de conversas via `ConversaService.adicionar_mensagem()` (remetente=SISTEMA)
-  6. **Toast de feedback**: Indica se paciente foi notificado via WhatsApp ou se houve falha
-- **Arquivos modificados**:
-  - `app/api/agendamentos.py` — Schema `AgendamentoUpdate` (+`motivo_reagendamento`, `notificar_paciente`), PUT e DELETE com envio de templates e registro na conversa
-  - `static/calendario-unificado.html` — Modal cancelamento, campos motivo/checkbox no reagendamento, JS atualizado
-- **Templates WhatsApp usados** (já aprovados pela Meta):
-  - `consulta_reagendada_clinica` (paciente, medico, data_antiga, hora_antiga, data_nova, hora_nova)
-  - `consulta_cancelada_clinica` (paciente, medico, data, hora, motivo)
-
-### 40. Horários não desapareciam ao trocar data no reagendamento
-- **Problema**: No modal de reagendamento, ao trocar de uma data com horários para uma sem horários (médico não atende), os horários antigos continuavam visíveis
-- **Causa**: Função `verificarHorariosDisponiveisReagendamento()` só tinha lógica para *mostrar* horários, faltava `else` para esconder quando a API retornava lista vazia
-- **Solução**: Adicionado bloco `else` que esconde o container, limpa a lista e reseta o campo de hora; tratamento no `catch` também esconde os horários
-- **Arquivo**: `static/calendario-unificado.html`
-
-### 41. IA não reconhecia datas no formato curto (DD/MM ou D/M)
-- **Problema**: Paciente escrevia "03/2" (3 de fevereiro), e a IA não reconhecia — inventava o dia da semana e oferecia horários sem verificar o banco
-- **Causa**: Parser de datas só reconhecia formato completo `DD/MM/YYYY` (regex `\d{2}/\d{2}/\d{4}`). Formatos curtos como `03/2`, `3/02`, `15/3` não eram capturados
-- **Consequência**: Sem a data parseada, a função `_extrair_data_e_horarios_disponiveis()` retornava vazia. A IA não recebia horários disponíveis nem o alerta de "dia sem atendimento", ficando às cegas
-- **Solução**: Adicionado segundo parser com regex `(?<!\d)(\d{1,2})/(\d{1,2})(?!/|\d)` que:
-  1. Captura formatos: `D/M`, `DD/M`, `D/MM`, `DD/MM`
-  2. Não captura `DD/MM/YYYY` (lookahead negativo impede)
-  3. Infere o ano automaticamente: se a data já passou no ano atual, usa o próximo ano
-- **Arquivo**: `app/services/anthropic_service.py:113-130`
-- **Resultado**: "03/2" agora é corretamente parseado como 03/02/2026 (terça-feira), e o sistema injeta no prompt o alerta de "DIA SEM ATENDIMENTO" quando aplicável
-
----
-
-## Observações Técnicas
-
-### Fuso Horário
-- **Banco de dados**: America/Sao_Paulo (BRT, UTC-3)
-- **Exibição para usuário**: America/Sao_Paulo (BRT, UTC-3)
-- **Código Python**: Usar `datetime.now(pytz.timezone('America/Sao_Paulo'))`
-
-### Forma de Pagamento
-- `'particular'` → Consulta particular
-- `'convenio_0'` → Primeiro convênio do array `convenios_aceitos` do médico
-- `'convenio_1'` → Segundo convênio do array
-- Para obter o nome: `medicos.convenios_aceitos[índice].nome`
-
-### Onboarding / Ativação
-- **Token**: `secrets.token_urlsafe(64)` — URL-safe, 64 chars
-- **Expiração**: 7 dias
-- **Versões termos**: `VERSAO_TERMOS = "1.0"`, `VERSAO_PRIVACIDADE = "1.1"` (em `app/api/ativacao.py`)
-- **Parceiro auth**: JWT com `SECRET_KEY`, expira em 24h
-- **Definir senha parceiro**: `POST /api/interno/parceiros/{id}/definir-senha`
-
----
-
-### Navegação Unificada
-- **Desktop (>= 1024px)**: `HiTopNav` — barra superior sticky, 56px
-- **Mobile (< 1024px)**: `HiBottomNav` — barra inferior fixa com FAB central
-- **Inicialização**: `HiNavInit.init({ activeId: 'pagina' })` — configura ambas automaticamente
-- **Perfis**: Itens de menu variam por perfil (médico vs secretária)
-- **Componentes**: `static/js/components/top-nav.js`, `static/js/components/nav-init.js`, `static/js/components/bottom-nav.js`
-
-## Correções Realizadas (Sessão 30/01/2026)
-
-### 42. Cláusula de prazo de 72h para ativação nos Termos de Uso
-- **Problema**: Os termos não informavam que a ativação da conta não é imediata após o aceite
-- **Motivo**: Configurações técnicas e aprovações de templates pela Meta (WhatsApp Business API) exigem prazo
-- **Solução**: Adicionada cláusula e ajustes em múltiplos arquivos
-- **Alterações**:
-  1. **Novo item 5.4 (Prazo de Ativação)** na Seção 5 do `static/termos-de-uso.html` — informa prazo de 72h úteis com justificativa técnica (aprovações Meta)
-  2. **Seção de Aceitação** atualizada com referência à Seção 5.4
-  3. **Versão dos termos** atualizada de 1.0 para 1.1; data de vigência para 30/01/2026
-  4. **`app/api/ativacao.py`** — `VERSAO_TERMOS` de "1.0" para "1.1"
-  5. **`static/ativar-conta.html`** — versão atualizada no checkbox, aviso informativo de 72h antes do botão de aceite, mensagem de sucesso ajustada ("Termos Aceitos com Sucesso" ao invés de "Conta Ativada")
-
-### 43. Exibição de nomes e telefones formatados na sidebar de conversas
-- **Problema**: Lista de conversas exibia telefones crus (ex: `5524988493257`) quando `paciente_nome` era NULL na tabela `conversas`. O nome existia na tabela `pacientes` mas não era aproveitado. Mesmo como fallback, o telefone não era formatado.
-- **Solução**: Duas mudanças complementares (backend + frontend):
-
-#### Backend (`app/api/conversas.py`):
-1. **Import**: `from app.utils.phone_utils import format_phone_display`
-2. **Schema**: Adicionado campo `paciente_telefone_formatado: Optional[str] = None` em `ConversaResponse`
-3. **`listar_conversas`**: Busca nomes de pacientes da tabela `pacientes` (por telefone + cliente_id) para conversas sem `paciente_nome`. Usa `mapa_nomes` para enriquecer o campo. Adiciona `paciente_telefone_formatado` via `format_phone_display()`
-4. **`get_conversa`**: Mesma lógica de enriquecimento para a view de detalhe (usada no header do chat)
-
-#### Frontend (`static/conversas.html`):
-1. **Sidebar — nome**: Fallback chain: `paciente_nome || paciente_telefone_formatado || paciente_telefone`
-2. **Sidebar — subtítulo**: Quando paciente tem nome, exibe telefone formatado abaixo em cinza (`text-xs text-gray-400`)
-3. **Busca**: Filtro agora inclui `paciente_telefone_formatado` para busca por telefone formatado (ex: `(24) 98849`)
-4. **Header do chat**: Nome e telefone usam versão formatada
-
-#### Resultado:
-- Conversas exibem nome do paciente mesmo quando `paciente_nome` é NULL na conversa (busca da tabela `pacientes`)
-- Telefones formatados como `+55 (24) 98849-3257` ao invés de `5524988493257`
-- Busca funciona tanto por telefone cru quanto formatado
-
----
-
-### 44. Renomeação de referências ProSaude → Horário Inteligente
-- **Problema**: Sistema nasceu como "ProSaude" mas agora se chama "Horário Inteligente". Referências ao nome antigo persistiam no código, config, scripts e docs
-- **Solução**: Renomeação completa em todo o codebase
-- **Alterações**:
-  1. **`app/middleware/tenant_middleware.py`** — Default de desenvolvimento: `prosaude` → `drjoao` (cliente real ID 11)
-  2. **`.env`** — `WHATSAPP_PROVIDER=official`, Evolution API comentada como legado
-  3. **Serviços Evolution (legado)** — `"ProSaude"` → `"HorarioInteligente"` em reminder_service, notification_service, falta_service, whatsapp_monitor
-  4. **`app/services/whatsapp_service.py`** — API key hardcoded → `os.getenv("EVOLUTION_API_KEY", "")`
-  5. **`scripts/seed_prosaude.py`** → renomeado para `scripts/seed_clinica_teste.py` com dados atualizados
-  6. **`scripts/populate_demo_data.py`** — subdomain `prosaude` → `drjoao`
-  7. **Systemd** — `prosaude.service` → `horariointeligente.service`
-  8. **Documentação** — continuidade.md, README.md e demais .md atualizados
-- **Nota**: Evolution API é código legado; sistema usa apenas API Oficial Meta
-
-### 45. Remoção de referências a "lançamento" na landing page
-- **Problema**: Textos na landing page e demo ainda diziam "quando lançarmos", "pré-lançamento", etc., mas o sistema já está em produção
-- **Solução**: Atualização de textos para refletir que o produto já foi lançado
-- **Alterações**:
-  1. **`static/index.html`** — "OFERTA EXCLUSIVA DE LANÇAMENTO" → "OFERTA EXCLUSIVA"; removido "quando lançarmos"; checkbox sem "sobre o lançamento"; mensagem de sucesso sem "lista VIP" e "em breve"
-  2. **`static/demo/index.html`** — "preço especial de lançamento" → "condições especiais"; checkbox e alerta atualizados
-  3. **`static/admin/pre-cadastros.html`** — "Leads do Pré-Lançamento" → "Leads e interessados"
-  4. **`static/admin/dashboard.html`** — "Leads de lançamento" → "Leads e interessados"
-
-### 46. Campo endereço do cliente — 3 correções
-- **Problema**: O campo `endereco` existia na tabela `clientes` e podia ser preenchido no cadastro, mas:
-  1. A API GET admin não retornava o campo (página de detalhes mostrava "Não informado")
-  2. O cliente/médico não podia ver ou editar seu endereço na página de perfil
-  3. A IA não recebia o endereço no contexto (não podia informar ao paciente)
-
-#### Fix 1 — API GET admin retornar `endereco`
-- **Arquivo**: `app/api/admin.py`
-- Adicionado `c.endereco` no SELECT (após `c.status`)
-- Adicionado `"endereco": result[16]` no dict de retorno
-- **Resultado**: Página `clientes-detalhes.html` agora exibe o endereço corretamente
-
-#### Fix 2 — Cliente ver e editar endereço no perfil
-- **Arquivos**: `app/api/user_management.py`, `static/perfil.html`
-- **Schema**: `endereco: Optional[str] = None` adicionado em `UpdateProfileRequest`
-- **GET /perfil**: Ambos os branches (médico e secretária) fazem query adicional em `clientes` usando `cliente_id` do token para buscar `endereco`
-- **PUT /perfil**: Quando `dados.endereco is not None`, faz UPDATE separado na tabela `clientes` usando `cliente_id` do token (funciona para médico e secretária)
-- **Frontend**: Seção "Dados da Clínica" com campo endereço adicionada antes dos campos profissionais; campo populado em `preencherFormulario()` e incluído no submit
-
-#### Fix 3 — IA receber endereço no contexto
-- **Arquivo**: `app/services/anthropic_service.py`
-- **Contexto**: `"endereco_clinica": cliente.endereco` adicionado ao dict de `_obter_contexto_clinica()`
-- **Prompt**: Na seção "INFORMAÇÕES DA CLÍNICA", endereço exibido logo após o nome da clínica (condicional — só se disponível)
-- **Resultado**: IA pode informar o endereço da clínica ao paciente quando perguntado
-
----
-
-*Última atualização: 30/01/2026 - Campo endereço do cliente (admin API + perfil + IA)*
-
----
-
-## SESSÃO 30/01/2026 — Auditoria de Segurança Completa
-
-### 47. Auditoria de Segurança — Documento de Referência
-- **Criado**: `/root/sistema_agendamento/auditoria_seguranca.md` (834 linhas)
-- Documento autocontido com 10 seções de auditoria, comandos executáveis, critérios pass/fail
-- **Resultado da auditoria**: 9/45 aprovados (20% taxa de aprovação inicial)
-
-### 48. Correções Críticas (Severidade: CRÍTICA)
-
-#### 48.1 Permissões de arquivos sensíveis
-- `.env` e `.env.backup`: `chmod 600`, `chown horariointeligente:horariointeligente`
-- `logs/`: `chmod 640` em todos os arquivos de log
-- `webhook.log`: removida permissão 666
-
-#### 48.2 Serviço systemd — hardening completo
-- **Arquivo**: `/etc/systemd/system/horariointeligente.service`
-- `User=root` → `User=horariointeligente` (usuário de sistema criado: `useradd --system --shell /usr/sbin/nologin`)
-- Removido `--reload` (não usar em produção)
-- Bind: `0.0.0.0:8000` → `127.0.0.1:8000`
-- Workers: `--workers 4`
-- Secrets: removidas variáveis inline → `EnvironmentFile=/root/sistema_agendamento/.env`
-
-#### 48.3 Remoção de SECRET_KEY hardcoded (5 arquivos)
-- `app/api/parceiro_auth.py:24` — removido fallback `"parceiro-secret-key-change-in-production"`
-- `app/api/financeiro.py:23` — removido fallback `"your-secret-key"`
-- `app/api/admin.py:27` — removido fallback `"your-secret-key"`
-- `app/api/websocket.py:19` — removido fallback `"your-secret-key"`
-- `app/main.py` — CSRF secret fallback `"csrf-secret-key-change-in-production"` → `""`
-- Todos agora usam `os.getenv("SECRET_KEY")` com `RuntimeError` se ausente
-
-#### 48.4 Remoção de tokens Telegram hardcoded
-- `app/services/telegram_service.py` — tokens hardcoded → `os.getenv()`
-- `scripts/telegram-alerta.sh` — tokens hardcoded → `grep` do `.env`
-- `scripts/verificar-certificado.sh` — idem
-
-#### 48.5 Firewall UFW ativado
-- `ufw allow 22,80,443/tcp && ufw --force enable`
-- Apenas SSH, HTTP e HTTPS expostos
-
-### 49. Correções Altas (Severidade: ALTA)
-
-#### 49.1 JWT — redução de expiração + refresh token
-- `ACCESS_TOKEN_EXPIRE_MINUTES`: `480` → `60` (em auth.py, financeiro.py, admin.py)
-- Novo endpoint `POST /auth/refresh` com refresh token (8h de validade)
-- Login agora retorna `access_token` + `refresh_token`
-
-#### 49.2 Rate limiting global
-- `app/main.py`: `Limiter(default_limits=["120/minute"])`
-- `app/api/webhooks.py`: `@limiter.limit("100/minute")`
-- `app/api/webhook_official.py`: `@limiter.limit("200/minute")`
-
-#### 49.3 CSRF e CORS
-- CSRF fallback secret corrigido
-- `X-CSRF-Token` adicionado aos CORS allowed headers
-- Origens `localhost` agora condicionais: só habilitadas quando `ENVIRONMENT != "production"`
-
-#### 49.4 Nginx — headers de segurança
-- **`/etc/nginx/nginx.conf`**: `server_tokens off;`, `ssl_protocols TLSv1.2 TLSv1.3;`
-- **`/etc/nginx/sites-available/horariointeligente`**: adicionado `Strict-Transport-Security` (HSTS), removidos headers duplicados
-
-#### 49.5 Criptografia de PII (LGPD)
-- **Criado**: `app/services/crypto_service.py` — Fernet (AES-128-CBC + HMAC-SHA256)
-- `EncryptedString` TypeDecorator para SQLAlchemy (transparente, backward-compatible)
-- `app/models/paciente.py`: `cpf = Column(EncryptedString(255))`
-- **Migração**: 282 CPFs de pacientes + 2 CPF/CNPJs de parceiros criptografados
-- Colunas alteradas para `VARCHAR(255)` (tokens Fernet ~120 chars)
-
-#### 49.6 Logrotate
-- **Criado**: `/etc/logrotate.d/horariointeligente`
-- Rotação diária, 30 dias retenção, compressão, copytruncate
-
-#### 49.7 Dependências — CVEs corrigidas
-- `aiohttp` 3.12.15 → 3.13.3
-- `pyasn1` 0.6.1 → 0.6.2
-- `python-multipart` 0.0.20 → 0.0.22
-- `starlette` 0.48.0 → 0.49.1
-- `urllib3` 2.5.0 → 2.6.3
-- Pinados: `cryptography==46.0.3`, `pywebpush==2.2.0`
-- **Residual**: `protobuf 6.32.1` (CVE-2026-0994) — sem fix disponível ainda
-
-### 50. Rotação de Chaves Locais (já aplicadas)
-- `SECRET_KEY` — nova chave de 64 bytes (base64)
-- `DATABASE_URL` — nova senha PostgreSQL de 32 caracteres aleatórios (atualizado em `.env` e `alembic.ini`)
-- `WHATSAPP_WEBHOOK_VERIFY_TOKEN` — novo token urlsafe
-- `ASAAS_WEBHOOK_TOKEN` — novo token hex 64 chars
-- `VAPID_PRIVATE_KEY` / `VAPID_PUBLIC_KEY` — novo par de chaves gerado
-- `ENCRYPTION_KEY` — chave Fernet gerada para criptografia PII
-- Fallback de DATABASE_URL removido de `app/database.py`
-
----
-
-## PENDÊNCIAS PÓS-ALMOÇO — Rotação de Chaves Externas
-
-> **IMPORTANTE**: Os serviços estão funcionando, mas as 6 integrações externas abaixo estão **inativas** até que os novos tokens sejam inseridos. O sistema funciona normalmente para agendamentos locais, mas WhatsApp, IA, áudio, email, Telegram e pagamentos estão desabilitados.
-
-### Checklist de Execução (ordem recomendada)
-
-#### Passo 1 — WhatsApp Business API (Meta)
-1. Acessar: https://business.facebook.com/settings/ → WhatsApp → API Setup
-2. Gerar novo **Access Token** permanente
-3. Editar `/root/sistema_agendamento/.env`:
-   ```
-   WHATSAPP_ACCESS_TOKEN=<novo_token_aqui>
-   ```
-4. **Dependência**: Na mesma página do Meta Business, ir em Webhooks → Editar →
-   atualizar o **Verify Token** para o valor atual do `.env`:
-   ```
-   Valor atual no .env: conferir com — grep WHATSAPP_WEBHOOK_VERIFY_TOKEN /root/sistema_agendamento/.env
-   ```
-5. Clicar "Verify and Save" no portal Meta
-
-#### Passo 2 — Anthropic API (Claude)
-1. Acessar: https://console.anthropic.com/settings/keys
-2. Revogar chave antiga e gerar nova
-3. Editar `/root/sistema_agendamento/.env`:
-   ```
-   ANTHROPIC_API_KEY=<nova_chave_aqui>
-   ```
-
-#### Passo 3 — OpenAI API (Whisper + TTS)
-1. Acessar: https://platform.openai.com/api-keys
-2. Revogar chave antiga e gerar nova
-3. Editar `/root/sistema_agendamento/.env`:
-   ```
-   OPENAI_API_KEY=<nova_chave_aqui>
-   ```
-
-#### Passo 4 — Email SMTP (Hostinger)
-1. Acessar: https://hpanel.hostinger.com/ → Email → contato@horariointeligente.com.br
-2. Alterar senha do email
-3. Editar `/root/sistema_agendamento/.env`:
-   ```
-   SMTP_PASSWORD=<nova_senha_aqui>
-   ```
-
-#### Passo 5 — Telegram Bot
-1. No Telegram, abrir conversa com @BotFather
-2. Enviar `/revoke` e selecionar o bot
-3. Enviar `/token` para gerar novo token
-4. Editar `/root/sistema_agendamento/.env`:
-   ```
-   TELEGRAM_BOT_TOKEN=<novo_token_aqui>
-   ```
-
-#### Passo 6 — Asaas (Gateway de Pagamento)
-1. Acessar: https://www.asaas.com/config/api
-2. Revogar chave antiga e gerar nova
-3. Editar `/root/sistema_agendamento/.env`:
-   ```
-   ASAAS_API_KEY=<nova_chave_aqui>
-   ```
-4. **Dependência**: Na configuração de webhook do Asaas, atualizar o **Webhook Token** para:
-   ```
-   Valor atual no .env: conferir com — grep ASAAS_WEBHOOK_TOKEN /root/sistema_agendamento/.env
-   ```
-
-### Passo Final — Reiniciar o Serviço
-Após inserir todas as chaves no `.env`:
-```bash
-sudo systemctl restart horariointeligente
-sudo systemctl status horariointeligente
-# Verificar logs:
-journalctl -u horariointeligente -n 50 --no-pager
+### Fluxo de Ativação de Conta (#35)
 ```
-
-### Validação Pós-Reinício
-- [ ] WhatsApp: enviar mensagem de teste para o número do bot
-- [ ] IA (Anthropic): agendar consulta via chat para validar resposta da IA
-- [ ] Áudio (OpenAI): enviar áudio via WhatsApp e verificar transcrição
-- [ ] Email: disparar email de teste (ex: redefinir senha)
-- [ ] Telegram: verificar se alertas chegam no chat ID configurado
-- [ ] Asaas: acessar painel admin e verificar status de cobrança
-
-### Nota sobre Permissões
-Após editar o `.env`, reajustar permissões:
-```bash
-chown horariointeligente:horariointeligente /root/sistema_agendamento/.env
-chmod 600 /root/sistema_agendamento/.env
+Admin/Parceiro cadastra → status=pendente_aceite → Email com link
+→ Cliente aceita termos → status=ativo
 ```
+- **APIs**: `/api/ativacao/{token}` (GET dados, POST aceite)
+- **Portal Parceiro**: `/api/parceiro/` (login, dashboard, CRUD clientes, convites)
+- **Página**: `static/ativar-conta.html` (6 estados)
+- Registra IP, user-agent, versões de termos em `historico_aceites`
 
 ---
 
-## Correções Realizadas (Sessão 31/01/2026)
+## Auditoria de Segurança (30/01/2026)
 
-### 51. JWT `sub` claim — InvalidSubjectError (401 em todas as APIs admin)
-- **Problema**: Após implementar o login unificado, todas as chamadas de API admin retornavam 401 "Token inválido"
-- **Causa raiz**: PyJWT exige que o claim `sub` seja **string** (RFC 7519). A função `create_unified_token()` definia `"sub": user_data["id"]` (integer). Ao decodificar, PyJWT lançava `InvalidSubjectError` (subclasse de `InvalidTokenError`), capturado pelo `except` genérico e retornando "Token inválido"
-- **Solução**: Alterado `create_unified_token()` para usar `str(user_data["id"])` e adicionado `int()` em todos os 6 pontos que leem o `sub` de volta
-- **Arquivos modificados**:
-  - `app/api/auth.py` — `create_unified_token()`, `get_current_user()`, `/refresh`, `/verify-token`
-  - `app/api/admin.py` — `get_current_admin()`
-  - `app/api/parceiro_auth.py` — `get_current_parceiro()`
-  - `app/api/financeiro.py` — `get_current_financeiro()`
+### Correções Críticas (#48)
+- **Permissões**: `.env` chmod 600, logs chmod 640
+- **Systemd**: `User=horariointeligente` (não root), bind 127.0.0.1, 4 workers, `EnvironmentFile=.env`
+- **SECRET_KEY**: removidos 5 fallbacks hardcoded → `os.getenv("SECRET_KEY")` com `RuntimeError`
+- **Telegram tokens**: hardcoded → `os.getenv()`
+- **Firewall**: UFW ativo (22, 80, 443/tcp)
 
-### 52. Página de login admin dedicada (substituiu login unificado com ?context)
-- **Problema**: Login unificado em `/static/login.html?context=admin` dependia de JavaScript para trocar o tema visual. Usuário não reconhecia como "login admin" — confundia com o login de cliente
-- **Solução**: Criada página standalone `/static/admin/login.html` com:
-  - Tema admin hardcoded (gradiente roxo, card escuro)
-  - Usa endpoint unificado `/api/auth/login` (JSON)
-  - Bloqueia tipos não-admin com mensagem de erro
-  - Auto-redirect se já logado (verifica `adminToken` no localStorage)
-  - Armazena tokens nas chaves unificadas (`authToken`) e legadas (`adminToken`, `financeiroToken`)
-- **Arquivo**: `static/admin/login.html` — reescrita completa (~170 linhas)
+### Correções Altas (#49)
+- **JWT**: expiração 60min (era 480), refresh token 8h, endpoint `POST /auth/refresh`
+- **Rate limiting**: 120/min global, 200/min webhook
+- **CORS**: localhost condicional (`ENVIRONMENT != "production"`)
+- **Nginx**: `server_tokens off`, HSTS, TLS 1.2+
+- **LGPD**: CPF criptografado com Fernet (`EncryptedString` TypeDecorator), 282 registros migrados
+- **Logrotate**: rotação diária, 30 dias retenção
+- **CVEs**: aiohttp, pyasn1, python-multipart, starlette, urllib3 atualizados
 
-### 53. Redirects de login/logout atualizados em 19 arquivos
-- **Problema**: 23 referências em 12 páginas admin ainda apontavam para `/static/login.html?context=admin`. 9 referências em páginas parceiro apontavam para `/static/parceiro/login.html`. 2 referências em páginas financeiro desatualizadas.
-- **Solução**: Todas as referências atualizadas para os caminhos corretos
+### Rotação de Chaves (#50)
+Chaves locais rotacionadas: SECRET_KEY, DATABASE_URL, WHATSAPP_WEBHOOK_VERIFY_TOKEN, ASAAS_WEBHOOK_TOKEN, VAPID keys, ENCRYPTION_KEY.
 
-#### Páginas admin (logout → `/static/admin/login.html`):
-| Arquivo | Mudanças |
-|---------|----------|
-| `static/admin/dashboard.html` | Logout function + redirects |
-| `static/admin/dashboard-financeiro.html` | Logout function + redirects |
-| `static/admin/dashboard-suporte.html` | Logout function + redirects |
-| `static/admin/clientes.html` | Logout function + redirects |
-| `static/admin/clientes-detalhes.html` | Redirects |
-| `static/admin/clientes-novo.html` | Redirects |
-| `static/admin/parceiros.html` | Logout function + redirects |
-| `static/admin/comissoes.html` | Logout function + redirects |
-| `static/admin/whatsapp-uso.html` | Logout function + redirects |
-| `static/admin/pre-cadastros.html` | Logout function + redirects |
-| `static/admin/analytics.html` | Redirects |
-| `static/admin/index.html` | Redirect para admin subdomain |
+### Checklist de Chaves Externas
+Após rotação, as integrações externas precisam de novos tokens no `.env`:
 
-#### Páginas parceiro (redirect → `/static/login.html?context=parceiro`):
-- `static/parceiro/novo-cliente.html`, `ativar-conta.html`, `pendente-ativacao.html`, `registro.html`, `dashboard.html`
+| Passo | Serviço | Variável no .env | Portal |
+|-------|---------|------------------|--------|
+| 1 | WhatsApp Meta | `WHATSAPP_ACCESS_TOKEN` | business.facebook.com → WhatsApp → API Setup |
+| 2 | Anthropic (Claude) | `ANTHROPIC_API_KEY` | console.anthropic.com/settings/keys |
+| 3 | OpenAI (Whisper+TTS) | `OPENAI_API_KEY` | platform.openai.com/api-keys |
+| 4 | Email SMTP | `SMTP_PASSWORD` | hpanel.hostinger.com |
+| 5 | Telegram Bot | `TELEGRAM_BOT_TOKEN` | @BotFather no Telegram |
+| 6 | Asaas (pagamentos) | `ASAAS_API_KEY` | asaas.com/config/api |
 
-#### Páginas financeiro (redirect → `/static/admin/login.html`):
-- `static/financeiro/login.html`, `static/financeiro/dashboard.html`
-
-### 54. Cache de HTML — Nginx e Service Worker
-- **Problema**: Mesmo após corrigir código, browser servia HTML antigo por cache do Nginx (`expires 1h`) e cache do Service Worker
-- **Solução Nginx** (`/etc/nginx/sites-enabled/horariointeligente`):
-  ```nginx
-  # Antes: expires 1h; Cache-Control "public, must-revalidate"
-  # Depois: expires -1; Cache-Control "no-cache, must-revalidate"
-  ```
-- **Solução Service Worker** (`static/service-worker.js`):
-  - Versão bumped de `1.1.0` → `1.2.0` para forçar invalidação de cache
-- **Solução Frontend** (`static/login.html`):
-  - Adicionado `Date.now()` como cache-bust em todas as URLs de redirect em `redirectByUserType()`
-
-### 55. Rota raiz atualizada para login admin dedicado
-- **Arquivo**: `app/main.py`
-- **Mudança**: Subdomínio `admin.*` agora redireciona para `/static/admin/login.html` ao invés de `/static/login.html?context=admin`
-
-### 56. Reset de senha do parceiro de teste
-- **Parceiro**: José Maria Martins (id=4, email: thelemarco@yahoo.com.br)
-- **Nova senha**: `parceiro123` (bcrypt hash atualizado no banco)
-- **Motivo**: Teste do fluxo de login e redirecionamento do parceiro
+Após inserir todas as chaves: `systemctl restart horariointeligente && chmod 600 .env && chown horariointeligente:horariointeligente .env`
 
 ---
 
-### Pendências Atualizadas
-- [x] ~~Login unificado — endpoint único para todos os tipos~~ (Implementado)
-- [x] ~~JWT sub claim fix — InvalidSubjectError~~ (Corrigido)
-- [x] ~~Página admin login dedicada~~ (Implementado)
-- [x] ~~Redirects login/logout em todas as páginas~~ (Atualizado)
-- [x] ~~Cache HTML — Nginx no-cache~~ (Corrigido)
-- [x] ~~Service Worker — versão 1.2.0~~ (Bumped)
-- [x] ~~Reset senha parceiro teste~~ (Concluído)
+## Correções — Sessão 31/01/2026
+
+### 51. JWT `sub` claim — InvalidSubjectError
+- PyJWT exige `sub` como string (RFC 7519). `create_unified_token()` enviava integer.
+- Fix: `str(user_data["id"])` no token + `int()` nos 6 pontos que leem o `sub`
+- Arquivos: `auth.py`, `admin.py`, `parceiro_auth.py`, `financeiro.py`
+
+### 52-53. Login admin dedicado + redirects
+- Criada `/static/admin/login.html` standalone (tema admin hardcoded)
+- 23 referências em 19 arquivos atualizadas para caminhos corretos
+
+### 54. Cache HTML — Nginx e Service Worker
+- Nginx: `expires -1; Cache-Control "no-cache, must-revalidate"` para HTML
+- Service Worker: versão 1.1.0 → 1.2.0
+
+### 55-56. Rota raiz admin + reset senha parceiro
+- Subdomínio `admin.*` → `/static/admin/login.html`
+- Parceiro José Maria (id=4): senha `parceiro123`
 
 ---
 
-## Correções Realizadas (Sessão 01/02/2026)
+## Correções — Sessão 01/02/2026
 
-### 57. Lembretes enviados 4x (quadruplicados)
-- **Problema**: Cada lembrete de consulta era enviado 4 vezes via WhatsApp ao mesmo tempo
-- **Causa raiz**: O serviço roda com `--workers 4` (Uvicorn). Cada worker executava `startup_event()` e iniciava seu próprio `ReminderScheduler` com APScheduler. Resultado: 4 schedulers processando os mesmos lembretes simultaneamente
-- **Agravante 1**: Existiam 2 jobs duplicados — `process_reminders` (Evolution API, legado/descontinuado) e `lembretes_inteligentes` (API Oficial Meta) — ambos rodando a cada 10 minutos
-- **Agravante 2**: Ambos os jobs eram executados imediatamente no startup (`asyncio.create_task()`), além do ciclo agendado
-- **Agravante 3**: Tabela `lembretes` não tinha UNIQUE constraint em `(agendamento_id, tipo)`, permitindo criação de registros duplicados por race condition
-- **Evidência no banco**: 3 registros duplicados para agendamento 760 (tipo=24h), todos enviados no mesmo segundo (13:50:49)
+### 57. Lembretes quadruplicados (4 workers × 4 schedulers)
+- **Causa**: Cada worker Uvicorn iniciava seu próprio `ReminderScheduler`
+- **Correções**:
+  - File lock (`fcntl.flock`) em `main.py` — apenas 1 worker roda o scheduler
+  - Removido job legado `process_reminders` (Evolution API)
+  - Removida execução imediata no startup (evita duplicação em restart)
+  - `.with_for_update(skip_locked=True)` no processamento de lembretes
+  - UNIQUE constraint `(agendamento_id, tipo)` na tabela `lembretes`
 
-#### Correções aplicadas:
+### 58. Lembretes não apareciam no painel de conversas
+- **Causa**: `RemetenteMensagem.SISTEMA` não existia no enum Python nem no PostgreSQL
+- **Fix**: Adicionado `SISTEMA = "sistema"` ao enum Python + `ALTER TYPE remetentemensagem ADD VALUE 'SISTEMA'`
+- Frontend: label "Sistema" + estilo roxo/lilás
 
-##### 57.1 File lock para scheduler único
-- **Arquivo**: `app/main.py`
-- No `startup_event()`, usa `fcntl.flock()` com `LOCK_EX | LOCK_NB` no arquivo `/tmp/horariointeligente_scheduler.lock`
-- Apenas o worker que obtém o lock inicia o scheduler
-- Os outros 3 workers logam "Scheduler já rodando em outro worker" e servem apenas requests
-- No `shutdown_event()`, o lock é liberado com `LOCK_UN`
+### 59. Nome duplicado "Dr(a). Dr. João"
+- Verificação de prefixo antes de adicionar "Dr(a)." em `lembrete_service.py`
 
-##### 57.2 Remoção do job legado e execução imediata
-- **Arquivo**: `app/scheduler.py`
-- Removido job `process_reminders` (usava `reminder_service` via Evolution API — descontinuado)
-- Removido import de `reminder_service`
-- Removido `asyncio.create_task(self._run_reminder_processing())` do startup
-- Removido `asyncio.create_task(self._run_lembretes_inteligentes())` do startup (evita envio duplicado em restart rápido)
-- Mantido apenas `asyncio.create_task(self._run_status_update())` (idempotente, sem risco)
-- Removido método `_run_reminder_processing()` (não mais referenciado)
-- `run_now()` agora chama `_run_lembretes_inteligentes()` ao invés do método removido
-
-##### 57.3 Locking no processamento de lembretes
-- **Arquivo**: `app/services/lembrete_service.py`
-- `_processar_tipo_lembrete()`: query de Lembrete agora usa `.with_for_update(skip_locked=True)`
-- Cada agendamento processado em bloco try/except com rollback individual
-- `db.flush()` ao criar novo lembrete (ao invés de commit imediato), commit apenas após envio
-
-##### 57.4 UNIQUE constraint na tabela lembretes
-- **Arquivo**: `app/models/lembrete.py`
-- Adicionado `UniqueConstraint('agendamento_id', 'tipo', name='uq_lembrete_agendamento_tipo')` no `__table_args__`
-- Adicionado import de `UniqueConstraint`
-- **Banco**: `ALTER TABLE lembretes ADD CONSTRAINT uq_lembrete_agendamento_tipo UNIQUE (agendamento_id, tipo)`
-- **Limpeza**: 2 registros duplicados removidos (IDs 34 e 35, mantido ID 33)
+### 60. Template lembrete_24h — texto redundante
+- Body diz "Responda OK..." mas template já tem botões interativos
+- **Status**: Pendente — requer edição manual no Meta Business Manager
 
 ---
 
-### 58. Lembretes e notificações não apareciam no painel de conversas
-- **Problema**: Mensagens de lembrete enviadas via WhatsApp, notificações de cancelamento e reagendamento não apareciam na tela de conversas (`/static/conversas.html`)
-- **Causa raiz**: O código usava `RemetenteMensagem.SISTEMA` em 3 lugares, mas o valor `SISTEMA` nunca foi adicionado ao enum Python nem ao enum PostgreSQL
-- **Efeito**: `AttributeError` ao tentar salvar a mensagem, capturado silenciosamente pelo `except Exception` — a mensagem WhatsApp era enviada com sucesso mas nunca persistida no banco
-- **Pontos afetados**:
-  - `app/services/lembrete_service.py:250` — lembretes enviados (24h, 2h)
-  - `app/api/agendamentos.py:728` — notificação de reagendamento via WhatsApp
-  - `app/api/agendamentos.py:898` — notificação de cancelamento via WhatsApp
+## Cadastro Self-Service via Convite — Sessão 02/02/2026
 
-#### Correções aplicadas:
+### 61. Feature completa: Cadastro Self-Service de Clientes
 
-##### 58.1 Enum Python
-- **Arquivo**: `app/models/mensagem.py`
-- Adicionado `SISTEMA = "sistema"` ao `RemetenteMensagem`
-
-##### 58.2 Enum PostgreSQL
-- `ALTER TYPE remetentemensagem ADD VALUE 'SISTEMA'`
-- Enum atualizado: `{PACIENTE, IA, ATENDENTE, SISTEMA}`
-
-##### 58.3 Frontend — label e estilo
-- **Arquivo**: `static/conversas.html`
-- `remetenteLabel`: adicionado `'sistema': 'Sistema'`
-- CSS: `.mensagem .remetente.sistema { color: #7c3aed; }` (roxo)
-- CSS: `.mensagem.saida.sistema { background: #f3e8ff; }` (fundo lilás)
-- Classe CSS `sistema` adicionada ao div da mensagem (junto com `atendente`)
-
----
-
-### 59. Nome do médico duplicado — "Dr(a). Dr. João da Silva"
-- **Problema**: Nas mensagens de lembrete e respostas conversacionais, o nome aparecia como "Dr(a). Dr. João da Silva"
-- **Causa**: O nome no banco já inclui "Dr." (`medicos.nome = 'Dr. João da Silva'`), e o código adicionava "Dr(a)." por cima
-- **Arquivo**: `app/services/lembrete_service.py`
-- **Correção**: Verificação de prefixo antes de adicionar — se `medico.nome` já começa com "Dr.", "Dra.", "Dr " ou "Dra ", usa o nome como está
-- **Locais corrigidos**:
-  - `enviar_lembrete()` (linha ~169) — envio do template WhatsApp
-  - `_gerar_resposta_ia()` (linha ~500) — respostas de confirmação, cancelamento e dúvidas
-
----
-
-### 60. Template lembrete_24h — texto redundante com botões
-- **Problema**: O body do template contém "Responda 'OK' para confirmar ou 'REMARCAR' se precisar alterar", mas o template já possui botões interativos "Confirmar presença" e "Preciso remarcar"
-- **Tipo**: Ajuste no Meta Business Manager (não no código)
-- **Ação necessária**: Editar o body do template `lembrete_24h` no WhatsApp Manager removendo a instrução de resposta por texto
-- **Status**: Pendente — requer edição manual no painel da Meta e re-aprovação do template
-
----
-
-### Pendências Atualizadas
-- [x] ~~Lembretes quadruplicados — 4 workers com 4 schedulers~~ (Corrigido)
-- [x] ~~Lembretes não apareciam no painel de conversas~~ (Corrigido)
-- [x] ~~Nome duplicado "Dr(a). Dr."~~ (Corrigido)
-- [ ] Template `lembrete_24h` — remover texto "Responda OK..." redundante com botões (editar no Meta Business Manager)
-
----
-
-*Última atualização: 01/02/2026 - Scheduler único (file lock), enum SISTEMA, duplicação Dr(a)*
-
----
-
-## Cadastro Self-Service de Clientes via Convite (Sessão 02/02/2026)
-
-### 61. Feature completa: Cadastro Self-Service de Clientes (Convite Personalizado)
-- **Objetivo**: Admin gera link personalizado → prospect preenche dados basicos → status=pendente_aprovacao → admin configura billing e aprova → status=pendente_aceite → email de ativacao enviado → cliente aceita termos (fluxo existente) → status=ativo
-- **Status**: Implementado e testado. Convite gerado com sucesso em producao.
-
-#### Fluxo Completo:
+#### Fluxo
 ```
 Admin gera convite → Prospect preenche dados → status=pendente_aprovacao
-→ Admin configura billing e aprova → status=pendente_aceite → Email ativacao enviado
-→ Cliente aceita termos (fluxo existente) → status=ativo
+→ Admin configura billing e aprova → status=pendente_aceite → Email ativação
+→ Cliente aceita termos → status=ativo
 ```
 
-#### 61.1 Migracao de Banco de Dados
-- **Arquivo**: `alembic/versions/l01_create_convites_clientes.py`
-- **Revisao**: `k06_add_codigo_ativacao` → `l01_create_convites_clientes`
-- **Tabela criada**: `convites_clientes` (id, token UNIQUE, email_destino, nome_destino, telefone_destino, observacoes, criado_por_id, criado_por_tipo, parceiro_id, usado, usado_em, cliente_id FK, expira_em, criado_em)
-- **Colunas adicionadas em `clientes`**: `tipo_consultorio` (VARCHAR(30) default 'individual'), `qtd_medicos_adicionais` (INTEGER default 0), `necessita_secretaria` (BOOLEAN default false), `convite_id` (FK to convites_clientes)
-- **Status**: Migrado com sucesso
+#### Componentes criados
+| Arquivo | Descrição |
+|---------|-----------|
+| `app/models/convite_cliente.py` | Model ConviteCliente |
+| `app/services/onboarding_service.py` | Helpers extraídos (subdomain, senha, billing) |
+| `app/api/cliente_registro.py` | API pública `/api/registro-cliente/{token}` (GET valida, POST registra) |
+| `app/api/admin_convites.py` | API admin `/api/admin/convites` (POST gera, GET lista, DELETE revoga) |
+| `static/registro-cliente.html` | Formulário público para prospects |
+| `static/admin/convites.html` | Gestão de convites (admin) |
+| `static/admin/clientes-aprovar.html` | Página de aprovação com config de billing |
 
-#### 61.2 Model
-- **Arquivo criado**: `app/models/convite_cliente.py` — SQLAlchemy model com `to_dict()` e status computado (pendente/usado/expirado)
-- **Arquivo modificado**: `app/models/__init__.py` — adicionado `ConviteCliente` ao `__all__`
+#### Endpoints de aprovação/rejeição
+- `POST /api/admin/clientes/{id}/aprovar` — cria assinatura, gera senhas, configura médicos, envia email de ativação
+- `POST /api/admin/clientes/{id}/rejeitar` — atualiza status
 
-#### 61.3 Service de Onboarding (refatoracao)
-- **Arquivo criado**: `app/services/onboarding_service.py`
-- **Funcoes extraidas de `admin_clientes.py`**: `gerar_subdomain()`, `gerar_senha_temporaria()`, `hash_senha()`, `verificar_subdomain_disponivel()`, `verificar_email_disponivel()`, `TABELAS_EMAIL_VALIDAS`
-- **Funcoes novas**: `gerar_subdomain_unico(db, nome)` (gera subdomain com sufixo numerico se ja existe), `calcular_billing()` (calculo de assinatura reutilizavel)
-- **Arquivo modificado**: `app/api/admin_clientes.py` — funcoes locais removidas, agora importadas de `onboarding_service`
-
-#### 61.4 API Publica de Registro (sem auth)
-- **Arquivo criado**: `app/api/cliente_registro.py`
-- **Router prefix**: `/api/registro-cliente`
-- **Endpoints**:
-  - `GET /{token}` — valida convite, retorna `{ valido: true, dados_preenchidos: { email, nome, telefone } }`
-  - `POST /{token}` — registra cliente (rate limit: 5/min por IP)
-- **POST faz**: valida token → sanitiza inputs → verifica unicidade (documento, email clinica, email medico) → gera subdomain unico → INSERT clientes (status=pendente_aprovacao, ativo=false, plano=NULL) → INSERT medicos (pode_fazer_login=false, senha=NULL) → marca convite como usado → vincula parceiro se houver → notifica admin via Telegram
-- **Schema**: `RegistroClienteCreate` com validadores para documento (CPF/CNPJ), telefone, tipo_consultorio, registro_profissional
-
-#### 61.5 API Admin de Convites (auth obrigatoria)
-- **Arquivo criado**: `app/api/admin_convites.py`
-- **Router prefix**: `/api/admin/convites`
-- **Endpoints**:
-  - `POST ""` — gera convite (token_urlsafe(48), 30 dias expiracao), opcionalmente envia email
-  - `GET ""` — lista convites paginados com filtro por status (pendente/usado/expirado)
-  - `DELETE "/{convite_id}"` — revoga convite nao-usado
-- **POST retorna**: `{ success, convite: { id, token, url, expira_em, email_enviado } }`
-- **URL do convite**: `https://horariointeligente.com.br/static/registro-cliente.html?token=XXX`
-
-#### 61.6 Endpoints de Aprovacao/Rejeicao
-- **Arquivo modificado**: `app/api/admin_clientes.py` (adicionado no final)
-- **Schemas**: `AprovacaoClienteRequest`, `RejeicaoClienteRequest`
-- `POST /api/admin/clientes/{id}/aprovar` — valida pendente_aprovacao → cria assinatura (calcular_billing) → gera senhas → cria medicos adicionais/secretaria → configura medico principal (pode_fazer_login=true, is_admin=true) → gera token_ativacao → status=pendente_aceite → envia email de ativacao
-- `POST /api/admin/clientes/{id}/rejeitar` — atualiza status='rejeitado'
-
-#### 61.7 Middlewares
-- **`app/middleware/tenant_middleware.py`**: adicionado `/api/registro-cliente/` ao bypass de tenant resolution
-- **`app/middleware/billing_middleware.py`**: adicionado `/api/registro-cliente/` e `/static/registro-cliente.html` a `ROTAS_LIBERADAS`
-
-#### 61.8 Routers registrados
-- **`app/main.py`**: `cliente_registro_router` e `admin_convites_router` registrados apos `parceiro_registro_router`
-
-#### 61.9 Notificacoes
-- **`app/services/email_service.py`**: novo metodo `send_convite_registro(to_email, to_name, url_convite)` — template blue/teal
-- **`app/services/telegram_service.py`**: nova funcao `alerta_novo_registro_cliente()` — notifica admin quando prospect preenche cadastro
-- **`app/api/cliente_registro.py`**: usa `email_service.send_telegram_notification()` (sync) para notificar
-
-#### 61.10 API admin atualizada
-- **`app/api/admin.py`**:
-  - `listar_clientes()`: novo parametro `status_filter: Optional[str]` com filtro SQL `AND status = :status_filter`
-  - `obter_cliente()`: SELECT agora inclui `c.cnpj`, `c.tipo_consultorio`, `c.qtd_medicos_adicionais`, `c.necessita_secretaria` — necessarios para a pagina de aprovacao
-
-#### 61.11 Frontend — Paginas Criadas
-
-##### `static/registro-cliente.html` (868 linhas)
-- Formulario publico para prospects preencherem dados
-- Tema escuro com gradiente blue/teal (#3b82f6 → #06b6d4)
-- 4 estados: loading, erro (expirado/usado/nao_encontrado/sem_token/rede), formulario, sucesso
-- 3 secoes: Dados do Consultorio, Tipo de Atendimento (individual/multi_consultorio), Medico Principal
-- Mascaras JS para CPF/CNPJ (auto-detecta) e telefone
-- Pre-preenche email/nome/telefone do convite via `data.dados_preenchidos`
-- Rate limit visual no submit
-
-##### `static/admin/convites.html` (684 linhas)
-- Gestao de convites (padrao visual de `clientes.html`)
-- Stats row: Total, Pendentes, Usados
-- Tabela: Destino, Status (badges coloridos), Data, Acoes (copiar link, revogar)
-- Modal "Gerar Convite": nome, email, telefone, observacoes, checkbox enviar email
-- Modal "Link Gerado": exibe URL com botao copiar, nome/email do destino
-- Filtro client-side por status (todos/pendentes/usados/expirados)
-
-##### `static/admin/clientes-aprovar.html` (1685 linhas)
-- Pagina de aprovacao de clientes pendentes
-- Secao 1 (read-only): dados do prospect + medico principal (carregados via `Promise.all` de GET `/api/admin/clientes/{id}` + GET `/api/admin/clientes/{id}/medicos`)
-- Secao 2 (editavel): selecao de plano (Individual R$150 / Consultorio R$200), periodo cobranca, dia vencimento, linha WhatsApp dedicada, parceiro comercial, desconto promocional, cortesia ativacao
-- Resumo de precos dinamico (atualiza em tempo real)
-- Medicos adicionais (dinamico, add/remove)
-- Secretaria (toggle)
-- Auto-selecao de plano baseado em `tipo_consultorio` e `qtd_medicos_adicionais`
-- Botao "Aprovar e Enviar Ativacao" → POST `/api/admin/clientes/{id}/aprovar`
-- Botao "Rejeitar" → modal com motivo → POST `/api/admin/clientes/{id}/rejeitar`
-- Modal sucesso: link ativacao, credenciais, botao copiar tudo, botao WhatsApp
-
-#### 61.12 Frontend — Paginas Modificadas
-
-##### `static/admin/clientes.html`
-- Novo filtro "Pendente Aprovacao" no dropdown de status
-- Badge amarelo para `pendente_aprovacao`, badge vermelho para `rejeitado`
-- Botao "Aprovar" (fa-check-double) para clientes pendentes → redireciona para `clientes-aprovar.html?id=X`
-- Link "Convites" (botao) ao lado de "Novo Cliente"
-
-##### `static/admin/dashboard.html`
-- Grid de stats expandido de 5 para 6 colunas
-- Novo card "Pendentes Aprovacao" (amber) com contagem via `GET /api/admin/clientes?status_filter=pendente_aprovacao`
-- Novo atalho "Convites" (gradiente blue/cyan) no grid de navegacao
-
-#### 61.13 Bugs corrigidos durante implementacao
-
-##### Permissao de arquivo (causa raiz do 404 inicial)
-- **Problema**: `email_service.py` ficou com permissao `600` (somente root) apos edicao. O servico roda como usuario `horariointeligente` (nao-root), causando `Permission denied` na importacao. O `try/except` em `main.py` capturava e fazia fallback para routers minimos — TODAS as rotas admin/convites/registro ficavam indisponiveis (404)
-- **Solucao**: `chmod 644` em todos os arquivos `.py` e `.html` com permissoes restritivas
-- **Prevencao**: Sempre verificar permissoes apos editar arquivos
-
-##### Campo `tipo_atendimento` vs `tipo_consultorio` em registro-cliente.html
-- **Problema**: Frontend usava `tipo_atendimento` como nome do radio e campo no payload, mas API espera `tipo_consultorio`
-- **Solucao**: Replace-all de `tipo_atendimento` → `tipo_consultorio` (7 ocorrencias)
-
-##### Pre-fill data path em registro-cliente.html
-- **Problema**: API retorna `{ valido, dados_preenchidos: { email, nome, telefone } }` mas frontend lia `data.email` direto
-- **Solucao**: Alterado para `data.dados_preenchidos.email`, etc.
-
-##### Campos faltando em `obter_cliente()` (admin.py)
-- **Problema**: Endpoint GET `/api/admin/clientes/{id}` nao retornava `cnpj`, `tipo_consultorio`, `qtd_medicos_adicionais`, `necessita_secretaria` — necessarios pela pagina de aprovacao
-- **Solucao**: Adicionados ao SELECT e ao dict de retorno
-
-##### Auto-selecao de plano em clientes-aprovar.html
-- **Problema**: Condicao verificava `'consultorio'` e `'clinica'` mas valor real e `'multi_consultorio'`
-- **Solucao**: Adicionado `'multi_consultorio'` a condicao
-
-##### URL do convite gerado em convites.html
-- **Problema**: API retorna `{ success, convite: { url } }` mas frontend lia `resultado.url` (nivel errado)
-- **Solucao**: Alterado para extrair de `resultado.convite.url`
-
-#### Novo status de cliente: `pendente_aprovacao`
-| Status | Cor Badge | Descricao |
-|--------|-----------|-----------|
-| `pendente_aprovacao` | Amarelo escuro | Aguardando aprovacao do admin |
-| `pendente_aceite` | Amarelo | Aguardando aceite de termos |
-| `ativo` | Verde | Conta ativa e funcional |
-| `rejeitado` | Vermelho escuro | Cadastro rejeitado pelo admin |
-| `aguardando_pagamento` | Laranja | Aguardando primeiro pagamento |
-| `suspenso` | Vermelho | Suspenso por inadimplencia |
-| `cancelado` | Cinza | Conta cancelada |
+#### Migração
+- Tabela `convites_clientes` criada
+- Colunas em `clientes`: `tipo_consultorio`, `qtd_medicos_adicionais`, `necessita_secretaria`, `convite_id`
+- `plano` alterado para aceitar NULL (definido na aprovação)
 
 ---
 
-### Pendencias Atualizadas
-- [x] ~~Cadastro Self-Service de Clientes (convite personalizado)~~ (Implementado)
-- [x] ~~Migracao l01_create_convites_clientes~~ (Executada com sucesso)
-- [x] ~~Convite gerado com sucesso em producao~~ (Testado)
-- [ ] Template `lembrete_24h` — remover texto "Responda OK..." redundante com botoes (editar no Meta Business Manager)
-- [ ] Testar fluxo completo: prospect preenche formulario → admin aprova → cliente aceita termos
-- [ ] Testar envio de email ao gerar convite (checkbox "enviar por email")
-- [ ] Testar rejeicao de prospect
-
----
-
-### Arquivos Criados nesta Sessao
-| Arquivo | Descricao | Linhas |
-|---------|-----------|--------|
-| `alembic/versions/l01_create_convites_clientes.py` | Migracao: tabela convites + colunas clientes | ~80 |
-| `app/models/convite_cliente.py` | Model SQLAlchemy ConviteCliente | ~50 |
-| `app/services/onboarding_service.py` | Funcoes auxiliares extraidas (subdomain, senha, billing) | ~200 |
-| `app/api/cliente_registro.py` | API publica de registro via convite | ~370 |
-| `app/api/admin_convites.py` | API admin de gestao de convites | ~250 |
-| `static/registro-cliente.html` | Formulario publico para prospects | 868 |
-| `static/admin/convites.html` | Gestao de convites (admin) | 684 |
-| `static/admin/clientes-aprovar.html` | Aprovacao de clientes pendentes | 1685 |
-
-### Arquivos Modificados nesta Sessao
-| Arquivo | Mudancas |
-|---------|----------|
-| `app/models/__init__.py` | +ConviteCliente |
-| `app/api/admin_clientes.py` | Refactor imports + endpoints aprovar/rejeitar |
-| `app/api/admin.py` | +status_filter em listar_clientes, +campos em obter_cliente |
-| `app/main.py` | +2 routers (cliente_registro, admin_convites) |
-| `app/middleware/tenant_middleware.py` | +bypass /api/registro-cliente/ |
-| `app/middleware/billing_middleware.py` | +ROTAS_LIBERADAS |
-| `app/services/email_service.py` | +send_convite_registro() |
-| `app/services/telegram_service.py` | +alerta_novo_registro_cliente() |
-| `static/admin/clientes.html` | +filtro, +badge, +botao aprovar, +link convites |
-| `static/admin/dashboard.html` | +card pendentes, +atalho convites |
-
----
-
-## Correções Realizadas (Sessão 03/02/2026)
+## Correções — Sessão 03/02/2026
 
 ### 62. Botão "Não vou conseguir ir" não oferecia remarcar
-- **Problema**: Paciente clicou em "Não vou conseguir ir" no lembrete de 2h e sistema respondeu "Não encontrei nenhuma consulta para cancelar". Mesmo quando encontrava, cancelava automaticamente sem oferecer remarcar.
-- **Causa raiz tripla**:
-  1. **Timezone incorreto**: `_buscar_agendamento_pendente()` usava `datetime.now()` sem timezone. Banco usa BRT mas código comparava com hora do sistema (potencialmente UTC)
-  2. **Busca muito restritiva**: Query `data_hora >= datetime.now()` não encontrava consultas que acabaram de passar (paciente clicou às 14:05, consulta era 14:00)
-  3. **UX inadequada**: Botão "Não vou conseguir ir" cancelava automaticamente sem perguntar se queria remarcar
-
-#### Correções aplicadas:
-
-##### 62.1 Import de timezone helper
+- **Causa**: timezone incorreto (`datetime.now()` sem tz), busca muito restritiva, cancelamento automático sem perguntar
+- **Fix**: `now_brazil()`, margem de 2h na busca, handler reescrito para perguntar "remarcar ou cancelar?"
 - **Arquivo**: `app/services/button_handler_service.py`
-- Adicionado `from datetime import timedelta`
-- Adicionado `from app.utils.timezone_helper import now_brazil`
 
-##### 62.2 Busca com margem de tempo e timezone correto
-- **Função**: `_buscar_agendamento_pendente()`
-- Novo parâmetro `incluir_recentes: bool = False`
-- Quando `incluir_recentes=True`: busca consultas das últimas 2h (para cancelar/remarcar)
-- Usa `now_brazil()` ao invés de `datetime.now()`
+### 63. Orientações padrão em confirmações (endereço, documento, exames)
+- Toda confirmação agora inclui: endereço da clínica, "traga documento com foto" (+ carteirinha se convênio), "traga exames recentes"
+- Aplicado em: confirmação da IA, resposta ao lembrete 24h, resposta ao lembrete 2h
+- **Arquivos**: `anthropic_service.py`, `button_handler_service.py`, `lembrete_service.py`
 
-##### 62.3 Handler de remarcar usa margem
-- `_handle_remarcar()` agora chama `_buscar_agendamento_pendente(db, paciente.id, incluir_recentes=True)`
+### 64. Máscara de telefone em convites + texto do email
+- Máscara `(XX) XXXXX-XXXX` no modal de convites (`admin/convites.html`)
+- Texto do email: "sistema de agendamento automatizado mais humanizado"
 
-##### 62.4 Handler de "cancelar" agora oferece remarcar
-- `_handle_cancelar()` completamente reescrito:
-  - Usa `incluir_recentes=True` para encontrar consultas recentes
-  - **NÃO cancela automaticamente** - apenas pergunta
-  - Resposta: "Você gostaria de *remarcar* para outra data ou prefere *cancelar* completamente?"
-  - Status do lembrete muda para `REMARCAR` (não `CANCELAR`)
-  - Evento WebSocket: `paciente_nao_pode_ir`
-  - Flag `await_remarcar_ou_cancelar: True` sinaliza que espera decisão
+### 65. Erro "plano NOT NULL" ao registrar via convite
+- `ALTER TABLE clientes ALTER COLUMN plano DROP NOT NULL` — plano definido na aprovação
 
-##### 62.5 Todos os `datetime.now()` substituídos por `now_brazil()`
-- `lembrete.respondido_em = now_brazil()` em todos os handlers
+### 66. Tela de sucesso do registro via convite
+- Removido botão "Acessar Painel", título "Cadastro Enviado!", passos explicando análise→aprovação→ativação
 
-#### Fluxo após correção:
-1. Paciente clica "Não vou conseguir ir"
-2. Sistema encontra consulta (mesmo se passou até 2h)
-3. Sistema pergunta: "Você gostaria de remarcar ou cancelar?"
-4. Paciente responde "remarcar" ou "cancelar"
-5. IA processa a próxima mensagem e executa a ação
+### 67. Correção do cálculo de comissões de parceiros
+- Comissão mensal: percentual sobre (plano base + extras) — **sem** linha dedicada (R$40)
+- Comissão de ativação: percentual sobre taxa de ativação (única vez)
+- Se ativação cortesia: sem comissão de ativação
+- `mes_referencia=0` (ativação), `mes_referencia=1+` (mensalidades)
 
-#### Arquivo modificado:
-- `app/services/button_handler_service.py` — reescrito `_handle_cancelar()`, `_buscar_agendamento_pendente()`, imports e timezone
+### 68. Sistema de convites para parceiros comerciais
+- Parceiro gera links de convite no seu dashboard
+- Endpoints: `POST/GET/DELETE /api/parceiro/convites`
+- Email personalizado com nome do parceiro
+- Página de registro mostra "Convite de: [Nome do Parceiro]"
+- Vínculo cliente-parceiro criado automaticamente
 
 ---
 
-### 63. Orientações padrão em todas as confirmações (endereço, documento, exames)
-- **Problema**: Mensagens de confirmação não incluíam informações essenciais: endereço da clínica, documento com foto (especialmente para convênio) e exames recentes
-- **Requisito**: Incluir essas informações em 3 pontos:
-  1. Confirmação de agendamento (IA)
-  2. Resposta ao confirmar presença via lembrete 24h (button handler)
-  3. Resposta ao confirmar presença via lembrete 2h (button handler)
+## Correções — Sessão 04/02/2026
 
-#### Correções aplicadas:
-
-##### 63.1 Regras de confirmação da IA atualizadas
-- **Arquivo**: `app/services/anthropic_service.py`
-- Seção "REGRAS DE CONFIRMAÇÃO DO AGENDAMENTO" atualizada
-- IA deve incluir no final de toda confirmação:
-  - 📍 Nosso endereço: [endereço da clínica]
-  - 🪪 Traga documento com foto (obrigatório para convênio)
-  - 📎 Se tiver exames recentes, traga no dia da consulta!
-
-##### 63.2 Funções helper no button_handler_service.py
-- **Arquivo**: `app/services/button_handler_service.py`
-- Import de `Cliente` adicionado
-- Nova função `_buscar_endereco_clinica(db, cliente_id)` - busca endereço do cliente
-- Nova função `_montar_orientacoes_consulta(endereco, eh_convenio)` - monta texto padronizado de orientações
-  - Se convênio: "🪪 Traga documento com foto e carteirinha do convênio"
-  - Se particular: "🪪 Traga documento com foto"
-
-##### 63.3 Handler `_handle_confirmar` atualizado
-- **Arquivo**: `app/services/button_handler_service.py`
-- Verifica se agendamento é convênio (`forma_pagamento.startswith("convenio")`)
-- Busca endereço da clínica
-- Inclui nome do médico na resposta
-- Inclui orientações completas na mensagem
-
-##### 63.4 Função `_gerar_resposta_ia` atualizada (lembrete_service)
-- **Arquivo**: `app/services/lembrete_service.py`
-- Intenção "confirmar" agora inclui:
-  - Busca de endereço da clínica via Cliente
-  - Verificação se é convênio
-  - Montagem de orientações personalizadas
-
-#### Novo formato de confirmação (exemplo com convênio):
-```
-Perfeito, Nylza! ✅
-
-Sua consulta está confirmada para:
-📅 13/02/2026 às 09:30
-👨‍⚕️ Dr. João da Silva
-
-📍 Nosso endereço: Rua das Flores, 123 - Centro
-🪪 Traga documento com foto e carteirinha do convênio
-📎 Se tiver exames recentes, traga no dia da consulta!
-
-Aguardamos você!
-```
-
-#### Arquivos modificados:
-- `app/services/anthropic_service.py` — regras de confirmação da IA
-- `app/services/button_handler_service.py` — helpers + `_handle_confirmar`
-- `app/services/lembrete_service.py` — `_gerar_resposta_ia`
+### 69. Filtro de conversas WhatsApp por vínculo médico-paciente
+- **Problema**: No painel de conversas, todos os médicos de um cliente multi-profissional viam todas as conversas. Cada médico deve ver apenas conversas de pacientes com agendamento com ele. Secretárias continuam vendo tudo.
+- **Cadeia**: `conversa.paciente_telefone → pacientes.telefone → agendamentos.paciente_id + medico_id`
+- **Implementação**:
+  - `app/services/conversa_service.py`: parâmetro `medico_id` em `listar_conversas()`. Subquery filtra telefones de pacientes com agendamento com o médico
+  - `app/api/conversas.py`: dependency `get_medico_filter_dependency` no endpoint `GET /api/conversas`
+- **Comportamento**:
+  - Secretária → `medico_filter=None` → vê todas as conversas
+  - Médico → `medico_filter=ID` → vê apenas pacientes com vínculo via agendamento
+  - Paciente de dois médicos → ambos veem
+  - Número novo sem paciente/agendamento → só secretária vê
 
 ---
 
-### 64. Máscara de telefone no formulário de convites (admin) + texto do email
-- **Problema 1**: Campo de telefone no modal de gerar convite (`admin/convites.html`) não tinha máscara
-- **Problema 2**: Texto do email de convite dizia "sistema de agendamento médico mais completo" - pode sugerir funcionalidades clínicas (prontuário, receituário)
+## Correções — Sessão 06/02/2026
 
-#### Correções aplicadas:
-
-##### 64.1 Máscara de telefone em admin/convites.html
-- **Arquivo**: `static/admin/convites.html`
-- Adicionada função `maskPhone()` (mesmo padrão dos outros formulários)
-- Adicionado event listener no campo `campo_telefone_destino`
-- Formato: `(XX) XXXXX-XXXX`
-
-##### 64.2 Texto do email de convite atualizado
-- **Arquivo**: `app/services/email_service.py`
-- **Antes**: "o sistema de agendamento médico mais completo do mercado"
-- **Depois**: "o sistema de agendamento automatizado mais humanizado do mercado!"
-- **Motivo**: Transmite o diferencial da IA conversacional sem criar expectativa de funcionalidades clínicas
-
-#### Nota: Máscaras de telefone já existentes
-- `static/registro-cliente.html` — campos `telefone` e `medico_telefone` ✓
-- `static/parceiro/novo-cliente.html` — função `formatarTelefone()` ✓
+### 70. Vazamento multi-tenant: dados do demo exibidos em outro cliente
+- **Problema**: Conversas do WhatsApp do cliente "Médicos Associados" (id=19) exibiam dados da "Clínica Demonstração" (id=3) — especialidades, nomes de médicos e nome da clínica errados
+- **Causa raiz**: Função `get_cliente_id_from_phone_number_id()` em `webhook_official.py` tinha fallback silencioso para `DEFAULT_CLIENTE_ID=3` (demo) quando não encontrava o `phone_number_id`. Agravado por `clientes.ativo=false` no cliente 19 (inconsistência com `status='ativo'`)
+- **Correções**:
+  - Removido fallback para `DEFAULT_CLIENTE_ID=3` — função agora retorna `None` e a mensagem é ignorada com log de erro
+  - Adicionada busca em duas camadas: tabela `configuracoes` + tabela `clientes`
+  - Filtro de ativo usa `OR(ativo=true, status='ativo')` para resiliência contra inconsistências
+  - `process_message()` rejeita mensagens quando `cliente_id is None`
+  - Sincronizado `clientes.whatsapp_phone_number_id` para cliente 19
+  - Corrigido `clientes.ativo = true` para cliente 19
+  - Encerrada conversa 30 (vinculada ao tenant errado) e limpo cache Redis correspondente
+  - Adicionadas UNIQUE constraints parciais em `whatsapp_phone_number_id` nas tabelas `configuracoes` e `clientes`
+- **Arquivos**: `app/api/webhook_official.py`
+- **Banco**: `clientes` (dados + constraint), `configuracoes` (constraint), `conversas` (conversa 30 encerrada), Redis (cache limpo)
 
 ---
 
-### 65. Erro "plano NOT NULL" ao registrar cliente via convite
-- **Problema**: Ao finalizar cadastro via convite, erro: `NotNullViolation: null value in column "plano" of relation "clientes" violates not-null constraint`
-- **Causa**: Coluna `plano` tinha constraint NOT NULL, mas no fluxo de convite o plano é definido apenas na aprovação pelo admin (não no registro inicial)
-- **Solução**: Alterar coluna para aceitar NULL
-- **Comando**: `ALTER TABLE clientes ALTER COLUMN plano DROP NOT NULL;`
-- **Lógica de negócio**: Cliente com `status='pendente_aprovacao'` não tem plano ainda - será definido pelo admin ao aprovar
+## Refatoração — Sessão 07/02/2026
+
+### 71. Refatoração do webhook_official.py
+- **Problema**: Arquivo monolítico de 1.246 linhas com 10+ responsabilidades, difícil de manter e testar
+- **Solução**: Extraído para pacote `app/services/webhook/` com 4 módulos independentes:
+  - `tenant_resolver.py` (50 linhas) — `get_cliente_id_from_phone_number_id()`
+  - `agendamento_ia.py` (239 linhas) — `criar_agendamento_from_ia()`
+  - `audio_handler.py` (133 linhas) — `transcribe_incoming_audio()`, `handle_audio_response()`
+  - `message_processor.py` (459 linhas) — `process_message()`, `converter_para_brasil()`
+- **webhook_official.py** reduzido a 415 linhas (router + 10 endpoints de teste)
+- **Sem alteração de comportamento**: mesma pipeline, mesmo multi-tenant, mesmos endpoints, mesmas respostas
+- **Grafo de dependências**: DAG limpo, sem ciclos. Os 3 módulos-folha não importam uns dos outros
 
 ---
 
-### 66. Tela de sucesso do registro via convite - remover botão "Acessar Painel"
-- **Problema**: Após finalizar o cadastro via convite, a tela de sucesso mostrava botão "Acessar o Painel" e mensagem sugerindo que a conta já estava ativa
-- **Fluxo correto**: Registro → Análise do admin → Aprovação → Email de ativação → Aceite de termos → Acesso ao painel
-- **Arquivo**: `static/registro-cliente.html`
+## Pendências Abertas
 
-#### Alterações:
-- **Título**: "Registro Concluído!" → "Cadastro Enviado!"
-- **Subtítulo**: "Sua conta foi criada com sucesso" → "Seus dados foram recebidos com sucesso"
-- **Passos atualizados**:
-  1. "Nossa equipe vai analisar seu cadastro em até 24 horas úteis"
-  2. "Após a aprovação, você receberá um e-mail para ativar sua conta e aceitar os termos de uso"
-  3. "Com a conta ativada, você poderá acessar o painel e começar a usar o sistema"
-- **Removido**: Botão "Acessar o Painel"
-- **Adicionado**: Aviso "Fique atento ao seu e-mail para as próximas instruções"
+- [ ] Template `lembrete_24h` — remover texto "Responda OK..." redundante com botões (editar no Meta Business Manager)
+- [ ] Testar fluxo completo: prospect preenche formulário → admin aprova → cliente aceita termos
+- [ ] Testar envio de email ao gerar convite (checkbox "enviar por email")
+- [ ] Testar rejeição de prospect
 
 ---
 
-### 67. Correção do Cálculo de Comissões de Parceiros
-
-**Problema**: O sistema calculava a comissão do parceiro sobre o valor total da assinatura, incluindo a linha dedicada (R$40). Além disso, não havia comissão separada sobre a taxa de ativação.
-
-**Regra de negócio correta**:
-1. **Comissão mensal** = Percentual aplicado apenas sobre (Plano base + Profissionais extras) — **SEM** linha dedicada
-2. **Comissão de ativação** = Percentual aplicado sobre a taxa de ativação (única vez, no ato da contratação)
-3. **Se ativação é cortesia** = Não gera comissão de ativação (valor não foi cobrado)
-
-#### Arquivos modificados:
-
-##### 67.1 Frontend - clientes-aprovar.html
-- **Arquivo**: `static/admin/clientes-aprovar.html`
-- Adicionado campo `taxaAtivacao: 150` aos objetos de plano
-- Nova função `calcularValorComissionavel()` — retorna plano + extras (sem linha dedicada)
-- Função `atualizarPreviewComissao()` atualizada para mostrar:
-  - Base mensal (sem linha dedicada)
-  - Comissão mensal
-  - Comissão de ativação (ou "isenta" se cortesia)
-  - Total da primeira comissão
-- HTML do preview expandido com novos campos
-
-##### 67.2 Backend - admin_clientes.py
-- **Arquivo**: `app/api/admin_clientes.py`
-- **Endpoint `criar_cliente()`**:
-  - Cálculo corrigido: `valor_comissionavel = valor_base_plano + valor_extras_profissionais`
-  - Cria 2 registros de comissão: `mes_referencia=1` (mensal) e `mes_referencia=0` (ativação)
-  - Resposta inclui `comissao_mensal`, `comissao_ativacao`, `total_primeira_comissao`
-- **Endpoint `aprovar_cliente()`**:
-  - Adicionado `RETURNING id` na criação da assinatura
-  - Busca dados do parceiro quando informado
-  - Cria comissões (mensal + ativação) com mesma lógica do `criar_cliente()`
-  - Resposta inclui objeto `comissao` com detalhes
-
-#### Estrutura de comissões na tabela:
-| mes_referencia | Tipo |
-|----------------|------|
-| 0 | Comissão sobre taxa de ativação (única vez) |
-| 1 | Primeira mensalidade |
-| 2+ | Mensalidades subsequentes |
-
-#### Exemplo de cálculo:
-- Plano Consultório: R$200
-- 1 profissional extra: R$50
-- Linha dedicada: R$40 (NÃO entra no cálculo)
-- Taxa de ativação: R$150
-- Percentual parceiro: 40%
-
-**Resultado**:
-- Valor comissionável mensal: R$250 (200 + 50)
-- Comissão mensal: R$100 (40% de R$250)
-- Comissão ativação: R$60 (40% de R$150)
-- Total primeira comissão: R$160
-
----
-
-### 68. Sistema de Convites para Parceiros Comerciais
-
-**Objetivo**: Permitir que o parceiro gere links de convite durante visitas de venda, aproveitando o momento de engajamento do prospect.
-
-#### Novos endpoints em `/api/parceiro/`:
-
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| POST | `/convites` | Gera novo convite vinculado ao parceiro |
-| GET | `/convites` | Lista convites do parceiro (últimos 50) |
-| DELETE | `/convites/{id}` | Revoga convite não utilizado |
-
-##### 68.1 Backend - parceiro_auth.py
-- **Arquivo**: `app/api/parceiro_auth.py`
-- Novo schema `ConviteParceiroCreate` com campos:
-  - `email_destino` (opcional)
-  - `nome_destino` (opcional)
-  - `telefone_destino` (opcional)
-  - `observacoes` (opcional)
-  - `enviar_email` (boolean) — se True, envia email automaticamente
-- Endpoint `POST /convites`:
-  - Gera token de 48 bytes (válido por 30 dias)
-  - Vincula `parceiro_id` ao convite
-  - Se `enviar_email=True` e email informado, envia email com nome do parceiro
-- Endpoint `GET /convites`:
-  - Retorna convites do parceiro com status (pendente/usado/expirado)
-- Endpoint `DELETE /convites/{id}`:
-  - Revoga convite não utilizado (verifica se pertence ao parceiro)
-
-##### 68.2 Validação de convite atualizada
-- **Arquivo**: `app/api/cliente_registro.py`
-- Endpoint `GET /api/registro-cliente/{token}` agora retorna `partner_name`
-- JOIN com tabela `parceiros_comerciais` para buscar nome
-
-##### 68.3 Email de convite personalizado
-- **Arquivo**: `app/services/email_service.py`
-- Método `send_convite_registro()` agora aceita parâmetro opcional `parceiro_nome`
-- Se parceiro informado, email mostra destaque: "[Nome do Parceiro] convidou você para conhecer o Horário Inteligente!"
-- Box verde destacando o nome do parceiro no template HTML
-
-##### 68.4 Dashboard do Parceiro
-- **Arquivo**: `static/parceiro/dashboard.html`
-- Novo botão "Gerar Convite" no header
-- Nova seção "Meus Convites" com lista de convites
-- Modal para gerar convite com:
-  - Campos opcionais (nome, email, telefone)
-  - Toggle "Enviar convite por e-mail"
-  - Validação: se marcar enviar email, campo email é obrigatório
-- Funções JavaScript: `carregarConvites()`, `gerarConvite()`, `revogarConvite()`, `copiarLink()`
-- Badges de status: Pendente (azul), Usado (verde), Expirado (cinza)
-
-#### Fluxo completo:
-1. Parceiro acessa dashboard → clica "Gerar Convite"
-2. Preenche dados opcionais → marca "Enviar por e-mail" se desejar
-3. Sistema gera link único vinculado ao parceiro
-4. Se marcou enviar email: prospect recebe email com link e nome do parceiro
-5. Se não marcou: parceiro copia link e envia manualmente (WhatsApp, etc.)
-6. Prospect acessa link → página mostra "Convite de: [Nome do Parceiro]"
-7. Prospect preenche cadastro → cliente criado com `status='pendente_aprovacao'`
-8. Vínculo cliente-parceiro já é criado automaticamente
-9. Admin aprova e configura plano → comissões calculadas corretamente
-
----
-
-*Ultima atualizacao: 03/02/2026 - Sistema de convites para parceiros + correção cálculo de comissões*
+*Última atualização: 07/02/2026 — Refatoração do webhook_official.py em pacote modular*
