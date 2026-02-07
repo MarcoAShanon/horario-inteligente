@@ -1,5 +1,5 @@
 """
-Diagnostic endpoints: test, clear, conversations, status
+Diagnostic endpoints: test, clear, conversations
 """
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -11,11 +11,35 @@ from app.database import get_db
 from app.services.anthropic_service import AnthropicService
 from app.services.conversation_manager import conversation_manager
 
-from app.api.webhooks.utils import verify_webhook_auth
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# IPs confiáveis (localhost/internal)
+TRUSTED_IPS = {"127.0.0.1", "::1", "localhost"}
+WEBHOOK_TOKEN = os.getenv("WEBHOOK_TOKEN", os.getenv("EVOLUTION_WEBHOOK_TOKEN", ""))
+
+
+def verify_webhook_auth(request: Request) -> bool:
+    """
+    Verifica autenticação do webhook.
+    Aceita:
+    - Requisições de IPs confiáveis (localhost)
+    - Requisições com token válido no header X-Webhook-Token
+    """
+    client_ip = request.client.host if request.client else None
+    if client_ip in TRUSTED_IPS:
+        return True
+
+    if WEBHOOK_TOKEN:
+        token = request.headers.get("X-Webhook-Token", "")
+        if token == WEBHOOK_TOKEN:
+            return True
+        auth = request.headers.get("Authorization", "")
+        if auth == f"Bearer {WEBHOOK_TOKEN}":
+            return True
+
+    return False
 
 
 @router.get("/whatsapp/test")
@@ -66,26 +90,3 @@ async def list_conversations(request: Request):
         "conversations": phones,
         "storage": "redis" if conversation_manager.redis_client else "memory"
     }
-
-
-@router.get("/whatsapp/status")
-async def whatsapp_status(request: Request):
-    """Retorna status da conexão WhatsApp de todas as instâncias"""
-    if not verify_webhook_auth(request):
-        raise HTTPException(status_code=401, detail="Nao autorizado")
-    try:
-        from app.services.whatsapp_monitor import whatsapp_monitor
-
-        stats = await whatsapp_monitor.verificar_todas_instancias()
-
-        return {
-            "success": True,
-            **stats
-        }
-
-    except Exception as e:
-        logger.error(f"❌ Erro ao verificar status: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }

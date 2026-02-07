@@ -322,25 +322,31 @@ class FaltaService:
 
             mensagem += "Estamos aqui para cuidar de você! 💙"
 
-            # Enviar via WhatsApp Service
-            from app.services.whatsapp_service import WhatsAppService
+            # Enviar via WhatsApp API Oficial (Meta)
+            from app.services.whatsapp_official_service import WhatsAppOfficialService
 
-            whatsapp_service = WhatsAppService()
+            whatsapp_service = WhatsAppOfficialService()
 
-            # Buscar nome da instância do cliente
-            instance_name = "HorarioInteligente"  # TODO: buscar do banco baseado em cliente_id
+            # Buscar phone_number_id do cliente
+            config = self.db.execute(text("""
+                SELECT whatsapp_phone_number_id
+                FROM configuracoes
+                WHERE cliente_id = :cliente_id AND whatsapp_ativo = true
+            """), {"cliente_id": cliente_id}).fetchone()
 
-            resultado = await whatsapp_service.send_message(
-                instance_name=instance_name,
-                to_number=paciente_telefone,
-                message=mensagem
+            phone_number_id = config[0] if config else None
+
+            resultado = await whatsapp_service.send_text(
+                to=paciente_telefone,
+                message=mensagem,
+                phone_number_id=phone_number_id
             )
 
-            if resultado.get("success"):
-                logger.info(f"✅ Mensagem de falta enviada para {paciente_nome} ({paciente_telefone})")
+            if resultado.success:
+                logger.info(f"Mensagem de falta enviada para {paciente_nome} ({paciente_telefone})")
                 return True
             else:
-                logger.warning(f"⚠️ Falha ao enviar mensagem de falta para {paciente_nome}: {resultado.get('error')}")
+                logger.warning(f"Falha ao enviar mensagem de falta para {paciente_nome}: {resultado.error}")
                 return False
 
         except Exception as e:

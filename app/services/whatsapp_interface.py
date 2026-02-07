@@ -1,6 +1,5 @@
 """
-Interface comum para provedores de WhatsApp
-Permite trocar entre Evolution API e API Oficial sem mudar o resto do código
+Interface comum para provedores de WhatsApp (Meta Cloud API)
 """
 
 from abc import ABC, abstractmethod
@@ -11,7 +10,6 @@ from enum import Enum
 
 class WhatsAppProvider(Enum):
     """Provedores de WhatsApp disponíveis"""
-    EVOLUTION = "evolution"
     OFFICIAL = "official"
 
 
@@ -71,7 +69,6 @@ class SendResult:
 class WhatsAppProviderInterface(ABC):
     """
     Interface abstrata para provedores de WhatsApp.
-    Tanto Evolution API quanto API Oficial devem implementar esta interface.
     """
 
     @property
@@ -269,16 +266,5 @@ def get_whatsapp_provider(provider: WhatsAppProvider = None) -> WhatsAppProvider
     Returns:
         Instância do provedor de WhatsApp
     """
-    import os
-
-    if provider is None:
-        # Usar configuração do ambiente
-        provider_name = os.getenv("WHATSAPP_PROVIDER", "evolution").lower()
-        provider = WhatsAppProvider(provider_name)
-
-    if provider == WhatsAppProvider.OFFICIAL:
-        from app.services.whatsapp_official_service import WhatsAppOfficialService
-        return WhatsAppOfficialService()
-    else:
-        from app.services.whatsapp_evolution_service import WhatsAppEvolutionService
-        return WhatsAppEvolutionService()
+    from app.services.whatsapp_official_service import WhatsAppOfficialService
+    return WhatsAppOfficialService()

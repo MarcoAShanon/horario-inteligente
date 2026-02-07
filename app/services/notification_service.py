@@ -12,7 +12,7 @@ from typing import Dict, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
-from app.services.whatsapp_service import WhatsAppService
+from app.services.whatsapp_official_service import WhatsAppOfficialService
 from app.services.push_notification_service import push_service
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class NotificationService:
 
     def __init__(self, db: Session):
         self.db = db
-        self.whatsapp_service = WhatsAppService()
+        self.whatsapp_service = WhatsAppOfficialService()
 
     async def notificar_medico(
         self,
@@ -280,23 +280,29 @@ O paciente confirmou presença."""
         mensagem: str,
         cliente_id: int
     ) -> Dict:
-        """Envia notificação via WhatsApp"""
+        """Envia notificação via WhatsApp (API Oficial Meta)"""
         try:
-            # Buscar nome da instância (TODO: buscar do banco baseado em cliente_id)
-            instance_name = "HorarioInteligente"
+            # Buscar phone_number_id do cliente
+            config = self.db.execute(text("""
+                SELECT whatsapp_phone_number_id
+                FROM configuracoes
+                WHERE cliente_id = :cliente_id AND whatsapp_ativo = true
+            """), {"cliente_id": cliente_id}).fetchone()
 
-            resultado = await self.whatsapp_service.send_message(
-                instance_name=instance_name,
-                to_number=numero,
-                message=mensagem
+            phone_number_id = config[0] if config else None
+
+            resultado = await self.whatsapp_service.send_text(
+                to=numero,
+                message=mensagem,
+                phone_number_id=phone_number_id
             )
 
-            if resultado.get("success"):
-                logger.info(f"✅ Notificação WhatsApp enviada para {numero}")
+            if resultado.success:
+                logger.info(f"Notificação WhatsApp enviada para {numero}")
                 return {"sucesso": True, "canal": "whatsapp"}
             else:
-                logger.warning(f"⚠️ Falha ao enviar WhatsApp: {resultado.get('error')}")
-                return {"sucesso": False, "erro": resultado.get('error'), "canal": "whatsapp"}
+                logger.warning(f"Falha ao enviar WhatsApp: {resultado.error}")
+                return {"sucesso": False, "erro": resultado.error, "canal": "whatsapp"}
 
         except Exception as e:
             logger.error(f"Erro ao enviar WhatsApp: {e}", exc_info=True)

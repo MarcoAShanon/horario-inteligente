@@ -381,27 +381,9 @@ try:
     logger.info("✅ Router de convites de clientes registrado")
 
     logger.info("✅ Routers principais registrados com sucesso (incluindo Admin, Financeiro e Gestão Interna)")
-    
+
 except Exception as e:
     logger.error(f"❌ Erro ao importar routers principais: {e}")
-    
-    # Criar webhook fallback se houver erro
-    from fastapi import APIRouter
-    webhook_router = APIRouter()
-    
-    @webhook_router.post("/whatsapp/{instance_name}")
-    async def webhook_whatsapp_fallback(instance_name: str, request: Request):
-        """Webhook fallback para WhatsApp"""
-        try:
-            data = await request.json()
-            logger.info(f"Webhook recebido para {instance_name}: {data}")
-            return {"status": "success", "message": "Webhook processado (fallback)"}
-        except Exception as e:
-            logger.error(f"Erro no webhook fallback: {e}")
-            return {"status": "error", "message": str(e)}
-    
-    app.include_router(webhook_router, prefix="/webhook", tags=["Webhook WhatsApp"])
-    logger.warning("⚠️ Usando webhook fallback")
 
 # Registrar router de webhook para API Oficial (Meta Cloud API)
 try:
@@ -552,8 +534,7 @@ async def status_sistema():
         "timestamp": datetime.datetime.now().isoformat(),
         "webhook": {
             "enabled": webhook_registrado,
-            "endpoint": "/webhook/whatsapp/{instance_name}",
-            "evolution_api": "http://localhost:8080"
+            "endpoint": "/webhook/whatsapp-official"
         },
         "agendamentos": {
             "enabled": agendamentos_registrado,
@@ -562,7 +543,7 @@ async def status_sistema():
         "servicos": {
             "fastapi": "running",
             "postgresql": "connected",
-            "evolution_api": "configured"
+            "whatsapp": "meta_cloud_api"
         }
     }
 

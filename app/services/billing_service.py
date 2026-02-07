@@ -13,7 +13,6 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.services.asaas_service import AsaasService
-from app.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
