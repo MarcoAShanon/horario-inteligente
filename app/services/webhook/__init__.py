@@ -1,0 +1,3 @@
+from app.services.webhook.message_processor import process_message
+from app.services.webhook.tenant_resolver import get_cliente_id_from_phone_number_id
+from app.services.webhook.agendamento_ia import criar_agendamento_from_ia
