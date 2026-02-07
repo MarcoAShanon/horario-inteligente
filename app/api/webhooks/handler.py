@@ -1,8 +1,9 @@
 """
 Main webhook endpoints: POST /whatsapp/{instance_name}, POST /whatsapp
 """
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 import logging
 import json
 import aiohttp
@@ -10,7 +11,7 @@ import tempfile
 import os
 from sqlalchemy import text
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.services.openai_audio_service import get_audio_service
 from app.services.whatsapp_decrypt import decrypt_whatsapp_media
 from app.services.audio_preference_service import (
@@ -35,11 +36,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/whatsapp/{instance_name}")
-@limiter.limit("100/minute")
-async def webhook_whatsapp(instance_name: str, request: Request):
+async def _process_webhook(instance_name: str, request: Request, db: Session):
     """
-    Webhook principal com IA Claude 3.5 Sonnet integrada
+    Lógica principal do webhook WhatsApp.
+    Extraída para ser reutilizada por ambos endpoints.
     """
     try:
         # SEGURANÇA: Verificar autenticação do webhook
@@ -72,7 +72,7 @@ async def webhook_whatsapp(instance_name: str, request: Request):
         message_type = message_info.get('message_type', 'text')
 
         # Resolver cliente_id a partir da instância WhatsApp (MULTI-TENANT)
-        cliente_id = get_cliente_id_from_instance(instance_name)
+        cliente_id = get_cliente_id_from_instance(instance_name, db)
         logger.info(f"🏢 Cliente identificado: {instance_name} → cliente_id={cliente_id}")
 
         # ========================================
@@ -269,12 +269,8 @@ async def webhook_whatsapp(instance_name: str, request: Request):
         is_cancelamento = any(palavra in mensagem_lower for palavra in palavras_cancelamento)
 
         if is_confirmacao or is_cancelamento:
-            # Criar sessão do banco para buscar agendamento
-            from app.database import SessionLocal
-            db = SessionLocal()
-            try:
-                # Buscar agendamento próximo para este telefone
-                agendamento_proximo = db.execute(text("""
+            # Buscar agendamento próximo para este telefone
+            agendamento_proximo = db.execute(text("""
                 SELECT a.id, a.data_hora, a.status, m.nome as medico_nome
                 FROM agendamentos a
                 JOIN pacientes p ON a.paciente_id = p.id
@@ -288,58 +284,56 @@ async def webhook_whatsapp(instance_name: str, request: Request):
                 LIMIT 1
             """), {"tel": sender, "cli_id": cliente_id}).fetchone()
 
-                if agendamento_proximo:
-                    logger.info(f"🔔 Detectada resposta a lembrete - Agendamento ID: {agendamento_proximo.id}")
+            if agendamento_proximo:
+                logger.info(f"🔔 Detectada resposta a lembrete - Agendamento ID: {agendamento_proximo.id}")
 
-                    if is_confirmacao:
-                        # Confirmar agendamento
-                        db.execute(text("""
-                            UPDATE agendamentos
-                            SET status = 'confirmado', atualizado_em = NOW()
-                            WHERE id = :ag_id
-                        """), {"ag_id": agendamento_proximo.id})
-                        db.commit()
+                if is_confirmacao:
+                    # Confirmar agendamento
+                    db.execute(text("""
+                        UPDATE agendamentos
+                        SET status = 'confirmado', atualizado_em = NOW()
+                        WHERE id = :ag_id
+                    """), {"ag_id": agendamento_proximo.id})
+                    db.commit()
 
-                        data_formatada = agendamento_proximo.data_hora.strftime("%d/%m/%Y às %H:%M")
-                        response_message = f"✅ *Consulta confirmada com sucesso!*\n\n"
-                        response_message += f"📅 *Data:* {data_formatada}\n"
-                        response_message += f"👨‍⚕ *Médico:* {agendamento_proximo.medico_nome}\n\n"
-                        response_message += f"💡 Por favor, chegue com 15 minutos de antecedência.\n"
-                        response_message += f"📍 Traga seus documentos e carteirinha do convênio (se houver).\n\n"
-                        response_message += f"Até breve! 😊"
+                    data_formatada = agendamento_proximo.data_hora.strftime("%d/%m/%Y às %H:%M")
+                    response_message = f"✅ *Consulta confirmada com sucesso!*\n\n"
+                    response_message += f"📅 *Data:* {data_formatada}\n"
+                    response_message += f"👨‍⚕ *Médico:* {agendamento_proximo.medico_nome}\n\n"
+                    response_message += f"💡 Por favor, chegue com 15 minutos de antecedência.\n"
+                    response_message += f"📍 Traga seus documentos e carteirinha do convênio (se houver).\n\n"
+                    response_message += f"Até breve! 😊"
 
-                        logger.info(f"✅ Consulta confirmada - ID {agendamento_proximo.id}")
+                    logger.info(f"✅ Consulta confirmada - ID {agendamento_proximo.id}")
 
-                    elif is_cancelamento:
-                        # Cancelar agendamento
-                        db.execute(text("""
-                            UPDATE agendamentos
-                            SET status = 'cancelado', atualizado_em = NOW()
-                            WHERE id = :ag_id
-                        """), {"ag_id": agendamento_proximo.id})
-                        db.commit()
+                elif is_cancelamento:
+                    # Cancelar agendamento
+                    db.execute(text("""
+                        UPDATE agendamentos
+                        SET status = 'cancelado', atualizado_em = NOW()
+                        WHERE id = :ag_id
+                    """), {"ag_id": agendamento_proximo.id})
+                    db.commit()
 
-                        response_message = f"❌ *Consulta cancelada.*\n\n"
-                        response_message += f"Tudo bem! Seu agendamento foi cancelado.\n\n"
-                        response_message += f"Quando quiser reagendar, é só me chamar! 😊\n"
-                        response_message += f"Estamos sempre à disposição."
+                    response_message = f"❌ *Consulta cancelada.*\n\n"
+                    response_message += f"Tudo bem! Seu agendamento foi cancelado.\n\n"
+                    response_message += f"Quando quiser reagendar, é só me chamar! 😊\n"
+                    response_message += f"Estamos sempre à disposição."
 
-                        logger.info(f"❌ Consulta cancelada - ID {agendamento_proximo.id}")
+                    logger.info(f"❌ Consulta cancelada - ID {agendamento_proximo.id}")
 
-                    # Enviar resposta e retornar
-                    await send_whatsapp_response(instance_name, sender, response_message)
-                    return JSONResponse(
-                        status_code=200,
-                        content={"status": "success", "type": "reminder_response", "action": "confirmacao" if is_confirmacao else "cancelamento"}
-                    )
-            finally:
-                db.close()
+                # Enviar resposta e retornar
+                await send_whatsapp_response(instance_name, sender, response_message)
+                return JSONResponse(
+                    status_code=200,
+                    content={"status": "success", "type": "reminder_response", "action": "confirmacao" if is_confirmacao else "cancelamento"}
+                )
         # ==================================================
 
         logger.info(f"🔍 DEBUG - Chamando process_with_anthropic_ai...")
 
-        # Processar com IA Anthropic (passa cliente_id)
-        response_message = await process_with_anthropic_ai(message_text, sender, push_name, cliente_id)
+        # Processar com IA Anthropic (passa cliente_id e db)
+        response_message = await process_with_anthropic_ai(message_text, sender, push_name, cliente_id, db)
         logger.info(f"🔍 DEBUG - Resposta da IA recebida: {response_message[:100] if response_message else 'NENHUMA'}")
 
         if response_message:
@@ -351,11 +345,10 @@ async def webhook_whatsapp(instance_name: str, request: Request):
             # 2. Modo espelho (áudio→áudio, texto→texto)
             # 3. Preferência salva do paciente
 
-            db_audio = SessionLocal()
             try:
                 mensagem_foi_audio = (message_type == 'audio')
                 enviar_audio, msg_confirmacao = deve_enviar_audio(
-                    db=db_audio,
+                    db=db,
                     telefone=sender,
                     mensagem_foi_audio=mensagem_foi_audio,
                     mensagem_texto=message_text or ""
@@ -371,8 +364,6 @@ async def webhook_whatsapp(instance_name: str, request: Request):
             except Exception as e:
                 logger.error(f"Erro ao verificar preferência de áudio: {e}")
                 enviar_audio = False
-            finally:
-                db_audio.close()
 
             # Enviar resposta via WhatsApp (com ou sem áudio)
             success = await send_whatsapp_response(
@@ -415,10 +406,19 @@ async def webhook_whatsapp(instance_name: str, request: Request):
         )
 
 
+@router.post("/whatsapp/{instance_name}")
+@limiter.limit("100/minute")
+async def webhook_whatsapp(instance_name: str, request: Request, db: Session = Depends(get_db)):
+    """
+    Webhook principal com IA Claude 3.5 Sonnet integrada
+    """
+    return await _process_webhook(instance_name, request, db)
+
+
 @router.post("/whatsapp")
-async def webhook_global(request: Request):
+async def webhook_global(request: Request, db: Session = Depends(get_db)):
     """
     Webhook alternativo sem instance_name
     Usa instância padrão 'Clinica2024' para desenvolvimento
     """
-    return await webhook_whatsapp("Clinica2024", request)
+    return await _process_webhook("Clinica2024", request, db)

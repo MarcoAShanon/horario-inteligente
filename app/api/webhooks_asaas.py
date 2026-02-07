@@ -13,15 +13,16 @@ RÉGUA DE INADIMPLÊNCIA:
 - PAYMENT_OVERDUE → marca cliente como inadimplente (ativo=False)
 - PAYMENT_CONFIRMED/RECEIVED → reativa cliente (ativo=True)
 """
-from fastapi import APIRouter, Request, HTTPException, Header
+from fastapi import APIRouter, Request, HTTPException, Header, Depends
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 import logging
 import os
 from typing import Optional
 from datetime import datetime
 from sqlalchemy import text
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.services.asaas_service import AsaasService
 
 logger = logging.getLogger(__name__)
@@ -32,19 +33,10 @@ router = APIRouter()
 ASAAS_WEBHOOK_TOKEN = os.getenv("ASAAS_WEBHOOK_TOKEN", "")
 
 
-def get_db():
-    """Obtém sessão do banco de dados"""
-    db = SessionLocal()
-    try:
-        return db
-    except Exception:
-        db.close()
-        raise
-
-
 @router.post("/api/webhooks/asaas")
 async def webhook_asaas(
     request: Request,
+    db: Session = Depends(get_db),
     asaas_access_token: Optional[str] = Header(None, alias="asaas-access-token")
 ):
     """
@@ -53,8 +45,6 @@ async def webhook_asaas(
     O ASAAS envia um POST com os dados do evento.
     Documentação: https://docs.asaas.com/reference/webhook
     """
-    db = get_db()
-
     try:
         # 1. Validar token de webhook (se configurado)
         if ASAAS_WEBHOOK_TOKEN:
@@ -106,8 +96,6 @@ async def webhook_asaas(
             content={"status": "error", "message": str(e)},
             status_code=500
         )
-    finally:
-        db.close()
 
 
 async def processar_pagamento_confirmado(db, payment_data: dict):

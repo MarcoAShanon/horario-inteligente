@@ -22,7 +22,6 @@ from app.services.whatsapp_official_service import WhatsAppOfficialService
 from app.services.whatsapp_template_service import get_template_service
 from app.services.anthropic_service import AnthropicService
 from app.services.websocket_manager import websocket_manager
-from app.database import SessionLocal
 from app.utils.timezone_helper import now_brazil, format_brazil
 import pytz
 
@@ -616,11 +615,14 @@ Sempre termine perguntando se confirma a presença na consulta."""
 
     # ==================== PROCESSAMENTO EM LOTE ====================
 
-    async def processar_lembretes_pendentes(self) -> Dict[str, Any]:
+    async def processar_lembretes_pendentes(self, db: Session) -> Dict[str, Any]:
         """
         Processa todos os lembretes pendentes de envio.
 
         Chamado pelo scheduler periodicamente.
+
+        Args:
+            db: Sessão do banco de dados
 
         Returns:
             Estatísticas de processamento
@@ -632,7 +634,6 @@ Sempre termine perguntando se confirma a presença na consulta."""
             "timestamp": datetime.now().isoformat()
         }
 
-        db = SessionLocal()
         try:
             now = now_brazil()
 
@@ -659,9 +660,6 @@ Sempre termine perguntando se confirma a presença na consulta."""
 
         except Exception as e:
             logger.error(f"❌ Erro ao processar lembretes: {e}")
-
-        finally:
-            db.close()
 
         return stats
 

@@ -4,8 +4,8 @@ AI processing with Anthropic Claude: process_with_anthropic_ai
 import logging
 from datetime import datetime
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
 from app.services.anthropic_service import AnthropicService
 from app.services.conversation_manager import conversation_manager
 from app.services.calendario_service import CalendarioService
@@ -18,16 +18,20 @@ from app.api.webhooks.messaging import formatar_para_whatsapp, get_fallback_resp
 logger = logging.getLogger(__name__)
 
 
-async def process_with_anthropic_ai(message_text: str, sender: str, push_name: str, cliente_id: int) -> str:
+async def process_with_anthropic_ai(message_text: str, sender: str, push_name: str, cliente_id: int, db: Session) -> str:
     """
     Processa mensagem usando AnthropicService existente
     Multi-tenant: recebe cliente_id para processar mensagem do cliente correto
+
+    Args:
+        message_text: Texto da mensagem
+        sender: Remetente
+        push_name: Nome exibido no WhatsApp
+        cliente_id: ID do cliente (tenant)
+        db: Sessão do banco de dados
     """
     logger.info(f"🔍 INICIANDO process_with_anthropic_ai")
     logger.info(f"🔍 Parâmetros: message_text='{message_text[:50]}...', sender='{sender}', push_name='{push_name}', cliente_id={cliente_id}")
-
-    db = SessionLocal()
-    logger.info("🔍 Conexão com banco criada")
 
     try:
         logger.info(f"🔍 Criando AnthropicService com cliente_id={cliente_id}")
@@ -493,6 +497,3 @@ async def process_with_anthropic_ai(message_text: str, sender: str, push_name: s
         logger.info(f"🔍 Usando fallback response...")
         # Fallback para resposta simples
         return get_fallback_response(message_text, push_name)
-    finally:
-        logger.info(f"🔍 Fechando conexão com banco")
-        db.close()

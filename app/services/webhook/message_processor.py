@@ -1,7 +1,7 @@
 import logging
 import pytz
+from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
 from app.services.whatsapp_official_service import WhatsAppOfficialService
 from app.services.whatsapp_interface import WhatsAppMessage
 from app.services.anthropic_service import AnthropicService
@@ -49,13 +49,15 @@ def converter_para_brasil(dt):
     return dt.astimezone(TZ_BRAZIL).isoformat()
 
 
-async def process_message(message: WhatsAppMessage):
+async def process_message(message: WhatsAppMessage, db: Session):
     """
     Processa mensagem recebida usando IA.
     Persiste conversas no PostgreSQL e mantém contexto no Redis.
-    """
 
-    db = SessionLocal()
+    Args:
+        message: Mensagem do WhatsApp
+        db: Sessão do banco de dados
+    """
 
     try:
         # 1. Determina o cliente_id (tenant) baseado no phone_number_id
@@ -454,6 +456,3 @@ async def process_message(message: WhatsAppMessage):
             message="Desculpe, estou com dificuldades técnicas no momento. Por favor, tente novamente em alguns instantes.",
             phone_number_id=message.phone_number_id
         )
-
-    finally:
-        db.close()

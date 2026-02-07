@@ -7,7 +7,7 @@ automaticamente marcadas como "realizada" (concluída).
 import logging
 from datetime import datetime, timedelta
 from sqlalchemy import text
-from app.database import SessionLocal
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class StatusUpdateService:
     def __init__(self):
         self.margem_tolerancia_minutos = 60  # 1 hora após o horário da consulta
 
-    async def atualizar_status_consultas_passadas(self) -> dict:
+    async def atualizar_status_consultas_passadas(self, db: Session) -> dict:
         """
         Atualiza o status de consultas passadas para 'realizada'.
 
@@ -31,10 +31,12 @@ class StatusUpdateService:
         - Data/hora já passou (com margem de tolerância)
         - Não foi cancelado, remarcado ou marcado como faltou
 
+        Args:
+            db: Sessão do banco de dados
+
         Returns:
             Dicionário com estatísticas da atualização
         """
-        db = SessionLocal()
         try:
             # Calcula o horário limite (agora - margem de tolerância)
             # Consultas antes deste horário são consideradas concluídas
@@ -80,38 +82,34 @@ class StatusUpdateService:
             db.rollback()
             logger.error(f"❌ Erro ao atualizar status de consultas: {str(e)}")
             raise
-        finally:
-            db.close()
 
-    async def get_estatisticas(self) -> dict:
+    async def get_estatisticas(self, db: Session) -> dict:
         """
         Retorna estatísticas sobre consultas que precisam de atualização.
+
+        Args:
+            db: Sessão do banco de dados
         """
-        db = SessionLocal()
-        try:
-            limite = datetime.now() - timedelta(minutes=self.margem_tolerancia_minutos)
+        limite = datetime.now() - timedelta(minutes=self.margem_tolerancia_minutos)
 
-            result = db.execute(text("""
-                SELECT
-                    status,
-                    COUNT(*) as total
-                FROM agendamentos
-                WHERE status IN ('confirmado', 'confirmada', 'agendado', 'agendada', 'pendente', 'em_atendimento')
-                AND data_hora < :limite
-                GROUP BY status
-            """), {"limite": limite})
+        result = db.execute(text("""
+            SELECT
+                status,
+                COUNT(*) as total
+            FROM agendamentos
+            WHERE status IN ('confirmado', 'confirmada', 'agendado', 'agendada', 'pendente', 'em_atendimento')
+            AND data_hora < :limite
+            GROUP BY status
+        """), {"limite": limite})
 
-            pendentes = {row[0]: row[1] for row in result.fetchall()}
+        pendentes = {row[0]: row[1] for row in result.fetchall()}
 
-            return {
-                "pendentes_por_status": pendentes,
-                "total_pendentes": sum(pendentes.values()),
-                "limite_usado": limite.isoformat(),
-                "timestamp": datetime.now().isoformat()
-            }
-
-        finally:
-            db.close()
+        return {
+            "pendentes_por_status": pendentes,
+            "total_pendentes": sum(pendentes.values()),
+            "limite_usado": limite.isoformat(),
+            "timestamp": datetime.now().isoformat()
+        }
 
 
 # Instância global do serviço

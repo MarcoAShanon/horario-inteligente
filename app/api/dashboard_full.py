@@ -9,7 +9,7 @@ from datetime import datetime, date, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.models.medico import Medico
 from app.models.paciente import Paciente
 from app.models.agendamento import Agendamento
@@ -17,13 +17,6 @@ from app.models.horario_atendimento import HorarioAtendimento
 from app.api.auth import get_current_medico
 
 router = APIRouter()
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 class AgendamentoResponse(BaseModel):
     id: int

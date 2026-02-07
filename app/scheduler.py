@@ -128,8 +128,13 @@ class ReminderScheduler:
             start_time = datetime.now()
             logger.info(f"🔄 Iniciando atualização de status - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
-            # Atualizar status de consultas passadas
-            stats = await status_update_service.atualizar_status_consultas_passadas()
+            from app.database import SessionLocal
+            db = SessionLocal()
+            try:
+                # Atualizar status de consultas passadas
+                stats = await status_update_service.atualizar_status_consultas_passadas(db)
+            finally:
+                db.close()
 
             end_time = datetime.now()
             duration = (end_time - start_time).total_seconds()
@@ -153,8 +158,13 @@ class ReminderScheduler:
             start_time = datetime.now()
             logger.info(f"🔔 Iniciando processamento de lembretes inteligentes - {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
-            # Processar lembretes pendentes
-            stats = await lembrete_service.processar_lembretes_pendentes()
+            from app.database import SessionLocal
+            db = SessionLocal()
+            try:
+                # Processar lembretes pendentes
+                stats = await lembrete_service.processar_lembretes_pendentes(db)
+            finally:
+                db.close()
 
             end_time = datetime.now()
             duration = (end_time - start_time).total_seconds()

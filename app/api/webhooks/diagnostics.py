@@ -1,12 +1,13 @@
 """
 Diagnostic endpoints: test, clear, conversations, status
 """
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
+from sqlalchemy.orm import Session
 from datetime import datetime
 import logging
 import os
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.services.anthropic_service import AnthropicService
 from app.services.conversation_manager import conversation_manager
 
@@ -18,21 +19,18 @@ router = APIRouter()
 
 
 @router.get("/whatsapp/test")
-async def test_webhook(request: Request):
+async def test_webhook(request: Request, db: Session = Depends(get_db)):
     """Endpoint de teste - usa cliente padrão"""
     if not verify_webhook_auth(request):
         raise HTTPException(status_code=401, detail="Nao autorizado")
     cliente_id_teste = 1  # Cliente padrão para testes
 
     # Testar conexão com banco
-    db = SessionLocal()
     try:
         ai_service = AnthropicService(db=db, cliente_id=cliente_id_teste)
         ai_available = ai_service.use_real_ai
     except:
         ai_available = False
-    finally:
-        db.close()
 
     return {
         "status": "active",

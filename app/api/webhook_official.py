@@ -4,11 +4,13 @@ Endpoint separado para facilitar migração gradual
 """
 
 import logging
-from fastapi import APIRouter, Request, HTTPException, Query
+from fastapi import APIRouter, Request, HTTPException, Query, Depends
 from fastapi.responses import PlainTextResponse
+from sqlalchemy.orm import Session
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.database import get_db
 from app.services.whatsapp_official_service import WhatsAppOfficialService
 from app.services.webhook.message_processor import process_message
 
@@ -55,7 +57,7 @@ async def verify_webhook(
 
 @router.post("/webhook/whatsapp-official")
 @limiter.limit("200/minute")
-async def receive_webhook(request: Request):
+async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     """
     Recebe webhooks de mensagens da Meta.
 
@@ -82,7 +84,7 @@ async def receive_webhook(request: Request):
         print(f"[Webhook Official] Mensagem de {message.sender}: {message.text[:50]}...")
 
         # Processa a mensagem
-        await process_message(message)
+        await process_message(message, db)
 
         return {"status": "processed"}
 

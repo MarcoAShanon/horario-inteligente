@@ -4,11 +4,10 @@ Webhook utilities: constants, cache, auth, client resolution
 from fastapi import Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from sqlalchemy.orm import Session
 import logging
 import os
 from sqlalchemy import text
-
-from app.database import SessionLocal
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +26,14 @@ TRUSTED_IPS = {"127.0.0.1", "::1", "localhost"}
 INSTANCE_TO_CLIENTE_CACHE = {}
 
 
-def get_cliente_id_from_instance(instance_name: str) -> int:
+def get_cliente_id_from_instance(instance_name: str, db: Session) -> int:
     """
     Resolve cliente_id a partir do nome da instância WhatsApp
     Usa cache para performance
+
+    Args:
+        instance_name: Nome da instância WhatsApp
+        db: Sessão do banco de dados
 
     Exemplos:
     - "HorarioInteligente" → 1
@@ -42,27 +45,23 @@ def get_cliente_id_from_instance(instance_name: str) -> int:
         return INSTANCE_TO_CLIENTE_CACHE[instance_name]
 
     # Buscar no banco
-    db = SessionLocal()
-    try:
-        result = db.execute(
-            text("SELECT id FROM clientes WHERE whatsapp_instance = :inst AND ativo = true"),
-            {"inst": instance_name}
-        ).fetchone()
+    result = db.execute(
+        text("SELECT id FROM clientes WHERE whatsapp_instance = :inst AND ativo = true"),
+        {"inst": instance_name}
+    ).fetchone()
 
-        if result:
-            cliente_id = result[0]
-        else:
-            # Fallback: se não encontrar, usa cliente padrão (desenvolvimento)
-            logger.warning(f"⚠️ Instância não encontrada: {instance_name}, usando cliente_id=1")
-            cliente_id = 1
+    if result:
+        cliente_id = result[0]
+    else:
+        # Fallback: se não encontrar, usa cliente padrão (desenvolvimento)
+        logger.warning(f"⚠️ Instância não encontrada: {instance_name}, usando cliente_id=1")
+        cliente_id = 1
 
-        # Cachear
-        INSTANCE_TO_CLIENTE_CACHE[instance_name] = cliente_id
-        logger.info(f"✅ Instância mapeada: {instance_name} → cliente_id={cliente_id}")
+    # Cachear
+    INSTANCE_TO_CLIENTE_CACHE[instance_name] = cliente_id
+    logger.info(f"✅ Instância mapeada: {instance_name} → cliente_id={cliente_id}")
 
-        return cliente_id
-    finally:
-        db.close()
+    return cliente_id
 
 
 def verify_webhook_auth(request: Request) -> bool:

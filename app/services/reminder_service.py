@@ -8,7 +8,6 @@ from sqlalchemy import and_
 # Importar do pacote models para garantir ordem correta de carregamento
 from app.models import Agendamento, Paciente, Medico, Cliente
 from app.services.whatsapp_service import whatsapp_service, MessageTemplates
-from app.database import SessionLocal
 from app.utils.timezone_helper import now_brazil, format_brazil
 
 logger = logging.getLogger(__name__)
@@ -23,10 +22,13 @@ class ReminderService:
     def __init__(self):
         self.instance_name = "HorarioInteligente"  # Nome da instância Evolution API (legado)
 
-    async def process_all_reminders(self) -> Dict[str, Any]:
+    async def process_all_reminders(self, db: Session) -> Dict[str, Any]:
         """
         Processa todos os lembretes pendentes
         Deve ser executado periodicamente pelo scheduler
+
+        Args:
+            db: Sessão do banco de dados
 
         Returns:
             Estatísticas de processamento
@@ -41,7 +43,6 @@ class ReminderService:
             "timestamp": datetime.now().isoformat()
         }
 
-        db = SessionLocal()
         try:
             # Processar lembretes de 24h
             stats["lembretes_24h"] = await self._process_24h_reminders(db)
@@ -57,9 +58,6 @@ class ReminderService:
         except Exception as e:
             logger.error(f"❌ Erro ao processar lembretes: {str(e)}")
             stats["erros"] += 1
-
-        finally:
-            db.close()
 
         return stats
 
@@ -343,7 +341,8 @@ class ReminderService:
     async def send_immediate_reminder(
         self,
         agendamento_id: int,
-        reminder_type: str
+        reminder_type: str,
+        db: Session
     ) -> Dict[str, Any]:
         """
         Envia um lembrete imediato (para testes ou reenvio manual)
@@ -351,11 +350,11 @@ class ReminderService:
         Args:
             agendamento_id: ID do agendamento
             reminder_type: Tipo de lembrete (24h, 3h, 1h)
+            db: Sessão do banco de dados
 
         Returns:
             Resultado do envio
         """
-        db = SessionLocal()
         try:
             agendamento = db.query(Agendamento).filter(
                 Agendamento.id == agendamento_id
@@ -392,17 +391,17 @@ class ReminderService:
                 "success": False,
                 "error": str(e)
             }
-        finally:
-            db.close()
 
-    def get_pending_reminders_stats(self) -> Dict[str, Any]:
+    def get_pending_reminders_stats(self, db: Session) -> Dict[str, Any]:
         """
         Retorna estatísticas de lembretes pendentes
+
+        Args:
+            db: Sessão do banco de dados
 
         Returns:
             Estatísticas detalhadas
         """
-        db = SessionLocal()
         try:
             # Usar timezone de Brasília (timezone-aware)
             now = now_brazil()
@@ -456,8 +455,6 @@ class ReminderService:
             return {
                 "error": str(e)
             }
-        finally:
-            db.close()
 
 
 # Instância global do serviço

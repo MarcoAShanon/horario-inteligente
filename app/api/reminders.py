@@ -1,8 +1,10 @@
 # app/api/reminders.py
 from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 from typing import Dict, Any
 import logging
 
+from app.database import get_db
 from app.services.reminder_service import reminder_service
 from app.scheduler import reminder_scheduler
 
@@ -15,7 +17,7 @@ router = APIRouter(
 
 
 @router.get("/stats")
-async def get_reminder_stats() -> Dict[str, Any]:
+async def get_reminder_stats(db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     Retorna estatísticas de lembretes pendentes
 
@@ -23,7 +25,7 @@ async def get_reminder_stats() -> Dict[str, Any]:
         Estatísticas detalhadas
     """
     try:
-        stats = reminder_service.get_pending_reminders_stats()
+        stats = reminder_service.get_pending_reminders_stats(db)
         return {
             "success": True,
             "data": stats
@@ -78,7 +80,8 @@ async def run_scheduler_now() -> Dict[str, Any]:
 @router.post("/send/{agendamento_id}/{reminder_type}")
 async def send_immediate_reminder(
     agendamento_id: int,
-    reminder_type: str
+    reminder_type: str,
+    db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
     Envia um lembrete específico imediatamente
@@ -100,7 +103,8 @@ async def send_immediate_reminder(
     try:
         resultado = await reminder_service.send_immediate_reminder(
             agendamento_id=agendamento_id,
-            reminder_type=reminder_type
+            reminder_type=reminder_type,
+            db=db
         )
 
         if resultado.get("success"):
@@ -123,7 +127,7 @@ async def send_immediate_reminder(
 
 
 @router.get("/health")
-async def health_check() -> Dict[str, Any]:
+async def health_check(db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     Verifica se o sistema de lembretes está funcionando
 
@@ -132,7 +136,7 @@ async def health_check() -> Dict[str, Any]:
     """
     try:
         scheduler_status = reminder_scheduler.get_status()
-        pending_stats = reminder_service.get_pending_reminders_stats()
+        pending_stats = reminder_service.get_pending_reminders_stats(db)
 
         return {
             "success": True,
