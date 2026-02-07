@@ -455,6 +455,14 @@ Admin gera convite → Prospect preenche dados → status=pendente_aprovacao
   - `.env.example`: Removidas variáveis `EVOLUTION_*`, adicionado `WEBHOOK_TOKEN`
 - **Resultado**: 22 arquivos, +80 / −3913 linhas. Zero referências a `WhatsAppService`, `instance_name` ou `EVOLUTION_API` no código ativo
 
+### 73. IA não repete pergunta de motivo quando paciente já mencionou queixa
+- **Problema**: Paciente dizia "estou com uma dor muito chata" na primeira mensagem, mas a IA ainda perguntava "qual o motivo da consulta?" redundantemente
+- **Causa**: O prompt do fluxo de agendamento sempre executava o Passo 3 (MOTIVO) sem verificar se o paciente já havia mencionado sintoma/queixa em mensagens anteriores
+- **Correção** em `anthropic_service.py`:
+  - Regra prioritária no bloco "MOTIVO DA CONSULTA": se o paciente já mencionou sintoma (ex: "dor", "febre"), registrar automaticamente como `motivo_consulta` e pular para o próximo passo
+  - Regra 22 reforçada: queixas/sintomas em qualquer mensagem contam como motivo já preenchido
+- **Arquivo**: `app/services/anthropic_service.py`
+
 ---
 
 ## Pendências Abertas
@@ -466,4 +474,4 @@ Admin gera convite → Prospect preenche dados → status=pendente_aprovacao
 
 ---
 
-*Última atualização: 07/02/2026 — Remoção do acoplamento com Evolution API (-3913 linhas)*
+*Última atualização: 07/02/2026 — IA não repete motivo quando paciente já mencionou queixa (#73)*
