@@ -27,6 +27,8 @@ Sistema de agendamento médico multi-tenant (SaaS) chamado **Horário Inteligent
 │   │   ├── cliente_registro.py    # API pública de registro via convite
 │   │   ├── ativacao.py            # API pública de ativação de conta
 │   │   ├── parceiro_auth.py       # Portal do parceiro (login, dashboard, convites)
+│   │   ├── webhooks/              # Pacote webhook (apenas diagnósticos)
+│   │   │   └── diagnostics.py     # Endpoints de teste, clear, conversations
 │   │   ├── webhook_official.py    # Webhook WhatsApp API Oficial Meta (router + endpoints de teste)
 │   │   └── websocket.py           # WebSocket para conversas em tempo real
 │   ├── models/                    # SQLAlchemy models
@@ -39,8 +41,11 @@ Sistema de agendamento médico multi-tenant (SaaS) chamado **Horário Inteligent
 │   │   ├── anthropic_service.py   # IA conversacional (Claude)
 │   │   ├── conversa_service.py    # Lógica de negócio de conversas
 │   │   ├── lembrete_service.py    # Lembretes inteligentes (24h, 2h)
+│   │   ├── notification_service.py # Notificações para médicos (WhatsApp, email, push)
+│   │   ├── falta_service.py       # Processamento de faltas e reagendamento
 │   │   ├── button_handler_service.py # Respostas a botões de templates WhatsApp
-│   │   ├── whatsapp_official_service.py # Envio via API Oficial Meta
+│   │   ├── whatsapp_official_service.py # Envio via API Oficial Meta (único provedor)
+│   │   ├── whatsapp_interface.py  # Interface abstrata + factory
 │   │   ├── onboarding_service.py  # Helpers de onboarding (subdomain, senha, billing)
 │   │   ├── crypto_service.py      # Criptografia PII (Fernet/LGPD)
 │   │   └── websocket_manager.py   # Broadcast WebSocket por tenant
@@ -429,6 +434,27 @@ Admin gera convite → Prospect preenche dados → status=pendente_aprovacao
 - **Sem alteração de comportamento**: mesma pipeline, mesmo multi-tenant, mesmos endpoints, mesmas respostas
 - **Grafo de dependências**: DAG limpo, sem ciclos. Os 3 módulos-folha não importam uns dos outros
 
+### 72. Remoção do acoplamento com Evolution API
+- **Problema**: Após migração para API Oficial Meta, 3 serviços ainda enviavam via Evolution API morta e ~3900 linhas de código legado permaneciam no codebase
+- **Fase 1 — Migração de serviços ativos**:
+  - `notification_service.py`: `WhatsAppService` (Evolution) → `WhatsAppOfficialService`. Busca `phone_number_id` via tabela `configuracoes`
+  - `falta_service.py`: Mesma migração — import lazy de `WhatsAppOfficialService`, usa `send_text()` com `SendResult`
+- **Fase 2 — Remoção do reminder_service.py**:
+  - `reminders.py`: Migrado para usar `lembrete_service.get_estatisticas()`. Endpoint `send_immediate_reminder` removido (coberto pelo scheduler)
+  - Deletado `app/services/reminder_service.py` (substituído por `lembrete_service.py`)
+- **Fase 3 — Remoção do caminho de webhook Evolution**:
+  - Deletados 9 arquivos: `handler.py`, `messaging.py`, `ai_processing.py`, `message_extraction.py`, `qr_code.py`, `whatsapp_service.py`, `whatsapp_evolution_service.py`, `whatsapp_monitor.py`, `whatsapp_decrypt.py`
+  - `webhooks/__init__.py`: Agora inclui apenas `diagnostics_router`
+  - `diagnostics.py`: `verify_webhook_auth()` movido inline, endpoint `/whatsapp/status` (Evolution) removido
+  - `utils.py` deletado (sem consumidores restantes)
+  - `main.py`: Removido fallback webhook Evolution, `status_sistema` atualizado para Meta Cloud API
+- **Fase 4 — Limpeza final**:
+  - `whatsapp_interface.py`: Removido enum `EVOLUTION`, factory simplificado para retornar apenas `WhatsAppOfficialService`
+  - `billing_service.py`: Removido import não utilizado de `SessionLocal`
+  - Deletados: `teste_evolution_api.py`, `fix_evolution_send.py`, `webhooks_backup_sem_ia.py`
+  - `.env.example`: Removidas variáveis `EVOLUTION_*`, adicionado `WEBHOOK_TOKEN`
+- **Resultado**: 22 arquivos, +80 / −3913 linhas. Zero referências a `WhatsAppService`, `instance_name` ou `EVOLUTION_API` no código ativo
+
 ---
 
 ## Pendências Abertas
@@ -440,4 +466,4 @@ Admin gera convite → Prospect preenche dados → status=pendente_aprovacao
 
 ---
 
-*Última atualização: 07/02/2026 — Refatoração do webhook_official.py em pacote modular*
+*Última atualização: 07/02/2026 — Remoção do acoplamento com Evolution API (-3913 linhas)*
