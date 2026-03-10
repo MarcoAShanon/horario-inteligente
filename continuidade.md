@@ -465,6 +465,27 @@ Admin gera convite → Prospect preenche dados → status=pendente_aprovacao
 
 ---
 
+## Correções — Sessão 08/02/2026
+
+### 74. Template lembrete_2h corrigido no Meta Business Manager
+- Texto redundante "Responda OK..." removido — template já possui botões interativos
+
+### 75. IA com comportamento de bot — respostas com listas numeradas
+- **Problema**: IA respondia com menus numerados (1️⃣ 2️⃣ 3️⃣) e listas de opções, comportamento típico de chatbot em vez de conversa natural
+- **Correção**: Adicionada regra de alta prioridade no prompt (`anthropic_service.py`) proibindo:
+  - Listas numeradas, menus de opções e bullet points
+  - Frases como "Escolha uma opção"
+  - Qualquer formatação estruturada tipo bot
+- IA agora deve conversar de forma natural e fluida, como uma secretária real no WhatsApp — uma pergunta por vez, respostas curtas e objetivas
+- **Arquivo**: `app/services/anthropic_service.py`
+
+### 76. Limpeza de dados de teste do cliente Dr. João Silva (cliente_id=11)
+- Deletados: 11 lembretes, 9 agendamentos, 7 pacientes fictícios (Maria Fernanda, Nylza Maria, João Guilherme, Fulano de tal, Marcelo Marcos Vieira, Tião Gavião)
+- Conversas (banco + Redis) limpas para testes frescos com IA
+- Paciente "Maria Fernanda" estava vinculada ao telefone de teste, causando contexto residual indesejado nas respostas da IA
+
+---
+
 ## Pendências Abertas
 
 - [ ] Template `lembrete_24h` — remover texto "Responda OK..." redundante com botões (editar no Meta Business Manager)
@@ -474,4 +495,4 @@ Admin gera convite → Prospect preenche dados → status=pendente_aprovacao
 
 ---
 
-*Última atualização: 07/02/2026 — IA não repete motivo quando paciente já mencionou queixa (#73)*
+*Última atualização: 08/02/2026 — IA humanizada, sem listas numeradas (#75); limpeza dados teste (#76)*
